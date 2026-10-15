@@ -10,6 +10,7 @@ import anthropic
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
@@ -17,7 +18,8 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 from . import keys  # noqa: E402
 from .db import connect, graph_name  # noqa: E402
 from .drafter import write_draft  # noqa: E402
-from .queries import person_context, record_draft, rules_for_context, topics_in  # noqa: E402
+from .queries import (graph_summary, people, person_context, record_draft,  # noqa: E402
+                      rules_for_context, topics_in)
 
 app = FastAPI(title="Purrsona bridge")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -48,7 +50,17 @@ class DraftRequest(BaseModel):
 
 @app.get("/key")
 def key_status():
-    return {"plugged": state["key_id"] is not None, "key_id": state["key_id"]}
+    if state["key_id"] is None:
+        return {"plugged": False, "key_id": None}
+    graph = db.select_graph(graph_name(state["key_id"]))
+    return {"plugged": True, "key_id": state["key_id"], **graph_summary(graph)}
+
+
+@app.get("/people")
+def list_people():
+    if state["key_id"] is None:
+        raise HTTPException(409, "Plug in a key first")
+    return people(db.select_graph(graph_name(state["key_id"])))
 
 
 @app.post("/key/plug")
@@ -93,3 +105,7 @@ def draft(req: DraftRequest):
     return {"mode": "voice", "draft": text, "draft_id": draft_id, "rules": rules,
             "person": {**person, "circle": circle}, "topics": topics,
             "graph_ms": graph_ms, "ms": round((time.perf_counter() - started) * 1000)}
+
+
+# The demo console (served last so the API routes above take precedence).
+app.mount("/", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="console")

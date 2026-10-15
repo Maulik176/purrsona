@@ -89,3 +89,26 @@ def record_draft(graph, draft_id: str, text: str, at: int, person: str, platform
                  topics: list[str], rule_ids: list[str]) -> None:
     graph.query(RECORD_DRAFT, {"id": draft_id, "text": text, "at": at, "person": person,
                                "platform": platform, "topics": topics, "rule_ids": rule_ids})
+
+
+# The people and circles in the plugged-in voice graph (for the demo console's picker).
+PEOPLE = """
+MATCH (:User)-[:KNOWS]->(p:Person)-[:IN_CIRCLE]->(c:Circle)
+RETURN p.id AS id, p.name AS name, p.headline AS headline, c.name AS circle
+ORDER BY circle, name
+"""
+
+GRAPH_SUMMARY = """
+MATCH (r:StyleRule) WHERE r.superseded_at IS NULL
+WITH count(r) AS rules
+MATCH (c:Circle)
+RETURN rules, collect(c.name) AS circles
+"""
+
+
+def people(graph) -> list[dict]:
+    return rows(graph.ro_query(PEOPLE))
+
+
+def graph_summary(graph) -> dict:
+    return rows(graph.ro_query(GRAPH_SUMMARY))[0]
