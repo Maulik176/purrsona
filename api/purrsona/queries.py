@@ -63,3 +63,28 @@ def topics_in(graph, text: str) -> list[str]:
     """Topics from the graph that the post mentions (simple keyword match for v1)."""
     lowered = text.lower()
     return [r["name"] for r in rows(graph.ro_query(TOPIC_NAMES)) if r["name"].lower() in lowered]
+
+
+# Saves a draft and which rules shaped it (feeds Q6 "why this draft" and Q9 "signature style").
+RECORD_DRAFT = """
+CREATE (d:Draft {id: $id, text: $text, at: $at})
+WITH d
+OPTIONAL MATCH (p:Person {id: $person})
+FOREACH (_ IN CASE WHEN p IS NULL THEN [] ELSE [1] END | CREATE (d)-[:TO]->(p))
+WITH d
+OPTIONAL MATCH (pl:Platform {name: $platform})
+FOREACH (_ IN CASE WHEN pl IS NULL THEN [] ELSE [1] END | CREATE (d)-[:ON]->(pl))
+WITH d
+OPTIONAL MATCH (t:Topic) WHERE t.name IN $topics
+FOREACH (_ IN CASE WHEN t IS NULL THEN [] ELSE [1] END | CREATE (d)-[:ABOUT]->(t))
+WITH DISTINCT d
+OPTIONAL MATCH (r:StyleRule) WHERE r.id IN $rule_ids
+FOREACH (_ IN CASE WHEN r IS NULL THEN [] ELSE [1] END | CREATE (d)-[:USED]->(r))
+RETURN d.id AS id
+"""
+
+
+def record_draft(graph, draft_id: str, text: str, at: int, person: str, platform: str,
+                 topics: list[str], rule_ids: list[str]) -> None:
+    graph.query(RECORD_DRAFT, {"id": draft_id, "text": text, "at": at, "person": person,
+                               "platform": platform, "topics": topics, "rule_ids": rule_ids})
