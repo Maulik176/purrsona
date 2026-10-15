@@ -17,6 +17,7 @@ OPTIONAL MATCH (u:User)
 WITH collect(DISTINCT p) + collect(DISTINCT c) + collect(DISTINCT hint)
      + collect(DISTINCT t) + collect(DISTINCT pl) + collect(DISTINCT u) AS scopes
 UNWIND scopes AS s
+WITH DISTINCT s
 MATCH (s)-[:HAS_RULE]->(r:StyleRule)
 WHERE r.superseded_at IS NULL
 OPTIONAL MATCH (r)-[:LEARNED_FROM]->(ev)

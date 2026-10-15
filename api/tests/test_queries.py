@@ -76,3 +76,10 @@ def test_person_context_and_topics(graph):
     assert person_context(graph, "kabir-shah")["known"] is False
     assert topics_in(graph, "Big ServiceNow go-live today, AI everywhere") == ["ServiceNow", "AI"] or \
         set(topics_in(graph, "Big ServiceNow go-live today, AI everywhere")) == {"ServiceNow", "AI"}
+
+
+def test_circle_hint_matching_own_circle_does_not_double_count(graph):
+    # Regression: Work reached twice (own circle + hint) doubled the evidence counts.
+    rules = by_kind(rules_for_context(graph, "priya-nair", "linkedin", [], circle_hint="Work"))
+    assert rules["greeting"][0]["id"] == "w3"
+    assert rules["greeting"][0]["evidence"] == 2

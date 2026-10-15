@@ -81,7 +81,7 @@ def draft(req: DraftRequest):
 
     graph = db.select_graph(graph_name(key_id))
     person = person_context(graph, req.person_id)
-    circle = person["circle"] or req.circle_hint
+    circle = person["circle"] or req.circle_hint  # the hint only matters for someone new
     topics = topics_in(graph, req.post_text)
     rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle)
     graph_ms = round((time.perf_counter() - started) * 1000)
