@@ -1,0 +1,13 @@
+services:
+  falkordb:
+    image: falkordb/falkordb:v4.22.0
+    container_name: purrsona-falkordb
+    ports:
+      - "6380:6379"   # 6379 is taken by the learning sandbox container
+      - "3001:3000"   # FalkorDB Browser
+    environment:
+      REDIS_ARGS: "--appendonly yes"
+    volumes:
+      - purrsona-data:/var/lib/falkordb/data
+volumes:
+  purrsona-data:

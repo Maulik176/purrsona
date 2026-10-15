@@ -1,0 +1,25 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Real personal exports never go in the repo (LinkedIn archive, etc.)
+private/
+*linkedin*export*/
+Shares.csv
+Comments.csv
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node / extension builds
+node_modules/
+dist/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
