@@ -1,0 +1,55 @@
+{
+  "key_id": "demo-maulik",
+  "user": {"id": "maulik", "name": "Maulik"},
+  "user_topics": ["ServiceNow", "AI", "cricket"],
+  "circles": ["Friends", "Work", "Clients"],
+  "platforms": ["linkedin", "x"],
+  "topics": ["ServiceNow", "AI", "cricket", "hackathons"],
+  "people": [
+    {"id": "aarav-mehta", "name": "Aarav Mehta", "headline": "Backend developer, cricket nerd", "circle": "Friends", "topics": ["cricket", "AI"]},
+    {"id": "ishaan-rao", "name": "Ishaan Rao", "headline": "Product designer", "circle": "Friends", "topics": ["AI"]},
+    {"id": "priya-nair", "name": "Priya Nair", "headline": "Engineering Manager", "circle": "Work", "topics": ["ServiceNow"]},
+    {"id": "neha-kulkarni", "name": "Neha Kulkarni", "headline": "ServiceNow Developer", "circle": "Work", "topics": ["ServiceNow", "AI"]},
+    {"id": "rohan-desai", "name": "Rohan Desai", "headline": "CTO at a retail company", "circle": "Clients", "topics": ["ServiceNow"]},
+    {"id": "sara-thomas", "name": "Sara Thomas", "headline": "IT Director at a bank", "circle": "Clients", "topics": ["ServiceNow"]}
+  ],
+  "phrases": ["I hope this finds you well"],
+  "posts": [
+    {"id": "p1", "platform": "linkedin", "at": 1790899200000, "text": "Every new integration used to mean another hardcoded Script Include.\n\nThis week I tried a config-driven payload builder instead.\n\nHow do you keep integration code from piling up?"},
+    {"id": "p2", "platform": "linkedin", "at": 1791158400000, "text": "Shipped my first Flow Designer subflow at work today.\n\nSmall win, big lesson: name your variables like someone else will read them.\n\nWhat's your favourite naming rule?"},
+    {"id": "p3", "platform": "x", "at": 1791244800000, "text": "Graph databases finally clicked for me this week. Matrices > joins."}
+  ],
+  "edits": [
+    {"id": "e1", "person": "aarav-mehta", "platform": "x", "at": 1790985600000, "before": "Hi Aarav, congratulations on the new role.", "after": "Yo bro, huge congrats on the new role 🔥"},
+    {"id": "e2", "person": "aarav-mehta", "platform": "x", "at": 1791072000000, "before": "Great match yesterday. Hope you enjoyed it.", "after": "Bro that last over though 😂 what a finish"},
+    {"id": "e3", "person": "priya-nair", "platform": "linkedin", "at": 1791072000000, "before": "Hey Priya!! Awesome news 🎉🎉", "after": "Hi Priya, great news on the release. Proud of the team."},
+    {"id": "e4", "person": "neha-kulkarni", "platform": "linkedin", "at": 1791158400000, "before": "Nice post about automation.", "after": "Hi Neha, nice one. We did the same with Flow Designer and cut a manual approval step."},
+    {"id": "e5", "person": "rohan-desai", "platform": "linkedin", "at": 1791158400000, "before": "Hey Rohan, cool update!", "after": "Hi Rohan, thank you for sharing this update. Happy to help with the rollout. Regards, Maulik"},
+    {"id": "e6", "person": "aarav-mehta", "platform": "linkedin", "at": 1791244800000, "before": "Hi Aarav, interesting post.", "after": "Bro this is so good, saving it"},
+    {"id": "e7", "person": "sara-thomas", "platform": "linkedin", "at": 1791244800000, "before": "Hi Sara, I hope this finds you well. Thanks for the note on the audit.", "after": "Hi Sara, thanks for the note on the audit. I'll send the access report by Friday. Regards, Maulik", "deleted": ["I hope this finds you well"]},
+    {"id": "e8", "person": "priya-nair", "platform": "linkedin", "at": 1791331200000, "before": "Hi Priya, congratulations to the team on the go-live.", "after": "Hi Priya, congrats on the go-live 🎉 huge effort by the team"}
+  ],
+  "rules": [
+    {"id": "u1", "scope": "User", "scope_id": "maulik", "kind": "length", "text": "Keeps replies short: one to three sentences", "created_at": 1790899200000, "learned_from": ["p1", "p2"]},
+    {"id": "u2", "scope": "User", "scope_id": "maulik", "kind": "phrase_avoid", "text": "Never says 'I hope this finds you well'", "created_at": 1791244800000, "learned_from": ["e7"]},
+    {"id": "f1", "scope": "Circle", "scope_id": "Friends", "kind": "tone", "text": "Casual and playful", "created_at": 1790985600000, "learned_from": ["e1", "e2"]},
+    {"id": "f2", "scope": "Circle", "scope_id": "Friends", "kind": "greeting", "text": "Opens with 'Yo' or jumps straight in, never a formal greeting", "created_at": 1790985600000, "learned_from": ["e1"]},
+    {"id": "f3", "scope": "Circle", "scope_id": "Friends", "kind": "emoji", "text": "One or two emojis, usually 😂 or 🔥", "created_at": 1790985600000, "learned_from": ["e1", "e2"]},
+    {"id": "f4", "scope": "Circle", "scope_id": "Friends", "kind": "signoff", "text": "No sign-off", "created_at": 1791072000000, "learned_from": ["e2"]},
+    {"id": "w0", "scope": "Circle", "scope_id": "Work", "kind": "tone", "text": "Very formal", "created_at": 1790812800000, "superseded_at": 1791072000000, "learned_from": []},
+    {"id": "w1", "scope": "Circle", "scope_id": "Work", "kind": "tone", "text": "Warm but professional", "created_at": 1791072000000, "learned_from": ["e3", "e4"], "overrides": ["w0"]},
+    {"id": "w2", "scope": "Circle", "scope_id": "Work", "kind": "emoji", "text": "No emojis", "created_at": 1791072000000, "learned_from": ["e3"]},
+    {"id": "w3", "scope": "Circle", "scope_id": "Work", "kind": "greeting", "text": "Opens with 'Hi <first name>'", "created_at": 1791072000000, "learned_from": ["e3", "e4"]},
+    {"id": "c1", "scope": "Circle", "scope_id": "Clients", "kind": "tone", "text": "Polite and formal", "created_at": 1791158400000, "learned_from": ["e5", "e7"]},
+    {"id": "c2", "scope": "Circle", "scope_id": "Clients", "kind": "signoff", "text": "Signs off 'Regards, Maulik'", "created_at": 1791158400000, "learned_from": ["e5", "e7"]},
+    {"id": "c3", "scope": "Circle", "scope_id": "Clients", "kind": "greeting", "text": "Opens with 'Hi <first name>,'", "created_at": 1791158400000, "learned_from": ["e5"]},
+    {"id": "l1", "scope": "Platform", "scope_id": "linkedin", "kind": "format", "text": "Short lines with a blank line between ideas", "created_at": 1790899200000, "learned_from": ["p1", "p2"]},
+    {"id": "l2", "scope": "Platform", "scope_id": "linkedin", "kind": "phrase_use", "text": "On own posts, ends with a question to invite replies", "created_at": 1791158400000, "learned_from": ["p1", "p2"]},
+    {"id": "x1", "scope": "Platform", "scope_id": "x", "kind": "length", "text": "Under 240 characters", "created_at": 1791244800000, "learned_from": ["p3"]},
+    {"id": "x2", "scope": "Platform", "scope_id": "x", "kind": "format", "text": "No hashtags", "created_at": 1791244800000, "learned_from": ["p3"]},
+    {"id": "t1", "scope": "Topic", "scope_id": "ServiceNow", "kind": "phrase_use", "text": "Uses concrete platform terms such as Flow Designer, CMDB, Script Include", "created_at": 1790899200000, "learned_from": ["p1", "e4"]},
+    {"id": "t2", "scope": "Topic", "scope_id": "cricket", "kind": "phrase_use", "text": "Drops a cricket reference", "created_at": 1791072000000, "learned_from": ["e2"]},
+    {"id": "pa1", "scope": "Person", "scope_id": "aarav-mehta", "kind": "phrase_use", "text": "Calls Aarav 'bro'", "created_at": 1790985600000, "learned_from": ["e1", "e2", "e6"]},
+    {"id": "pp1", "scope": "Person", "scope_id": "priya-nair", "kind": "emoji", "text": "One emoji is fine for wins, e.g. 🎉", "created_at": 1791331200000, "learned_from": ["e8"], "overrides": ["w2"]}
+  ]
+}
