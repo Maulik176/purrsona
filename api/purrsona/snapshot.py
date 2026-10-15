@@ -29,7 +29,11 @@ def build_graph(graph, snap: dict) -> None:
     graph.query("CREATE (:User {id: $id, name: $name})", snap["user"])
     graph.query("UNWIND $names AS n CREATE (:Circle {name: n})", {"names": snap["circles"]})
     graph.query("UNWIND $names AS n CREATE (:Platform {name: n})", {"names": snap["platforms"]})
-    graph.query("UNWIND $names AS n CREATE (:Topic {name: n})", {"names": snap["topics"]})
+    keywords = snap.get("topic_keywords", {})
+    graph.query(
+        "UNWIND $topics AS t CREATE (:Topic {name: t.name, keywords: t.keywords})",
+        {"topics": [{"name": n, "keywords": keywords.get(n, [n.lower()])} for n in snap["topics"]]},
+    )
     graph.query("UNWIND $texts AS t CREATE (:Phrase {text: t})", {"texts": snap.get("phrases", [])})
 
     graph.query(

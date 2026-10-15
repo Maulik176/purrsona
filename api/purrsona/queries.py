@@ -1,4 +1,6 @@
 """The Cypher queries Purrsona depends on (listed in the README for the judges)."""
+import re
+
 from .db import rows
 
 # Rule kinds that stack (several can apply at once). Every other kind has one winner.
@@ -40,7 +42,7 @@ OPTIONAL MATCH (p)-[:IN_CIRCLE]->(c:Circle)
 RETURN p IS NOT NULL AS known, p.name AS name, c.name AS circle
 """
 
-TOPIC_NAMES = "MATCH (t:Topic) RETURN t.name AS name"
+TOPIC_NAMES = "MATCH (t:Topic) RETURN t.name AS name, t.keywords AS keywords"
 
 
 def rules_for_context(graph, person: str, platform: str, topics: list[str], circle_hint: str | None = None) -> list[dict]:
@@ -61,9 +63,16 @@ def person_context(graph, person: str) -> dict:
 
 
 def topics_in(graph, text: str) -> list[str]:
-    """Topics from the graph that the post mentions (simple keyword match for v1)."""
-    lowered = text.lower()
-    return [r["name"] for r in rows(graph.ro_query(TOPIC_NAMES)) if r["name"].lower() in lowered]
+    """Topics from the graph that the post mentions, by whole-word keyword match.
+
+    Whole words matter: "bhaila" must not count as a mention of "AI".
+    """
+    found = []
+    for r in rows(graph.ro_query(TOPIC_NAMES)):
+        words = r["keywords"] or [r["name"].lower()]
+        if any(re.search(rf"\b{re.escape(w)}\b", text, re.IGNORECASE) for w in words):
+            found.append(r["name"])
+    return found
 
 
 # Saves a draft and which rules shaped it (feeds Q6 "why this draft" and Q9 "signature style").

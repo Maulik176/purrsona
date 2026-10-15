@@ -10,7 +10,7 @@ One FalkorDB graph per memory key, named `voice:<key_id>`. Plugging the key in b
 | `Person` | `id` (profile slug or @handle) | `name`, `headline` | a colleague you reply to |
 | `Circle` | `name` | | Friends, Work, Clients |
 | `Platform` | `name` | | linkedin, x |
-| `Topic` | `name` | | ServiceNow, AI, cricket |
+| `Topic` | `name` | `keywords` (whole-word matches that mean a post is about it) | ServiceNow ("flow designer", "cmdb"), AI, cricket ("last over", "wicket") |
 | `StyleRule` | `id` | `kind`, `text`, `created_at`, `superseded_at` | "no emojis" |
 | `Phrase` | `text` | | "I hope this finds you well" |
 | `Post` | `id` | `text`, `platform`, `at` | one of your own public posts |

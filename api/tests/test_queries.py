@@ -74,8 +74,15 @@ def test_superseded_rule_is_never_applied(graph):
 def test_person_context_and_topics(graph):
     assert person_context(graph, "neha-kulkarni") == {"known": True, "name": "Neha Kulkarni", "circle": "Work"}
     assert person_context(graph, "kabir-shah")["known"] is False
-    assert topics_in(graph, "Big ServiceNow go-live today, AI everywhere") == ["ServiceNow", "AI"] or \
-        set(topics_in(graph, "Big ServiceNow go-live today, AI everywhere")) == {"ServiceNow", "AI"}
+    assert set(topics_in(graph, "Big ServiceNow go-live today, AI everywhere")) == {"ServiceNow", "AI"}
+
+
+def test_topics_match_whole_words_and_keywords(graph):
+    # Found in Maulik's Kabir test: "bhaila" contains "ai" but isn't about AI.
+    assert topics_in(graph, "Hey kabir bhaila!!! What a last over yesterday!") == ["cricket"]
+    # Found in the Neha test: Flow Designer is a ServiceNow topic even without the word ServiceNow.
+    assert topics_in(graph, "Just automated our approval flow with Flow Designer.") == ["ServiceNow"]
+    assert topics_in(graph, "Lunch was great today") == []
 
 
 def test_circle_hint_matching_own_circle_does_not_double_count(graph):
