@@ -14,7 +14,18 @@
 
 **Not built yet:** authentication between the key and the laptop (#4) · learning from what you send (capture, the Learner #9, write-back to the key) · the Critic agent · the browser extension · the real key.
 
-## Day 2 · Fri Oct 16 (plan)
+## Day 2 · Fri Oct 16 (done)
+
+1. **Learning loop:** send → the Learner (one Claude call) turns your edit into rules → saved to the graph *and* the key's memory log in the same step → replayed on every plug-in, so it survives unplugging.
+2. **Every send leaves a memory:** sent unchanged = no Claude call, but the person (and their circle, if new) and "the draft was right" are saved; the cat says "you've written to X 3× with me" next time.
+3. **Rewrite mode:** type a rough note, then Option+M: your words get polished in your voice, and your own words teach the Learner.
+4. **Chrome extension + the cat** (`extension/`): the cat shows only by the box you're typing in, paces while thinking, walks along the draft as it lands; asks the circle for someone new; "why?" lists the rules behind the draft. Works on the practice page and LinkedIn (comments, replies under a comment, your own new post); X untested.
+5. **Practice page** `/practice/`: a made-up feed where anyone can try the cat without installing anything.
+6. Own-post rules no longer shape replies (`applies_to` on rules). **22 tests.**
+
+**Not built yet:** the Critic · the hold-Option refine chat · the "why this draft" query (Q6, Maulik) · dashboard + "it learns" chart · load test (#11) · the real key (#1–#5) · hosted demo for judges.
+
+## Day 2 · Fri Oct 16 (the original plan)
 
 - **Maulik:** the learning loop for the virtual key ("I sent this" → write the edit back to the key so it survives unplugging) · rewrite mode (your rough note → your voice) · Critic agent · browser extension (practice page first, then LinkedIn comments) · the "why this draft" query · own-post rules shouldn't apply to replies.
 - **Mustafa:** #1 protocol contract first → #2 board setup, #3 protocol on the key, #4 Ed25519 login → #9 the Learner.

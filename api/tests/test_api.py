@@ -72,3 +72,15 @@ def test_new_post_mode_needs_a_note_and_uses_post_rules(monkeypatch):
                                       "user_note": "we went live with ServiceNow today"}).json()
     assert out["mode"] == "voice" and seen["mode"] == "post" and "l2" in seen["rules"] and "t1" in seen["rules"]
     client.post("/key/unplug")
+
+
+def test_sending_unchanged_still_saves_who_you_wrote_to(monkeypatch):
+    monkeypatch.setattr("purrsona.app.claude", lambda: None)  # no Claude call on this path
+    client.post("/key/plug", json={"key_id": "demo-maulik"})
+    out = client.post("/learn", json={"draft_id": "d-same1", "draft_text": "Nice one!", "sent_text": "Nice one!",
+                                      "person_id": "avery-new", "person_name": "Avery New",
+                                      "platform": "linkedin", "circle": "Work"}).json()
+    assert out["saved"] and out["person_added"] and out["learned"] == [] and "Work" in out["note"]
+    who = client.get("/person", params={"id": "avery-new"}).json()
+    assert who["known"] and who["circle"] == "Work" and who["sent"] == 1
+    client.post("/key/unplug")

@@ -37,10 +37,12 @@ RETURN kind, CASE WHEN kind IN $stacking THEN candidates ELSE candidates[0..1] E
 ORDER BY kind
 """
 
+# Q1: who is this person to me, and how often have I written to them (drafts I actually sent)?
 PERSON_CONTEXT = """
 OPTIONAL MATCH (p:Person {id: $person})
 OPTIONAL MATCH (p)-[:IN_CIRCLE]->(c:Circle)
-RETURN p IS NOT NULL AS known, p.name AS name, c.name AS circle
+OPTIONAL MATCH (d:Draft)-[:TO]->(p) WHERE d.sent_at IS NOT NULL
+RETURN p IS NOT NULL AS known, p.name AS name, c.name AS circle, count(d) AS sent, max(d.sent_at) AS last_sent
 """
 
 TOPIC_NAMES = "MATCH (t:Topic) RETURN t.name AS name, t.keywords AS keywords"
@@ -144,9 +146,30 @@ MATCH (p:Person {id: $person_id})
 OPTIONAL MATCH (pl:Platform {name: $platform})
 MERGE (d:Draft {id: $draft_id})
   ON CREATE SET d.text = $before, d.at = $at
+SET d.sent_at = $at, d.edited = $before <> $after
 MERGE (d)-[:TO]->(p)
 FOREACH (_ IN CASE WHEN pl IS NULL THEN [] ELSE [1] END | MERGE (d)-[:ON]->(pl))
 CREATE (:Edit {id: $edit_id, before: $before, after: $after, at: $at})-[:OF]->(d)
+"""
+
+# 2b. Sent as it was: still a memory. I wrote to this person, and the draft was right as it was.
+SAVE_SENT = """
+MATCH (p:Person {id: $person_id})
+OPTIONAL MATCH (pl:Platform {name: $platform})
+MERGE (d:Draft {id: $draft_id})
+  ON CREATE SET d.text = $text, d.at = $at
+SET d.sent_at = $at, d.edited = false
+MERGE (d)-[:TO]->(p)
+FOREACH (_ IN CASE WHEN pl IS NULL THEN [] ELSE [1] END | MERGE (d)-[:ON]->(pl))
+"""
+
+# Which rules shaped a draft (saved with each memory, so the links come back after a re-plug).
+DRAFT_RULES = "MATCH (:Draft {id: $draft_id})-[:USED]->(r:StyleRule) RETURN r.id AS id"
+LINK_USED = """
+MATCH (d:Draft {id: $draft_id})
+UNWIND $rule_ids AS rid
+MATCH (r:StyleRule {id: rid})
+MERGE (d)-[:USED]->(r)
 """
 
 # 3. Remember the rule and the edit that taught it.

@@ -2,8 +2,8 @@
 import pytest
 
 from purrsona import keys, learning
-from purrsona.db import connect, graph_name
-from purrsona.queries import person_context, rules_for_context
+from purrsona.db import connect, graph_name, rows
+from purrsona.queries import DRAFT_RULES, person_context, record_draft, rules_for_context
 
 from test_queries import graph  # noqa: F401
 
@@ -19,7 +19,8 @@ def test_new_person_learns_a_rule(graph):  # noqa: F811
     assert person_context(graph, "kabir-shah")["known"] is False
     current = rules_for_context(graph, "kabir-shah", "x", [], circle_hint="Friends")
     learning.apply_event(graph, lesson_for_kabir(current))
-    assert person_context(graph, "kabir-shah") == {"known": True, "name": "Kabir Shah", "circle": "Friends"}
+    who = person_context(graph, "kabir-shah")
+    assert (who["known"], who["name"], who["circle"], who["sent"]) == (True, "Kabir Shah", "Friends", 1)
     own = [r for r in rules_for_context(graph, "kabir-shah", "x", []) if r["scope"] == "Person"]
     assert [r["text"] for r in own] == ["Calls Kabir 'bhaila'"]
     assert own[0]["evidence"] == 1
@@ -56,3 +57,25 @@ def test_memory_survives_unplug_and_replug(tmp_path, monkeypatch):
     keys.plug(db, "test-learn", seed="demo-maulik")
     assert person_context(db.select_graph(graph_name("test-learn")), "kabir-shah")["known"] is False
     keys.unplug(db, "test-learn")
+
+
+def test_sent_as_is_still_remembers_a_new_person(tmp_path, monkeypatch):
+    # Found by Maulik on LinkedIn, Oct 16: a new person's draft sent unchanged left no memory at all.
+    monkeypatch.setenv("PURRSONA_KEYS_DIR", str(tmp_path))
+    db = connect()
+    keys.plug(db, "test-sent", seed="demo-maulik")
+    g = db.select_graph(graph_name("test-sent"))
+    used = [r["id"] for r in rules_for_context(g, "avery-new", "linkedin", [], circle_hint="Work")]
+    record_draft(g, "d-sent1", "Great point, Avery.", 1, "avery-new", "linkedin", [], used)
+    event = learning.build_sent_event("avery-new", "Avery New", "Work", True, "linkedin",
+                                      "d-sent1", "Great point, Avery.", used)
+    learning.apply_event(g, event)
+    keys.append_event("test-sent", event)
+
+    keys.unplug(db, "test-sent")
+    keys.plug(db, "test-sent", seed="demo-maulik")
+    g = db.select_graph(graph_name("test-sent"))
+    who = person_context(g, "avery-new")
+    assert (who["known"], who["circle"], who["sent"]) == (True, "Work", 1)
+    assert {r["id"] for r in rows(g.ro_query(DRAFT_RULES, {"draft_id": "d-sent1"}))} == set(used)
+    keys.unplug(db, "test-sent")

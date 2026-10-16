@@ -72,7 +72,8 @@ def test_superseded_rule_is_never_applied(graph):
 
 
 def test_person_context_and_topics(graph):
-    assert person_context(graph, "neha-kulkarni") == {"known": True, "name": "Neha Kulkarni", "circle": "Work"}
+    assert person_context(graph, "neha-kulkarni") == {"known": True, "name": "Neha Kulkarni", "circle": "Work",
+                                                     "sent": 0, "last_sent": None}
     assert person_context(graph, "kabir-shah")["known"] is False
     assert set(topics_in(graph, "Big ServiceNow go-live today, AI everywhere")) == {"ServiceNow", "AI"}
 

@@ -317,12 +317,17 @@
     let showFor = 2500;
     try {
       cat.mood("thinking");
-      let plugged = true;
+      let plugged = true, remembered = "";
       if (ctx.mode === "reply") {
         cat.say(`reading ${esc(first(ctx.person_name))}'s post…`);
         const who = await bridge(`/person?id=${encodeURIComponent(ctx.person_id)}`);
         plugged = who.plugged;
         if (who.circles) circles = who.circles;
+        if (who.known) {  // the graph remembers them: say so
+          const when = who.last_sent ? `, last on ${new Date(who.last_sent).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : "";
+          remembered = `<div class="muted">${esc(who.circle)}${
+            who.sent ? ` · you've written to ${esc(first(ctx.person_name))} ${who.sent}× with me${when}` : ""}</div>`;
+        }
         if (who.plugged && !who.known) {
           cat.mood(null);
           const choice = await askCircle(ctx);
@@ -331,9 +336,9 @@
           cat.mood("thinking");
         }
       }
-      cat.say(ctx.mode === "post" ? "writing your post in your voice…"
+      cat.say((ctx.mode === "post" ? "writing your post in your voice…"
               : note ? "polishing your note in your voice…"
-              : plugged ? "checking your voice graph…" : "no key plugged in: writing a generic reply…");
+              : plugged ? "checking your voice graph…" : "no key plugged in: writing a generic reply…") + remembered);
       const r = await bridge("/draft", { ...ctx, user_note: note || null });
       ctx.note = note || null;
       cat.quiet();
@@ -355,7 +360,8 @@
     }
   }
 
-  // You pressed send: learn from the difference between the draft and what you actually sent.
+  // You pressed send: every send leaves a memory. Who you wrote to (and their circle, if they're new),
+  // plus either the lessons from your edits or "the draft was right as it was".
   // (Replies only for now: the Learner saves rules about a person.)
   async function captureSend(box) {
     if (!last || last.box !== box || last.r.mode !== "voice" || last.ctx.mode !== "reply") return;
@@ -372,9 +378,9 @@
         person_id: ctx.person_id, person_name: ctx.person_name, platform: ctx.platform,
         circle: ctx.circle_hint || r.person?.circle || null, note_text: ctx.note || null });
       cat.mood("happy");
-      cat.say(out.learned.length
-        ? `🐾 learned: ${out.learned.map((x) => esc(x.text)).join("<br>🐾 ")}<div class="muted">saved to your key</div>`
-        : `🐾 ${esc(out.note || "nothing new to learn")}`, { ms: 7000 });
+      const lines = out.learned.map((x) => `🐾 learned: ${esc(x.text)}`);
+      if (out.note) lines.push(`🐾 ${esc(out.note)}`);
+      cat.say(`${lines.join("<br>") || "🐾 nothing new"}${out.saved ? '<div class="muted">saved to your key</div>' : ""}`, { ms: 7000 });
       showFor = 7000;
     } catch (e) {
       cat.mood("error");

@@ -16,9 +16,9 @@ from pydantic import BaseModel
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 from . import keys, learning  # noqa: E402
-from .db import connect, graph_name  # noqa: E402
+from .db import connect, graph_name, rows  # noqa: E402
 from .drafter import write_draft  # noqa: E402
-from .queries import (graph_summary, people, person_context, record_draft,  # noqa: E402
+from .queries import (DRAFT_RULES, graph_summary, people, person_context, record_draft,  # noqa: E402
                       rules_for_context, topics_in)
 
 app = FastAPI(title="Purrsona bridge")
@@ -140,18 +140,28 @@ def draft(req: DraftRequest):
 @app.post("/learn")
 def learn(req: LearnRequest):
     """You sent something: learn your style from the edit, save it to the graph AND the key."""
+    """Every send leaves a memory: who you wrote to (and their circle, if they're new), and either the
+    lessons from your edit or the fact that the draft was right as it was."""
     key_id = state["key_id"]
     if key_id is None:
         raise HTTPException(409, "Plug in a key first: there's nowhere to save what Purrsona learns")
-    if " ".join(req.sent_text.split()) == " ".join(req.draft_text.split()) and not req.note_text:
-        return {"learned": [], "note": "You sent the draft as it was, so there's nothing new to learn.",
-                "memories": len(keys.load_events(key_id))}
-
     graph = db.select_graph(graph_name(key_id))
     person = person_context(graph, req.person_id)
     circle = person["circle"] or req.circle
+    first = req.person_name.split(" ")[0]
     if not person["known"] and not circle:
         raise HTTPException(400, f"{req.person_name} is new: which circle are they in?")
+    rule_ids = [r["id"] for r in rows(graph.ro_query(DRAFT_RULES, {"draft_id": req.draft_id}))]
+    joined = f"{first} is now in your {circle} circle" if not person["known"] else None
+
+    if " ".join(req.sent_text.split()) == " ".join(req.draft_text.split()) and not req.note_text:
+        event = learning.build_sent_event(req.person_id, req.person_name, circle, not person["known"],
+                                          req.platform, req.draft_id, req.draft_text, rule_ids)
+        learning.apply_event(graph, event)
+        memories = keys.append_event(key_id, event)
+        return {"learned": [], "saved": True, "person_added": event["person"]["new"], "memories": memories,
+                "note": f"Sent as-is, so the draft was right. {joined or f'Noted that you wrote to {first}'}."}
+
     current = rules_for_context(graph, req.person_id, req.platform, topics_in(graph, req.draft_text),
                                 circle_hint=circle)
 
@@ -159,11 +169,12 @@ def learn(req: LearnRequest):
     proposals = learning.learn_rules(claude(), req.draft_text, req.sent_text, req.person_name,
                                      req.platform, current, note=req.note_text)
     event = learning.build_event(req.person_id, req.person_name, circle, not person["known"], req.platform,
-                                 req.draft_id, req.draft_text, req.sent_text, proposals, current)
+                                 req.draft_id, req.draft_text, req.sent_text, proposals, current, rule_ids=rule_ids)
     learning.apply_event(graph, event)        # the laptop's graph learns now...
     memories = keys.append_event(key_id, event)  # ...and the key remembers, in the same step
-    return {"learned": event["rules"], "person_added": event["person"]["new"], "edit_id": event["edit"]["id"],
-            "memories": memories, "ms": round((time.perf_counter() - started) * 1000)}
+    return {"learned": event["rules"], "saved": True, "person_added": event["person"]["new"],
+            "edit_id": event["edit"]["id"], "memories": memories, "note": joined,
+            "ms": round((time.perf_counter() - started) * 1000)}
 
 
 @app.post("/key/reset")

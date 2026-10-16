@@ -73,7 +73,7 @@ def learn_rules(client: anthropic.Anthropic, draft: str, sent: str, person_name:
 
 def build_event(person_id: str, person_name: str, circle: str | None, person_is_new: bool, platform: str,
                 draft_id: str, draft_text: str, sent_text: str, proposals: list[dict],
-                current_rules: list[dict], at: int | None = None) -> dict:
+                current_rules: list[dict], at: int | None = None, rule_ids: list[str] | None = None) -> dict:
     """Package one lesson. Works out which existing rules each new rule outranks."""
     at = at or int(time.time() * 1000)
     winners = {r["kind"]: r for r in current_rules if r["kind"] not in queries.STACKING_KINDS}
@@ -86,20 +86,38 @@ def build_event(person_id: str, person_name: str, circle: str | None, person_is_
                       "overrides": overrides, "supersedes": supersedes})
     return {"type": "learned", "at": at, "platform": platform,
             "person": {"id": person_id, "name": person_name, "circle": circle, "new": person_is_new},
-            "draft": {"id": draft_id, "text": draft_text},
+            "draft": {"id": draft_id, "text": draft_text, "rule_ids": rule_ids or []},
             "edit": {"id": f"e-{uuid.uuid4().hex[:8]}", "before": draft_text, "after": sent_text},
             "rules": rules}
 
 
+def build_sent_event(person_id: str, person_name: str, circle: str | None, person_is_new: bool,
+                     platform: str, draft_id: str, draft_text: str, rule_ids: list[str],
+                     at: int | None = None) -> dict:
+    """You sent the draft unchanged: nothing to learn about style, but still a memory (who, which circle,
+    that the draft was right). No Claude call."""
+    return {"type": "sent", "at": at or int(time.time() * 1000), "platform": platform,
+            "person": {"id": person_id, "name": person_name, "circle": circle, "new": person_is_new},
+            "draft": {"id": draft_id, "text": draft_text, "rule_ids": rule_ids}}
+
+
 def apply_event(graph, event: dict) -> None:
-    """Write one lesson into the voice graph (used live and when replaying the key's log)."""
-    person, edit, at = event["person"], event["edit"], event["at"]
+    """Write one memory into the voice graph (used live and when replaying the key's log)."""
+    person, at = event["person"], event["at"]
     if person["new"]:
         graph.query(queries.SAVE_PERSON, {"person_id": person["id"], "name": person["name"],
                                           "circle": person["circle"]})
+    rule_ids = event["draft"].get("rule_ids") or []
+    if event["type"] == "sent":
+        graph.query(queries.SAVE_SENT, {"person_id": person["id"], "platform": event["platform"],
+                                        "draft_id": event["draft"]["id"], "text": event["draft"]["text"], "at": at})
+        graph.query(queries.LINK_USED, {"draft_id": event["draft"]["id"], "rule_ids": rule_ids})
+        return
+    edit = event["edit"]
     graph.query(queries.SAVE_EDIT, {"person_id": person["id"], "platform": event["platform"],
                                     "draft_id": event["draft"]["id"], "edit_id": edit["id"],
                                     "before": edit["before"], "after": edit["after"], "at": at})
+    graph.query(queries.LINK_USED, {"draft_id": event["draft"]["id"], "rule_ids": rule_ids})
     for r in event["rules"]:
         graph.query(queries.SAVE_LEARNED_RULE, {"person_id": person["id"], "edit_id": edit["id"],
                                                 "rule_id": r["id"], "kind": r["kind"], "text": r["text"],
