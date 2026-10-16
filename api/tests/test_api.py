@@ -110,3 +110,16 @@ def test_refine_brings_the_graph_rules_and_asks_reach_the_learner(monkeypatch):
                                 "asks": ["make it shorter"]})
     assert seen["asks"] == ["make it shorter"]
     client.post("/key/unplug")
+
+
+def test_a_company_or_skipped_person_is_remembered_without_a_circle(monkeypatch):
+    # Found by Maulik on a company's post, Oct 16: "skip" meant the send left no memory at all.
+    monkeypatch.setattr("purrsona.app.claude", lambda: None)
+    client.post("/key/plug", json={"key_id": "demo-maulik"})
+    out = client.post("/learn", json={"draft_id": "d-co1", "draft_text": "Looks useful!", "sent_text": "Looks useful!",
+                                      "person_id": "company-acme-learning", "person_name": "Acme Learning",
+                                      "platform": "linkedin"}).json()
+    assert out["saved"] and out["person_added"] and "no circle" in out["note"]
+    who = client.get("/person", params={"id": "company-acme-learning"}).json()
+    assert who["known"] and who["circle"] is None and who["sent"] == 1
+    client.post("/key/unplug")

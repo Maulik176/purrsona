@@ -287,12 +287,13 @@
   if (IN_EXTENSION) chrome.runtime.onMessage.addListener((m) => { if (m.type === "trigger") draft(current); });
 
   // ---- Drafting ----------------------------------------------------------------------------
-  // Resolves with the circle, null for "skip", or undefined if you walked away without answering.
+  // Resolves with the circle, null for "none of these" (still remembered, just without a circle),
+  // or undefined if you walked away without answering.
   function askCircle(ctx) {
     return new Promise((resolve) => {
       const b = cat.say(`<b>${esc(first(ctx.person_name))}</b> is new to me. Who is ${esc(first(ctx.person_name))} to you?
         <div class="row">${circles.map((c) => `<button data-c="${esc(c)}">${esc(c)}</button>`).join("")}
-        <button class="ghost" data-c="">skip</button></div>`);
+        <button class="ghost" data-c="">none of these</button></div>`);
       const timer = setTimeout(() => { cat.quiet(); resolve(undefined); }, 30000);
       b.querySelectorAll("button").forEach((el) => el.addEventListener("click", (ev) => {
         ev.stopPropagation(); clearTimeout(timer); cat.quiet(); resolve(el.dataset.c || null);
@@ -328,10 +329,11 @@
         if (who.circles) circles = who.circles;
         if (who.known) {  // the graph remembers them: say so while it works
           const when = who.last_sent ? `, last on ${new Date(who.last_sent).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : "";
-          remembered = `<div class="muted">${esc(who.circle)}${
-            who.sent ? ` · you've written to ${esc(first(ctx.person_name))} ${who.sent}× with me${when}` : ""}</div>`;
+          const bits = [who.circle, who.sent ? `you've written to ${first(ctx.person_name)} ${who.sent}× with me${when}` : ""].filter(Boolean);
+          if (bits.length) remembered = `<div class="muted">${esc(bits.join(" · "))}</div>`;
         }
-        if (who.plugged && !who.known) {
+        // Someone new: ask once who they are to you. A company page isn't a friend or a client, so no question.
+        if (who.plugged && !who.known && !ctx.person_id.startsWith("company-")) {
           cat.mood(null);
           const choice = await askCircle(ctx);
           if (choice === undefined) return;  // no answer: no draft

@@ -111,8 +111,8 @@ def apply_event(graph, event: dict) -> None:
     """Write one memory into the voice graph (used live and when replaying the key's log)."""
     person, at = event["person"], event["at"]
     if person["new"]:
-        graph.query(queries.SAVE_PERSON, {"person_id": person["id"], "name": person["name"],
-                                          "circle": person["circle"]})
+        graph.query(queries.SAVE_PERSON, {"person_id": person["id"], "name": person["name"], "circle": person["circle"],
+                                          "kind": "company" if person["id"].startswith("company-") else "person"})
     rule_ids = event["draft"].get("rule_ids") or []
     if event["type"] == "sent":
         graph.query(queries.SAVE_SENT, {"person_id": person["id"], "platform": event["platform"],

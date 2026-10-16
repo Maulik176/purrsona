@@ -124,7 +124,8 @@ def people(graph) -> list[dict]:
 
 
 def graph_summary(graph) -> dict:
-    return rows(graph.ro_query(GRAPH_SUMMARY))[0]
+    found = rows(graph.ro_query(GRAPH_SUMMARY))
+    return found[0] if found else {"rules": 0, "circles": []}  # e.g. the graph was deleted under a plugged key
 
 
 # ---- Remembering an edit (the Learner's save step). Maulik's design, Oct 16: three small queries,
@@ -132,12 +133,16 @@ def graph_summary(graph) -> dict:
 # and where it came from".
 
 # 1. Someone new joins the graph (only run for people the graph doesn't know yet).
+#    The circle is optional (Oct 16, found by Maulik on a company post): a company page, or someone you
+#    "skip", is still remembered; only the platform, topic and your own rules apply to them.
 SAVE_PERSON = """
-MATCH (u:User), (c:Circle {name: $circle})
+MATCH (u:User)
 MERGE (p:Person {id: $person_id})
-SET p.name = $name
+SET p.name = $name, p.kind = $kind
 MERGE (u)-[:KNOWS]->(p)
-MERGE (p)-[:IN_CIRCLE]->(c)
+WITH p
+OPTIONAL MATCH (c:Circle {name: $circle})
+FOREACH (_ IN CASE WHEN c IS NULL THEN [] ELSE [1] END | MERGE (p)-[:IN_CIRCLE]->(c))
 """
 
 # 2. Save what I changed: the edit, linked to the draft it corrected (recreated after a re-plug).
