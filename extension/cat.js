@@ -86,13 +86,15 @@
          pointer-events: none; transform: scale(0); transition: transform .2s; }
 .badge.show { transform: scale(1); }
 /* The chat: click the cat (or tap Option twice) to change the draft or ask why. */
-.panel { position: absolute; bottom: 52px; right: -6px; width: 300px; padding: 10px; display: none; pointer-events: auto; overflow-y: auto;
+.panel { position: absolute; bottom: 52px; right: -6px; width: 300px; padding: 10px; display: none; pointer-events: auto;
+         box-sizing: border-box; flex-direction: column; overflow: hidden;
          background: #1c1f29; color: #eef0f6; border: 1px solid #343a4c; border-radius: 14px; box-shadow: 0 10px 28px rgba(0,0,0,.35); }
-.panel.show { display: block; }
+.panel.show { display: flex; }
+.panel > * { flex: none; }
 .panel .status { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; color: #c9cede; }
 .panel .link { all: unset; cursor: pointer; color: #ffc078; font-size: 12px; white-space: nowrap; }
 .panel .lesson { margin-top: 6px; font-size: 12px; color: #c9cede; }
-.panel .log { max-height: 170px; overflow: auto; margin: 8px 0; display: flex; flex-direction: column; gap: 5px; }
+.panel .log { flex: 0 1 auto; min-height: 48px; max-height: 260px; overflow-y: auto; margin: 8px 0; display: flex; flex-direction: column; gap: 5px; }
 .panel .log:empty { display: none; }
 .panel .me { align-self: flex-end; max-width: 85%; padding: 4px 9px; border-radius: 10px 10px 2px 10px; background: #ff9f43; color: #1a1205; font-size: 12px; }
 .panel .it { align-self: flex-start; max-width: 94%; padding: 5px 9px; border-radius: 10px 10px 10px 2px; background: #11131a; font-size: 12px; }
@@ -152,7 +154,7 @@
   const fitPanel = (top) => {
     const below = top < 220;
     wrap.classList.toggle("pbelow", below);
-    panel.style.maxHeight = `${Math.max(160, below ? window.innerHeight - top - 64 : top - 12)}px`;
+    panel.style.maxHeight = `${Math.max(180, below ? window.innerHeight - top - 64 : top - 16)}px`;
   };
   // Inside a dialog with a transform, "fixed" is measured from the dialog, not the window: find our origin.
   const measure = () => {
