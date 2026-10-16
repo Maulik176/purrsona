@@ -21,6 +21,10 @@ emojis, tone, length, sign-offs, phrases they add or remove.
 Only include habits the edit clearly shows, at most 3, and never repeat a habit already in their rules.
 Write each as a short instruction that names the recipient by first name, for example
 "Calls Kabir 'bhaila'" or "Adds a 🏏 when writing to Kabir about cricket".
+Choose the kind carefully. A tone, greeting, sign-off, emoji, length or format rule replaces the
+recipient's circle rule of that kind, so use those kinds only for a full replacement (for example
+"Opens with 'Bhaila' instead of 'Yo'"). When a habit adds to what they already do, such as a nickname
+or one extra emoji for a topic, use phrase_use so the circle's rule still applies.
 If the edit only fixes facts or typos, return no rules."""
 
 SCHEMA = {

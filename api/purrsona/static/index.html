@@ -126,8 +126,9 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 5
   <div class="step" data-s="2"><b>2 · Pick a person</b>who you're replying to</div>
   <div class="step" data-s="3"><b>3 · Draft</b>in your voice</div>
   <div class="step" data-s="4"><b>4 · Read the why</b>rules from the graph</div>
-  <div class="step" data-s="5"><b>5 · Unplug</b>the graph is deleted</div>
-  <div class="step" data-s="6"><b>6 · Draft again</b>now it's generic</div>
+  <div class="step" data-s="5"><b>5 · Teach it</b>send your own version</div>
+  <div class="step" data-s="6"><b>6 · Unplug</b>the laptop forgets</div>
+  <div class="step" data-s="7"><b>7 · Plug back in</b>the key remembers</div>
 </div>
 
 <main>
@@ -137,6 +138,7 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 5
       <div class="device"><div class="screen" id="screen"><div class="big">Plug me in</div><div>no voice loaded</div></div></div>
       <button class="btn primary" id="plugBtn">Plug in key</button>
       <div class="stats" id="plugStats"></div>
+      <div class="stats"><a href="#" id="resetKey" style="color:var(--muted);font-size:12px">reset what the key learned</a></div>
     </div>
     <div class="card">
       <h2>Who are you replying to?</h2>
@@ -169,6 +171,17 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 5
       <div class="drafts">
         <div class="draft voice placeholder" id="voiceBox">Your voice appears here when the key is plugged in.</div>
         <div class="draft generic placeholder" id="genericBox">Unplug the key and draft again to see what the AI writes without you.</div>
+      </div>
+    </div>
+
+    <div class="card" id="teachCard">
+      <h2>Teach Purrsona</h2>
+      <div class="empty" id="teachHint">After a voice draft, change it into what you'd really send. Purrsona learns from the difference and saves it to the key.</div>
+      <div id="teachBox" style="display:none">
+        <div class="post"><div class="who">What you actually sent</div><textarea id="sentText"></textarea></div>
+        <div class="go"><button class="btn primary" id="teachBtn">Send &amp; teach Purrsona</button>
+          <span class="hint">the Learner compares your version with the draft</span></div>
+        <div id="learned" style="margin-top:12px"></div>
       </div>
     </div>
 
@@ -218,15 +231,18 @@ async function plugToggle() {
       const status = await api("/key");
       S.people = await api("/people");
       S.circles = status.circles || S.circles;
-      screen("on", "AI is reading your voice", `${status.rules} rules · ${S.people.length} people`);
-      $("plugStats").textContent = `Graph built: ${info.nodes} nodes, ${info.edges} links in ${info.load_ms} ms`;
-      renderKey(info); renderPeople(); setStep(S.person ? 3 : 2);
+      screen("on", "AI is reading your voice", `${status.rules} rules · ${status.memories} learned`);
+      $("plugStats").textContent = `Graph built in ${info.load_ms} ms: ${info.nodes} nodes, ${info.edges} links`
+        + (info.memories ? `, plus ${info.memories} lesson${info.memories === 1 ? "" : "s"} replayed from the key` : "");
+      renderKey(info); renderPeople();
+      if (S.taught && info.memories) { setStep(8); toast(`The key remembered ${info.memories} lesson${info.memories === 1 ? "" : "s"}`); }
+      else setStep(S.person ? 3 : 2);
     } else {
       await api("/key/unplug", {});
       S.plugged = false;
       screen("forgot", "Forgotten", "graph deleted from this laptop");
       $("plugStats").textContent = "GRAPH.DELETE ran: your voice is gone from this laptop";
-      renderKey(); setStep(6); toast("Unplugged. The graph is deleted.");
+      renderKey(); if (S.taught) setStep(7); toast("Unplugged. The graph is deleted.");
     }
   } catch (e) { toast("Error: " + e.message); }
   $("plugBtn").disabled = false;
@@ -244,7 +260,7 @@ function renderPeople() {
     list.forEach((p) => html += `<div class="person" data-id="${p.id}"><span class="n">${esc(p.name)}</span><span class="h">${esc(p.headline || "")}</span></div>`);
     html += "</div>";
   }
-  html += `<div class="circle-group newp"><div class="circle-name" style="color:var(--muted)">Someone new (not in your graph)</div>
+  if (!S.people.some((p) => p.id === "kabir-shah")) html += `<div class="circle-group newp"><div class="circle-name" style="color:var(--muted)">Someone new (not in your graph)</div>
     <div class="person" data-id="kabir-shah"><span class="n">Kabir Shah</span><span class="h">first time you reply to Kabir</span>
     <select id="newCircle">${S.circles.map((c) => `<option ${c === "Work" ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div></div>`;
   box.innerHTML = html;
@@ -256,18 +272,17 @@ function renderPeople() {
 }
 
 function pickPerson(id) {
-  S.person = id === "kabir-shah" ? { id, name: "Kabir Shah", headline: "new person", circle: null }
-                                 : S.people.find((p) => p.id === id);
+  S.person = S.people.find((p) => p.id === id) || { id, name: "Kabir Shah", headline: "new person", circle: null };
   document.querySelectorAll(".person").forEach((el) => el.classList.toggle("sel", el.dataset.id === id));
   $("postWho").innerHTML = `Replying to <b>${esc(S.person.name)}</b> · ${esc(S.person.headline || "")} · on ${S.platform === "x" ? "X" : "LinkedIn"}`;
   $("draftBtn").disabled = false;
-  setStep(S.plugged ? 3 : 6);
+  if (S.plugged) setStep(3);
 }
 
 async function draft() {
   if (!S.person) return toast("Pick a person first");
   const body = { person_id: S.person.id, person_name: S.person.name, platform: S.platform, post_text: $("postText").value };
-  if (S.person.id === "kabir-shah") body.circle_hint = $("newCircle")?.value || "Work";
+  if (!S.person.circle) body.circle_hint = $("newCircle")?.value || "Work";
   const key = `${body.person_id}|${body.platform}|${body.post_text}`;
   $("draftBtn").disabled = true; $("draftBtn").textContent = "Drafting…";
   if (S.plugged) screen("thinking", "AI is looking at your graph", `finding ${esc(S.person.name.split(" ")[0])}'s rules…`);
@@ -282,6 +297,8 @@ async function draft() {
         $("genericBox").textContent = "Unplug the key and draft again to see what the AI writes without you."; }
       renderWhy(r);
       screen("on", "AI is reading your voice", `drafted with ${r.rules.length} rules`);
+      $("teachHint").style.display = "none"; $("teachBox").style.display = "block";
+      $("sentText").value = r.draft; $("learned").innerHTML = "";
       setStep(5);
     } else {
       S.lastGenericKey = key;
@@ -318,6 +335,42 @@ function renderWhy(r) {
   $("timing").innerHTML = `<span>Graph ${r.graph_ms} ms</span><div class="bar"><div class="g" style="width:${Math.max(r.graph_ms / r.ms * 100, 1.5)}%"></div><div class="c" style="width:${claudeMs / r.ms * 100}%"></div></div><span>Claude ${(claudeMs / 1000).toFixed(1)} s</span>`;
 }
 
+async function teach() {
+  const r = S.lastVoice;
+  if (!r || !S.plugged) return toast("Plug in and draft in your voice first");
+  const body = { draft_id: r.draft_id, draft_text: r.draft, sent_text: $("sentText").value, person_id: S.person.id,
+                 person_name: S.person.name, platform: S.platform, circle: S.person.circle || $("newCircle")?.value || null };
+  $("teachBtn").disabled = true; $("teachBtn").textContent = "Learning…";
+  screen("thinking", "AI is learning your voice", `from your edit to ${esc(S.person.name.split(" ")[0])}…`);
+  try {
+    const out = await api("/learn", body);
+    if (!out.learned.length) {
+      $("learned").innerHTML = `<div class="empty">${esc(out.note || "Nothing new to learn from this one.")}</div>`;
+    } else {
+      S.taught = true;
+      $("learned").innerHTML = (out.person_added ? `<div class="rule">🐾 <b>${esc(S.person.name)}</b> joined your graph in the <b>${esc(body.circle)}</b> circle</div>` : "")
+        + out.learned.map((x) => `<div class="rule"><div class="k">🐾 learned · ${KIND[x.kind] || x.kind}</div>${esc(x.text)}
+            ${x.overrides.length ? `<span class="beats">outranks rule ${esc(x.overrides.join(", "))} for ${esc(S.person.name.split(" ")[0])}</span>` : ""}</div>`).join("")
+        + `<div class="meta" style="margin-top:6px;font-size:12px;color:var(--muted)">Saved to the key · ${out.memories} lesson${out.memories === 1 ? "" : "s"} on it now · ${out.ms} ms</div>`;
+      S.people = await api("/people"); renderPeople(); pickPerson(S.person.id);
+      setStep(6); toast("Learned and saved to the key. Now unplug it.");
+    }
+    const st = await api("/key");
+    screen("on", "AI is reading your voice", `${st.rules} rules · ${st.memories} learned`);
+  } catch (e) { toast("Error: " + e.message); }
+  $("teachBtn").disabled = false; $("teachBtn").textContent = "Send & teach Purrsona";
+}
+
+async function resetKey(ev) {
+  ev.preventDefault();
+  try { await api("/key/reset", { key_id: "demo-maulik" }); S.taught = false; toast("The key forgot everything it learned");
+    if (S.plugged) { S.people = await api("/people"); renderPeople(); const st = await api("/key");
+      screen("on", "AI is reading your voice", `${st.rules} rules · ${st.memories} learned`); }
+  } catch (e) { toast("Error: " + e.message); }
+}
+
+$("teachBtn").addEventListener("click", teach);
+$("resetKey").addEventListener("click", resetKey);
 $("plugBtn").addEventListener("click", plugToggle);
 $("draftBtn").addEventListener("click", draft);
 document.querySelectorAll("#platform button").forEach((b) => b.addEventListener("click", () => {
