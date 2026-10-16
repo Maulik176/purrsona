@@ -23,6 +23,7 @@ def normalize(text: str) -> str:
     """'My Manager!' -> 'manager'."""
     t = re.sub(r"['’]", "", text.lower())
     t = re.sub(r"[^\w\s-]", " ", t)
+    t = re.sub(r"^\s*(he|she|they|this person)\s+(is|are|was)\s+", "", t)  # "he is my manager"
     t = re.sub(r"^\s*(my|our|a|an|the)\s+", "", t)
     return re.sub(r"\s+", " ", t).strip()[:60]
 
@@ -36,20 +37,26 @@ def resolve(graph, client: anthropic.Anthropic | None, text: str, circles: list[
     base = MODIFIERS.sub("", name)
     if base in known:
         return {"name": name, "circle": known[base], "source": "graph", "like": base}
-    circle = classify(client, name, circles) if client else None
+    circle, label = classify(client, name, circles) if client else (None, None)
+    if label and len(name.split()) > 3:  # a whole sentence becomes a short label: "hackathon partner"
+        name = normalize(label)
     graph.query(queries.SAVE_RELATIONSHIP, {"name": name, "circle": circle})
     return {"name": name, "circle": circle, "source": "claude"}
 
 
-def classify(client: anthropic.Anthropic, name: str, circles: list[str]) -> str | None:
-    """One small call for a word the graph has never seen: which of your circles fits, if any?"""
-    schema = {"type": "object", "properties": {"circle": {"type": "string", "enum": [*circles, "none"]}},
-              "required": ["circle"], "additionalProperties": False}
+def classify(client: anthropic.Anthropic, name: str, circles: list[str]) -> tuple[str | None, str | None]:
+    """One small call for words the graph has never seen: which of your circles fits, if any, and a
+    short label for the relationship (1 to 3 words)."""
+    schema = {"type": "object",
+              "properties": {"circle": {"type": "string", "enum": [*circles, "none"]},
+                             "label": {"type": "string", "description": "1 to 3 words, e.g. 'hackathon partner'"}},
+              "required": ["circle", "label"], "additionalProperties": False}
     response = client.beta.messages.create(
         model=MODEL,
         max_tokens=2000,
         system="You sort the people someone writes to into their circles. Answer with the best circle, "
-               "or none if no circle fits (for example a company page or a stranger).",
+               "or none if no circle fits (for example a company page or a stranger), and a short label "
+               "for who this person is to them, in their words, without 'my'.",
         messages=[{"role": "user", "content": f"Their circles: {', '.join(circles)}.\n"
                                               f"This person is their: {name}\nWhich circle?"}],
         output_config={"effort": "low", "format": {"type": "json_schema", "schema": schema}},
@@ -57,6 +64,6 @@ def classify(client: anthropic.Anthropic, name: str, circles: list[str]) -> str 
         fallbacks="default",
     )
     if response.stop_reason == "refusal":
-        return None
-    circle = json.loads(next(b.text for b in response.content if b.type == "text"))["circle"]
-    return None if circle == "none" else circle
+        return None, None
+    out = json.loads(next(b.text for b in response.content if b.type == "text"))
+    return (None if out["circle"] == "none" else out["circle"]), out.get("label")

@@ -112,5 +112,6 @@ def test_relationship_words_map_to_circles_graph_first(graph):
     # Found testing: "cricket teammate" is not a work teammate, so the graph doesn't guess from part of it.
     assert relationships.resolve(graph, None, "my cricket teammate", [])["source"] == "claude"
     assert relationships.normalize("my society's group") == "societys group"
+    assert relationships.normalize("He is my school friend") == "school friend"
     # Never seen and no Claude to ask: saved without a circle.
     assert relationships.resolve(graph, None, "dentist", [])["circle"] is None

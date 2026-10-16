@@ -202,9 +202,9 @@ def learn(req: LearnRequest):
     first = req.person_name.split(" ")[0]
     rule_ids = [r["id"] for r in rows(graph.ro_query(DRAFT_RULES, {"draft_id": req.draft_id}))]
     rel = relationships.normalize(req.relationship) if req.relationship else None
-    named = f"{first}, your {rel}," if rel else first
+    named = f"{first} ({rel})" if rel else first
     joined = None if person["known"] else (f"{named} is now in your {circle} circle" if circle
-                                           else f"I'll remember {named} (no circle)".replace(",)", ")"))
+                                           else f"I'll remember {named}, no circle")
 
     if " ".join(req.sent_text.split()) == " ".join(req.draft_text.split()) and not req.note_text and not req.asks:
         event = learning.build_sent_event(req.person_id, req.person_name, circle, not person["known"],
