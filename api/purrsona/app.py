@@ -48,6 +48,7 @@ class LearnRequest(BaseModel):
     person_name: str
     platform: str
     circle: str | None = None
+    note_text: str | None = None
 
 
 class DraftRequest(BaseModel):
@@ -56,6 +57,7 @@ class DraftRequest(BaseModel):
     platform: str
     post_text: str
     circle_hint: str | None = None
+    user_note: str | None = None
 
 
 @app.get("/key")
@@ -107,7 +109,7 @@ def draft(req: DraftRequest):
     started = time.perf_counter()
     key_id = state["key_id"]
     if key_id is None:
-        text = write_draft(claude(), req.post_text, req.person_name, req.platform, rules=None)
+        text = write_draft(claude(), req.post_text, req.person_name, req.platform, rules=None, note=req.user_note)
         return {"mode": "generic", "draft": text, "rules": [], "person": None,
                 "ms": round((time.perf_counter() - started) * 1000)}
 
@@ -118,7 +120,7 @@ def draft(req: DraftRequest):
     rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle)
     graph_ms = round((time.perf_counter() - started) * 1000)
 
-    text = write_draft(claude(), req.post_text, req.person_name, req.platform, rules)
+    text = write_draft(claude(), req.post_text, req.person_name, req.platform, rules, note=req.user_note)
     draft_id = f"d-{uuid.uuid4().hex[:8]}"
     record_draft(graph, draft_id, text, int(time.time() * 1000), req.person_id, req.platform,
                  topics, [r["id"] for r in rules])
@@ -133,7 +135,7 @@ def learn(req: LearnRequest):
     key_id = state["key_id"]
     if key_id is None:
         raise HTTPException(409, "Plug in a key first: there's nowhere to save what Purrsona learns")
-    if " ".join(req.sent_text.split()) == " ".join(req.draft_text.split()):
+    if " ".join(req.sent_text.split()) == " ".join(req.draft_text.split()) and not req.note_text:
         return {"learned": [], "note": "You sent the draft as it was, so there's nothing new to learn.",
                 "memories": len(keys.load_events(key_id))}
 
@@ -147,7 +149,7 @@ def learn(req: LearnRequest):
 
     started = time.perf_counter()
     proposals = learning.learn_rules(claude(), req.draft_text, req.sent_text, req.person_name,
-                                     req.platform, current)
+                                     req.platform, current, note=req.note_text)
     event = learning.build_event(req.person_id, req.person_name, circle, not person["known"], req.platform,
                                  req.draft_id, req.draft_text, req.sent_text, proposals, current)
     learning.apply_event(graph, event)        # the laptop's graph learns now...

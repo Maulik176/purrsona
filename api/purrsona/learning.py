@@ -46,11 +46,16 @@ SCHEMA = {
 
 
 def learn_rules(client: anthropic.Anthropic, draft: str, sent: str, person_name: str, platform: str,
-                current_rules: list[dict]) -> list[dict]:
-    """One Claude call: which personal rules does this edit teach? Returns [{kind, text}]."""
+                current_rules: list[dict], note: str | None = None) -> list[dict]:
+    """One Claude call: which personal rules does this edit teach? Returns [{kind, text}].
+    note = words the user typed themselves before asking for the draft (strong evidence of their style)."""
     known = "\n".join(f"- [{r['kind']}] {r['text']}" for r in current_rules) or "- (none yet)"
     user = (f"Recipient: {person_name}\nPlatform: {platform}\n\nAI draft:\n{draft}\n\n"
             f"What they actually sent:\n{sent}\n\nTheir current rules for this recipient:\n{known}")
+    if note:
+        user += (f"\n\nBefore asking for the draft they typed this note themselves:\n{note}\n"
+                 "Their own words in it (nicknames, pet names, phrases) are strong evidence of how they write "
+                 "to this recipient, even if the draft already kept them.")
     response = client.beta.messages.create(
         model=MODEL,
         max_tokens=8000,

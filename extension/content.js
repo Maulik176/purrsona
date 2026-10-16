@@ -143,7 +143,8 @@
   function showDone(r, ctx) {
     if (r.mode !== "voice") { cat.say("No key plugged in, so this is a generic reply 🙀", { ms: 5000 }); return; }
     const b = cat.say(`✨ in your voice for <b>${esc(first(ctx.person_name))}</b> · ${r.rules.length} rules
-      <div class="row"><button data-why>why?</button></div>`, { ms: 7000 });
+      <div class="muted">edit it if you like, then send it: I learn from what you send</div>
+      <div class="row"><button data-why>why?</button></div>`, { ms: 9000 });
     b.querySelector("[data-why]").addEventListener("click", (ev) => {
       ev.stopPropagation();
       const top = [...r.rules].sort((a, z) => a.rank - z.rank).slice(0, 5);
@@ -174,8 +175,11 @@
         ctx.circle_hint = await askCircle(ctx);
         cat.mood("thinking");
       }
-      cat.say(who.plugged ? "checking your voice graph…" : "no key plugged in: writing a generic reply…");
-      const r = await bridge("/draft", ctx);
+      const note = readBox(box).trim();  // you already started typing: polish your words, don't replace them
+      cat.say(note ? "polishing your note in your voice…"
+                   : who.plugged ? "checking your voice graph…" : "no key plugged in: writing a generic reply…");
+      const r = await bridge("/draft", { ...ctx, user_note: note || null });
+      ctx.note = note || null;
       cat.quiet();
       const walking = cat.walkAlong();
       const ok = insertText(box, r.draft);
@@ -205,7 +209,7 @@
       cat.say("learning from what you sent…");
       const out = await bridge("/learn", { draft_id: r.draft_id, draft_text: r.draft, sent_text: sent,
         person_id: ctx.person_id, person_name: ctx.person_name, platform: ctx.platform,
-        circle: ctx.circle_hint || r.person?.circle || null });
+        circle: ctx.circle_hint || r.person?.circle || null, note_text: ctx.note || null });
       cat.mood("happy");
       cat.say(out.learned.length
         ? `🐾 learned: ${out.learned.map((x) => esc(x.text)).join("<br>🐾 ")}<div class="muted">saved to your key</div>`

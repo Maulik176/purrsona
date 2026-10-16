@@ -21,9 +21,14 @@ def _rules_block(rules: list[dict]) -> str:
     return "\n".join(lines)
 
 
+NOTE_INSTRUCTIONS = """The user already started writing this reply themselves (their note is below).
+Keep their meaning, their names and nicknames, and their key words exactly; turn the note into the finished reply."""
+
+
 def write_draft(client: anthropic.Anthropic, post_text: str, author_name: str, platform: str,
-                rules: list[dict] | None) -> str:
-    """rules=None means the key is unplugged: no voice, a generic draft."""
+                rules: list[dict] | None, note: str | None = None) -> str:
+    """rules=None means the key is unplugged: no voice, a generic draft.
+    note = what the user had already typed in the box: polish it instead of starting over."""
     if rules:
         system = VOICE_SYSTEM
         user = (f"Platform: {platform}\nReplying to: {author_name}\n\nTheir post:\n{post_text}\n\n"
@@ -31,6 +36,9 @@ def write_draft(client: anthropic.Anthropic, post_text: str, author_name: str, p
     else:
         system = GENERIC_SYSTEM
         user = f"Platform: {platform}\nReplying to: {author_name}\n\nTheir post:\n{post_text}"
+    if note:
+        system += "\n" + NOTE_INSTRUCTIONS
+        user += f"\n\nThe user's own note to turn into the reply:\n{note}"
 
     response = client.beta.messages.create(
         model=MODEL,
