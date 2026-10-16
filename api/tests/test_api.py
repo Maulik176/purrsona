@@ -22,3 +22,15 @@ def test_people_needs_a_plugged_key_then_lists_people():
 def test_console_page_is_served():
     page = client.get("/")
     assert page.status_code == 200 and "Purrsona" in page.text
+
+
+def test_person_lookup_and_practice_page():
+    client.post("/key/unplug")
+    assert client.get("/person", params={"id": "priya-nair"}).json() == {"plugged": False, "known": False}
+    client.post("/key/plug", json={"key_id": "demo-maulik"})
+    who = client.get("/person", params={"id": "priya-nair"}).json()
+    assert who["known"] is True and who["circle"] == "Work" and "Friends" in who["circles"]
+    assert client.get("/person", params={"id": "nobody-new"}).json()["known"] is False
+    client.post("/key/unplug")
+    assert "data-author-id" in client.get("/practice/").text
+    assert "PurrsonaCat" in client.get("/ext/cat.js").text

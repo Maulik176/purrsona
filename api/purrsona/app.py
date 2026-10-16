@@ -74,6 +74,15 @@ def list_people():
     return people(db.select_graph(graph_name(state["key_id"])))
 
 
+@app.get("/person")
+def get_person(id: str):
+    """Does the plugged-in graph know this person? (The cat asks for a circle when it doesn't.)"""
+    if state["key_id"] is None:
+        return {"plugged": False, "known": False}
+    graph = db.select_graph(graph_name(state["key_id"]))
+    return {"plugged": True, **person_context(graph, id), "circles": graph_summary(graph)["circles"]}
+
+
 @app.post("/key/plug")
 def plug(req: PlugRequest):
     try:
@@ -156,5 +165,8 @@ def reset_key(req: PlugRequest):
     return {"key_id": req.key_id, "memories": 0}
 
 
-# The demo console (served last so the API routes above take precedence).
+# The extension's scripts, served so the practice page can run the cat without installing anything.
+app.mount("/ext", StaticFiles(directory=Path(__file__).resolve().parents[2] / "extension"), name="extension")
+
+# The demo console and the practice page (served last so the API routes above take precedence).
 app.mount("/", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="console")
