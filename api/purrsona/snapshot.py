@@ -14,6 +14,7 @@ INDEXES = [
     "CREATE INDEX FOR (d:Draft) ON (d.id)",
     "CREATE INDEX FOR (e:Edit) ON (e.id)",
     "CREATE INDEX FOR (p:Post) ON (p.id)",
+    "CREATE INDEX FOR (r:Relationship) ON (r.name)",
 ]
 
 
@@ -35,6 +36,11 @@ def build_graph(graph, snap: dict) -> None:
         {"topics": [{"name": n, "keywords": keywords.get(n, [n.lower()])} for n in snap["topics"]]},
     )
     graph.query("UNWIND $texts AS t CREATE (:Phrase {text: t})", {"texts": snap.get("phrases", [])})
+    # Your words for people ("manager", "customer"), each part of a circle. New words get added as you use them.
+    graph.query(
+        "UNWIND $words AS w MATCH (c:Circle {name: w.circle}) CREATE (:Relationship {name: w.name})-[:PART_OF]->(c)",
+        {"words": [{"name": n, "circle": c} for c, names in snap.get("relationship_words", {}).items() for n in names]},
+    )
 
     graph.query(
         """

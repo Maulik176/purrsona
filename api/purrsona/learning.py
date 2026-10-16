@@ -113,6 +113,9 @@ def apply_event(graph, event: dict) -> None:
     if person["new"]:
         graph.query(queries.SAVE_PERSON, {"person_id": person["id"], "name": person["name"], "circle": person["circle"],
                                           "kind": "company" if person["id"].startswith("company-") else "person"})
+        if person.get("relationship"):  # "my manager": the word joins the graph (if new) and links to them
+            graph.query(queries.SAVE_RELATIONSHIP, {"name": person["relationship"], "circle": person["circle"]})
+            graph.query(queries.LINK_RELATIONSHIP, {"person_id": person["id"], "name": person["relationship"]})
     rule_ids = event["draft"].get("rule_ids") or []
     if event["type"] == "sent":
         graph.query(queries.SAVE_SENT, {"person_id": person["id"], "platform": event["platform"],

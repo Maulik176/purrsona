@@ -71,6 +71,12 @@
 .bubble .rule { margin-top: 6px; padding: 5px 7px; border-radius: 8px; background: #11131a; font-size: 12px; }
 .bubble .rule b { color: #ffc078; font-weight: 600; }
 .bubble .muted { color: #9aa1b3; font-size: 11px; }
+.bubble:has(form) { min-width: 250px; }
+.bubble form { margin-top: 7px; }
+.bubble input { all: unset; box-sizing: border-box; width: 100%; padding: 6px 9px; border-radius: 9px; background: #11131a;
+                border: 1px solid #343a4c; color: #eef0f6; font-size: 12px; }
+.bubble input::placeholder { color: #7d8497; }
+.bubble input:focus { border-color: #ff9f43; }
 .wrap.leftside .bubble, .wrap.leftside .panel { right: auto; left: -6px; }
 .wrap.leftside .bubble::after { right: auto; left: 20px; }
 .wrap.below .bubble, .wrap.pbelow .panel { bottom: auto; top: 52px; }
@@ -161,6 +167,7 @@
   wrap.addEventListener("mousedown", (e) => { if (!e.target.closest("input")) e.preventDefault(); });
   // Keys typed in the chat stay in the chat.
   panel.addEventListener("keydown", (e) => e.stopPropagation());
+  bubble.addEventListener("keydown", (e) => e.stopPropagation());
 
   function setMood(mood) {
     body.classList.remove("thinking", "happy", "error", "walking");

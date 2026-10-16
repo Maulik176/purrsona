@@ -69,6 +69,7 @@ def test_sent_as_is_still_remembers_a_new_person(tmp_path, monkeypatch):
     record_draft(g, "d-sent1", "Great point, Avery.", 1, "avery-new", "linkedin", [], used)
     event = learning.build_sent_event("avery-new", "Avery New", "Work", True, "linkedin",
                                       "d-sent1", "Great point, Avery.", used)
+    event["person"]["relationship"] = "mentor"
     learning.apply_event(g, event)
     keys.append_event("test-sent", event)
 
@@ -76,6 +77,6 @@ def test_sent_as_is_still_remembers_a_new_person(tmp_path, monkeypatch):
     keys.plug(db, "test-sent", seed="demo-maulik")
     g = db.select_graph(graph_name("test-sent"))
     who = person_context(g, "avery-new")
-    assert (who["known"], who["circle"], who["sent"]) == (True, "Work", 1)
+    assert (who["known"], who["circle"], who["relationship"], who["sent"]) == (True, "Work", "mentor", 1)
     assert {r["id"] for r in rows(g.ro_query(DRAFT_RULES, {"draft_id": "d-sent1"}))} == set(used)
     keys.unplug(db, "test-sent")

@@ -41,8 +41,32 @@ ORDER BY kind
 PERSON_CONTEXT = """
 OPTIONAL MATCH (p:Person {id: $person})
 OPTIONAL MATCH (p)-[:IN_CIRCLE]->(c:Circle)
+OPTIONAL MATCH (p)-[:IS]->(rel:Relationship)
 OPTIONAL MATCH (d:Draft)-[:TO]->(p) WHERE d.sent_at IS NOT NULL
-RETURN p IS NOT NULL AS known, p.name AS name, c.name AS circle, count(d) AS sent, max(d.sent_at) AS last_sent
+RETURN p IS NOT NULL AS known, p.name AS name, c.name AS circle, rel.name AS relationship,
+       count(d) AS sent, max(d.sent_at) AS last_sent
+"""
+
+# Your words for people: "manager" is part of Work, "customer" of Clients (seeded, then learned).
+RELATIONSHIP_WORDS = """
+MATCH (r:Relationship)
+OPTIONAL MATCH (r)-[:PART_OF]->(c:Circle)
+RETURN r.name AS name, c.name AS circle
+"""
+
+# A new word joins the graph (its circle is only set the first time).
+SAVE_RELATIONSHIP = """
+MERGE (r:Relationship {name: $name})
+WITH r
+OPTIONAL MATCH (r)-[:PART_OF]->(had:Circle)
+OPTIONAL MATCH (c:Circle {name: $circle})
+FOREACH (_ IN CASE WHEN c IS NULL OR had IS NOT NULL THEN [] ELSE [1] END | MERGE (r)-[:PART_OF]->(c))
+"""
+
+# "Priya is my manager."
+LINK_RELATIONSHIP = """
+MATCH (p:Person {id: $person_id}), (r:Relationship {name: $name})
+MERGE (p)-[:IS]->(r)
 """
 
 TOPIC_NAMES = "MATCH (t:Topic) RETURN t.name AS name, t.keywords AS keywords"

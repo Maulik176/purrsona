@@ -123,3 +123,27 @@ def test_a_company_or_skipped_person_is_remembered_without_a_circle(monkeypatch)
     who = client.get("/person", params={"id": "company-acme-learning"}).json()
     assert who["known"] and who["circle"] is None and who["sent"] == 1
     client.post("/key/unplug")
+
+
+def test_someone_new_in_your_own_words(monkeypatch):
+    seen = {}
+
+    def fake_write(client, post_text, author_name, platform, rules, note=None, mode="reply"):
+        seen["to"] = author_name
+        return "Hi Avery, congrats on the launch."
+
+    monkeypatch.setattr("purrsona.app.write_draft", fake_write)
+    monkeypatch.setattr("purrsona.app.claude", lambda: None)
+    client.post("/key/plug", json={"key_id": "demo-maulik"})
+    rel = client.post("/relationship", json={"text": "My skip-level"}).json()
+    assert rel == {"name": "skip-level", "circle": "Work", "source": "graph"}
+    d = client.post("/draft", json={"person_id": "avery-boss", "person_name": "Avery Boss", "platform": "linkedin",
+                                    "post_text": "We launched!", "circle_hint": "Work", "relationship": "skip-level"}).json()
+    assert seen["to"] == "Avery Boss (your skip-level)" and d["person"]["circle"] == "Work"
+    out = client.post("/learn", json={"draft_id": d["draft_id"], "draft_text": d["draft"], "sent_text": d["draft"],
+                                      "person_id": "avery-boss", "person_name": "Avery Boss", "platform": "linkedin",
+                                      "circle": "Work", "relationship": "skip-level"}).json()
+    assert "your skip-level" in out["note"]
+    who = client.get("/person", params={"id": "avery-boss"}).json()
+    assert (who["relationship"], who["circle"]) == ("skip-level", "Work")
+    client.post("/key/unplug")

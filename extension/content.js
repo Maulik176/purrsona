@@ -287,17 +287,26 @@
   if (IN_EXTENSION) chrome.runtime.onMessage.addListener((m) => { if (m.type === "trigger") draft(current); });
 
   // ---- Drafting ----------------------------------------------------------------------------
-  // Resolves with the circle, null for "none of these" (still remembered, just without a circle),
-  // or undefined if you walked away without answering.
+  // Someone new: tap a circle, or say it in your own words ("my manager"), which the graph maps to a circle.
+  // Resolves with {circle}, {relationship}, null for "none of these" (still remembered, just without a
+  // circle), or undefined if you walked away without answering.
   function askCircle(ctx) {
     return new Promise((resolve) => {
-      const b = cat.say(`<b>${esc(first(ctx.person_name))}</b> is new to me. Who is ${esc(first(ctx.person_name))} to you?
-        <div class="row">${circles.map((c) => `<button data-c="${esc(c)}">${esc(c)}</button>`).join("")}
-        <button class="ghost" data-c="">none of these</button></div>`);
-      const timer = setTimeout(() => { cat.quiet(); resolve(undefined); }, 30000);
+      const who = esc(first(ctx.person_name));
+      const b = cat.say(`<b>${who}</b> is new to me. Who is ${who} to you?
+        <div class="row">${circles.map((c) => `<button data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+        <form><input maxlength="60" placeholder="or in your words: my manager, a customer…"></form>
+        <div class="row"><button class="ghost" data-c="">none of these</button></div>`);
+      const timer = setTimeout(() => { cat.quiet(); resolve(undefined); }, 45000);
+      const done = (v) => { clearTimeout(timer); cat.quiet(); resolve(v); };
       b.querySelectorAll("button").forEach((el) => el.addEventListener("click", (ev) => {
-        ev.stopPropagation(); clearTimeout(timer); cat.quiet(); resolve(el.dataset.c || null);
+        ev.stopPropagation(); done(el.dataset.c ? { circle: el.dataset.c } : null);
       }));
+      b.querySelector("form").addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        const t = b.querySelector("input").value.trim();
+        if (t) done({ relationship: t });
+      });
     });
   }
 
@@ -329,7 +338,8 @@
         if (who.circles) circles = who.circles;
         if (who.known) {  // the graph remembers them: say so while it works
           const when = who.last_sent ? `, last on ${new Date(who.last_sent).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : "";
-          const bits = [who.circle, who.sent ? `you've written to ${first(ctx.person_name)} ${who.sent}× with me${when}` : ""].filter(Boolean);
+          const bits = [who.relationship && `your ${who.relationship}`, who.circle,
+                        who.sent ? `you've written to ${first(ctx.person_name)} ${who.sent}× with me${when}` : ""].filter(Boolean);
           if (bits.length) remembered = `<div class="muted">${esc(bits.join(" · "))}</div>`;
         }
         // Someone new: ask once who they are to you. A company page isn't a friend or a client, so no question.
@@ -337,8 +347,13 @@
           cat.mood(null);
           const choice = await askCircle(ctx);
           if (choice === undefined) return;  // no answer: no draft
-          ctx.circle_hint = choice;
           cat.mood("thinking");
+          if (choice?.relationship) {  // your own words: the graph says which circle that is
+            const rel = await bridge("/relationship", { text: choice.relationship });
+            ctx.relationship = rel.name;
+            ctx.circle_hint = rel.circle;
+            remembered = `<div class="muted">${esc(`your ${rel.name}`)} → ${esc(rel.circle || "no circle")}</div>`;
+          } else ctx.circle_hint = choice?.circle ?? null;
         }
       }
       cat.say((ctx.mode === "post" ? "writing your post in your voice…"
@@ -423,7 +438,7 @@
         const { ctx } = last;
         const r = await bridge("/refine", { current_text: readBox(box).trim(), instruction: text, person_id: ctx.person_id || "",
           person_name: ctx.person_name || "", platform: ctx.platform, post_text: ctx.post_text || "",
-          circle_hint: ctx.circle_hint || null, mode: ctx.mode });
+          circle_hint: ctx.circle_hint || null, relationship: ctx.relationship || null, mode: ctx.mode });
         const ok = insertText(box, r.draft);
         last.asks.push(text);
         reply.innerHTML = ok ? "done ✓ edit it, or ask for more" : "it's on your clipboard: press ⌘V";
@@ -470,7 +485,8 @@
       cat.mood("thinking");
       const out = await bridge("/learn", { draft_id: r.draft_id, draft_text: r.draft, sent_text: sent,
         person_id: ctx.person_id, person_name: ctx.person_name, platform: ctx.platform,
-        circle: ctx.circle_hint || r.person?.circle || null, note_text: ctx.note || null, asks });
+        circle: ctx.circle_hint || r.person?.circle || null, note_text: ctx.note || null, asks,
+        relationship: ctx.relationship || null });
       const lines = out.learned.map((x) => `learned: ${x.text}`);
       if (out.note) lines.push(out.note);
       const n = out.learned.length;

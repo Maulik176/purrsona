@@ -73,7 +73,7 @@ def test_superseded_rule_is_never_applied(graph):
 
 def test_person_context_and_topics(graph):
     assert person_context(graph, "neha-kulkarni") == {"known": True, "name": "Neha Kulkarni", "circle": "Work",
-                                                     "sent": 0, "last_sent": None}
+                                                     "relationship": None, "sent": 0, "last_sent": None}
     assert person_context(graph, "kabir-shah")["known"] is False
     assert set(topics_in(graph, "Big ServiceNow go-live today, AI everywhere")) == {"ServiceNow", "AI"}
 
@@ -99,3 +99,18 @@ def test_own_post_rules_only_join_own_posts(graph):
     post = {r["id"] for r in rules_for_context(graph, "", "linkedin", [], mode="post")}
     assert "l2" not in reply and "l2" in post
     assert "w2" not in post  # nobody to reply to: no person or circle rules on your own post
+
+
+def test_relationship_words_map_to_circles_graph_first(graph):
+    from purrsona import relationships
+    assert relationships.normalize("My Manager!") == "manager"
+    # Graph only, no Claude: an exact word, then a known word inside what you typed.
+    assert relationships.resolve(graph, None, "my manager", [])["circle"] == "Work"
+    found = relationships.resolve(graph, None, "my new manager", [])
+    assert (found["circle"], found["like"]) == ("Work", "manager")
+    assert relationships.resolve(graph, None, "college friend", [])["circle"] == "Friends"
+    # Found testing: "cricket teammate" is not a work teammate, so the graph doesn't guess from part of it.
+    assert relationships.resolve(graph, None, "my cricket teammate", [])["source"] == "claude"
+    assert relationships.normalize("my society's group") == "societys group"
+    # Never seen and no Claude to ask: saved without a circle.
+    assert relationships.resolve(graph, None, "dentist", [])["circle"] is None

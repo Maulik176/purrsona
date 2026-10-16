@@ -13,6 +13,7 @@ One FalkorDB graph per memory key, named `voice:<key_id>`. Plugging the key in b
 | `Topic` | `name` | `keywords` (whole-word matches that mean a post is about it) | ServiceNow ("flow designer", "cmdb"), AI, cricket ("last over", "wicket") |
 | `StyleRule` | `id` | `kind`, `text`, `created_at`, `superseded_at` | "no emojis" |
 | `Phrase` | `text` | | "I hope this finds you well" |
+| `Relationship` | `name` | your own word for someone, seeded with common ones and learned as you use new ones | "manager", "customer", "college friend" |
 | `Post` | `id` | `text`, `platform`, `at` | one of your own public posts |
 | `Draft` | `id` | `text`, `at` | what the Drafter wrote |
 | `Edit` | `id` | `before`, `after`, `at` | your correction of a draft |
@@ -33,6 +34,7 @@ One FalkorDB graph per memory key, named `voice:<key_id>`. Plugging the key in b
 | `(:Draft)-[:USED]->(:StyleRule)` | which rules shaped the draft (the "why" view; PageRank runs over these for the signature style) |
 | `(:Edit)-[:OF]->(:Draft)` | the draft an edit corrected |
 | `(:Edit)-[:DELETED\|:ADDED]->(:Phrase)` | phrases you remove or add |
+| `(:Person)-[:IS]->(:Relationship)-[:PART_OF]->(:Circle)` | "Kabir is my new manager", and a manager is part of Work. A word the graph doesn't know is sorted by one small Claude call and saved, so next time the graph answers |
 | `(:Person)-[:WRITES_LIKE {shared}]->(:Person)` | derived: people who share rules (input to community detection) |
 
 ## Rule precedence

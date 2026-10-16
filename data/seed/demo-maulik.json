@@ -462,5 +462,39 @@
       "hackathons",
       "hack night"
     ]
+  },
+  "relationship_words": {
+    "Work": [
+      "manager",
+      "boss",
+      "skip-level",
+      "teammate",
+      "colleague",
+      "coworker",
+      "mentor",
+      "lead",
+      "intern",
+      "recruiter"
+    ],
+    "Clients": [
+      "client",
+      "customer",
+      "vendor",
+      "partner",
+      "stakeholder",
+      "prospect"
+    ],
+    "Friends": [
+      "friend",
+      "best friend",
+      "college friend",
+      "school friend",
+      "cousin",
+      "brother",
+      "sister",
+      "family",
+      "roommate",
+      "neighbour"
+    ]
   }
 }

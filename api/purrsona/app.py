@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-from . import keys, learning  # noqa: E402
+from . import keys, learning, relationships  # noqa: E402
 from .db import connect, graph_name, rows  # noqa: E402
 from .drafter import refine_draft, write_draft  # noqa: E402
 from .queries import (DRAFT_RULES, graph_summary, people, person_context, record_draft,  # noqa: E402
@@ -49,6 +49,7 @@ class LearnRequest(BaseModel):
     platform: str
     circle: str | None = None
     note_text: str | None = None
+    relationship: str | None = None  # your own word for someone new ("manager")
     asks: list[str] = []  # what you asked the cat to change on the way ("make it shorter")
 
 
@@ -59,6 +60,7 @@ class DraftRequest(BaseModel):
     post_text: str = ""
     circle_hint: str | None = None
     user_note: str | None = None
+    relationship: str | None = None
     mode: str = "reply"  # "reply" to someone, or "post" = your own new post (needs user_note)
 
 
@@ -70,7 +72,17 @@ class RefineRequest(BaseModel):
     platform: str
     post_text: str = ""
     circle_hint: str | None = None
+    relationship: str | None = None
     mode: str = "reply"
+
+
+class RelationshipRequest(BaseModel):
+    text: str
+
+
+def addressee(name: str, relationship: str | None) -> str:
+    """'Priya Nair (your manager)': the relationship tells Claude a lot about how to write."""
+    return f"{name} (your {relationship})" if name and relationship else name
 
 
 @app.get("/key")
@@ -135,12 +147,12 @@ def draft(req: DraftRequest):
     # A new post has nobody to reply to: only the topic, platform and your own rules apply.
     person = person_context(graph, req.person_id)
     circle = person["circle"] or req.circle_hint  # the hint only matters for someone new
+    to = addressee(req.person_name, person["relationship"] or req.relationship)
     topics = topics_in(graph, req.post_text if req.mode == "reply" else req.user_note)
     rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle, mode=req.mode)
     graph_ms = round((time.perf_counter() - started) * 1000)
 
-    text = write_draft(claude(), req.post_text, req.person_name, req.platform, rules,
-                       note=req.user_note, mode=req.mode)
+    text = write_draft(claude(), req.post_text, to, req.platform, rules, note=req.user_note, mode=req.mode)
     draft_id = f"d-{uuid.uuid4().hex[:8]}"
     record_draft(graph, draft_id, text, int(time.time() * 1000), req.person_id, req.platform,
                  topics, [r["id"] for r in rules])
@@ -149,17 +161,28 @@ def draft(req: DraftRequest):
             "graph_ms": graph_ms, "ms": round((time.perf_counter() - started) * 1000)}
 
 
+@app.post("/relationship")
+def relationship(req: RelationshipRequest):
+    """Someone new, in your own words ("my manager"): which circle is that? The graph answers first."""
+    if state["key_id"] is None:
+        return {"name": relationships.normalize(req.text), "circle": None, "source": "none"}
+    graph = db.select_graph(graph_name(state["key_id"]))
+    return relationships.resolve(graph, claude(), req.text, graph_summary(graph)["circles"])
+
+
 @app.post("/refine")
 def refine(req: RefineRequest):
     """The cat's chat: change the draft the way you ask, still in your voice (the graph's rules come along)."""
     started = time.perf_counter()
-    rules = None
+    rules, to = None, req.person_name
     if state["key_id"] is not None:
         graph = db.select_graph(graph_name(state["key_id"]))
-        circle = person_context(graph, req.person_id)["circle"] or req.circle_hint
+        person = person_context(graph, req.person_id)
+        circle = person["circle"] or req.circle_hint
+        to = addressee(req.person_name, person["relationship"] or req.relationship)
         topics = topics_in(graph, req.post_text or req.current_text)
         rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle, mode=req.mode)
-    text = refine_draft(claude(), req.current_text, req.instruction, req.post_text, req.person_name,
+    text = refine_draft(claude(), req.current_text, req.instruction, req.post_text, to,
                         req.platform, rules, mode=req.mode)
     return {"draft": text, "mode": "voice" if rules else "generic",
             "ms": round((time.perf_counter() - started) * 1000)}
@@ -178,12 +201,15 @@ def learn(req: LearnRequest):
     circle = person["circle"] or req.circle
     first = req.person_name.split(" ")[0]
     rule_ids = [r["id"] for r in rows(graph.ro_query(DRAFT_RULES, {"draft_id": req.draft_id}))]
-    joined = None if person["known"] else (f"{first} is now in your {circle} circle" if circle
-                                           else f"I'll remember {first} (no circle)")
+    rel = relationships.normalize(req.relationship) if req.relationship else None
+    named = f"{first}, your {rel}," if rel else first
+    joined = None if person["known"] else (f"{named} is now in your {circle} circle" if circle
+                                           else f"I'll remember {named} (no circle)".replace(",)", ")"))
 
     if " ".join(req.sent_text.split()) == " ".join(req.draft_text.split()) and not req.note_text and not req.asks:
         event = learning.build_sent_event(req.person_id, req.person_name, circle, not person["known"],
                                           req.platform, req.draft_id, req.draft_text, rule_ids)
+        event["person"]["relationship"] = rel
         learning.apply_event(graph, event)
         memories = keys.append_event(key_id, event)
         return {"learned": [], "saved": True, "person_added": event["person"]["new"], "memories": memories,
@@ -197,6 +223,7 @@ def learn(req: LearnRequest):
                                      req.platform, current, note=req.note_text, asks=req.asks)
     event = learning.build_event(req.person_id, req.person_name, circle, not person["known"], req.platform,
                                  req.draft_id, req.draft_text, req.sent_text, proposals, current, rule_ids=rule_ids)
+    event["person"]["relationship"] = rel
     learning.apply_event(graph, event)        # the laptop's graph learns now...
     memories = keys.append_event(key_id, event)  # ...and the key remembers, in the same step
     return {"learned": event["rules"], "saved": True, "person_added": event["person"]["new"],
