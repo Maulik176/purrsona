@@ -19,7 +19,7 @@ from . import keys, learning, relationships  # noqa: E402
 from .db import connect, graph_name, rows  # noqa: E402
 from .drafter import refine_draft, write_draft  # noqa: E402
 from .queries import (DRAFT_RULES, graph_summary, people, person_context, record_draft,  # noqa: E402
-                      rules_for_context, topics_in)
+                      rules_for_context, topics_in, why_this_draft)
 
 app = FastAPI(title="Purrsona bridge")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -159,6 +159,17 @@ def draft(req: DraftRequest):
     return {"mode": "voice", "draft": text, "draft_id": draft_id, "rules": rules,
             "person": {**person, "circle": circle}, "topics": topics,
             "graph_ms": graph_ms, "ms": round((time.perf_counter() - started) * 1000)}
+
+
+@app.get("/why/{draft_id}")
+def why(draft_id: str):
+    """Q6: the graph path behind a draft (for the dashboard and the judges)."""
+    if state["key_id"] is None:
+        raise HTTPException(409, "Plug in a key first")
+    rules = why_this_draft(db.select_graph(graph_name(state["key_id"])), draft_id)
+    if not rules:
+        raise HTTPException(404, "No draft with that id in the plugged-in graph")
+    return {"draft_id": draft_id, "rules": rules}
 
 
 @app.post("/relationship")

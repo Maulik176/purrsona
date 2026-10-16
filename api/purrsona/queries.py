@@ -128,6 +128,22 @@ def record_draft(graph, draft_id: str, text: str, at: int, person: str, platform
                                "platform": platform, "topics": topics, "rule_ids": rule_ids})
 
 
+# Q6: why does this draft sound like that? Each rule it used, who owns the rule, and how many edits or
+# posts taught it, narrowest scope first. Written by Maulik, Oct 16. OPTIONAL MATCH keeps a rule that
+# nothing taught (count(ev) is then 0; count(*) would wrongly say 1).
+WHY_THIS_DRAFT = """
+MATCH (d:Draft {id: $draft})-[:USED]->(r:StyleRule)<-[:HAS_RULE]-(s)
+OPTIONAL MATCH (r)-[:LEARNED_FROM]->(ev)
+RETURN r.text AS rule, labels(s)[0] AS scope, coalesce(s.name, s.id) AS owner, count(ev) AS evidence
+ORDER BY CASE scope WHEN 'Person' THEN 1 WHEN 'Circle' THEN 2 WHEN 'Topic' THEN 3 WHEN 'Platform' THEN 4
+                    WHEN 'User' THEN 5 ELSE 6 END, evidence DESC
+"""
+
+
+def why_this_draft(graph, draft_id: str) -> list[dict]:
+    return rows(graph.ro_query(WHY_THIS_DRAFT, {"draft": draft_id}))
+
+
 # The people and circles in the plugged-in voice graph (for the demo console's picker).
 PEOPLE = """
 MATCH (:User)-[:KNOWS]->(p:Person)-[:IN_CIRCLE]->(c:Circle)
