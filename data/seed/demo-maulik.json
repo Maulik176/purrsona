@@ -345,6 +345,7 @@
       "scope_id": "linkedin",
       "kind": "phrase_use",
       "text": "On own posts, ends with a question to invite replies",
+      "applies_to": "post",
       "created_at": 1791158400000,
       "learned_from": [
         "p1",

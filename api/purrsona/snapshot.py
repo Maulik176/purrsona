@@ -99,7 +99,7 @@ def build_graph(graph, snap: dict) -> None:
             f"""
             UNWIND $rules AS r
             MATCH (s:{label} {{{key}: r.scope_id}})
-            CREATE (s)-[:HAS_RULE]->(:StyleRule {{id: r.id, kind: r.kind, text: r.text,
+            CREATE (s)-[:HAS_RULE]->(:StyleRule {{id: r.id, kind: r.kind, text: r.text, applies_to: r.applies_to,
                                                   created_at: r.created_at, superseded_at: r.superseded_at}})
             """,
             {"rules": scoped},

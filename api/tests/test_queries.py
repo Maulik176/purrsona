@@ -90,3 +90,11 @@ def test_circle_hint_matching_own_circle_does_not_double_count(graph):
     rules = by_kind(rules_for_context(graph, "priya-nair", "linkedin", [], circle_hint="Work"))
     assert rules["greeting"][0]["id"] == "w3"
     assert rules["greeting"][0]["evidence"] == 2
+
+
+def test_own_post_rules_only_join_own_posts(graph):
+    # Gap found Oct 15: "on own posts, end with a question" was also shaping replies.
+    reply = {r["id"] for r in rules_for_context(graph, "priya-nair", "linkedin", [])}
+    post = {r["id"] for r in rules_for_context(graph, "", "linkedin", [], mode="post")}
+    assert "l2" not in reply and "l2" in post
+    assert "w2" not in post  # nobody to reply to: no person or circle rules on your own post

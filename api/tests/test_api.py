@@ -55,3 +55,20 @@ def test_learn_passes_your_own_note_to_the_learner(monkeypatch):
     assert seen["note"] == note                      # sent unchanged, but your own note still teaches
     assert out["learned"][0]["text"] == "Calls Kabir 'the legend'" and out["person_added"] is True
     client.post("/key/unplug")
+
+
+def test_new_post_mode_needs_a_note_and_uses_post_rules(monkeypatch):
+    seen = {}
+
+    def fake_write(client, post_text, author_name, platform, rules, note=None, mode="reply"):
+        seen.update(mode=mode, note=note, rules={r["id"] for r in rules or []})
+        return "A post."
+
+    monkeypatch.setattr("purrsona.app.write_draft", fake_write)
+    monkeypatch.setattr("purrsona.app.claude", lambda: None)
+    client.post("/key/plug", json={"key_id": "demo-maulik"})
+    assert client.post("/draft", json={"platform": "linkedin", "mode": "post"}).status_code == 400
+    out = client.post("/draft", json={"platform": "linkedin", "mode": "post",
+                                      "user_note": "we went live with ServiceNow today"}).json()
+    assert out["mode"] == "voice" and seen["mode"] == "post" and "l2" in seen["rules"] and "t1" in seen["rules"]
+    client.post("/key/unplug")

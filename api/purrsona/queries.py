@@ -9,6 +9,7 @@ STACKING_KINDS = ["phrase_use", "phrase_avoid"]
 # Q2 + Q5: which style rules apply when I write to this person, on this platform, about these topics?
 # The person may be unknown (someone new): then their circle (if we know it), the topics, the platform
 # and my own global habits still apply. The narrowest scope wins: Person > Circle > Topic > Platform > User.
+# $mode is 'reply' or 'post': a rule with applies_to (e.g. "own posts end with a question") only joins its mode.
 RULES_FOR_CONTEXT = """
 OPTIONAL MATCH (p:Person {id: $person})
 OPTIONAL MATCH (p)-[:IN_CIRCLE]->(c:Circle)
@@ -21,7 +22,7 @@ WITH collect(DISTINCT p) + collect(DISTINCT c) + collect(DISTINCT hint)
 UNWIND scopes AS s
 WITH DISTINCT s
 MATCH (s)-[:HAS_RULE]->(r:StyleRule)
-WHERE r.superseded_at IS NULL
+WHERE r.superseded_at IS NULL AND coalesce(r.applies_to, 'any') IN ['any', $mode]
 OPTIONAL MATCH (r)-[:LEARNED_FROM]->(ev)
 WITH s, r, count(ev) AS evidence, max(ev.at) AS last_seen
 OPTIONAL MATCH (r)-[:OVERRIDES]->(old:StyleRule)
@@ -45,11 +46,12 @@ RETURN p IS NOT NULL AS known, p.name AS name, c.name AS circle
 TOPIC_NAMES = "MATCH (t:Topic) RETURN t.name AS name, t.keywords AS keywords"
 
 
-def rules_for_context(graph, person: str, platform: str, topics: list[str], circle_hint: str | None = None) -> list[dict]:
+def rules_for_context(graph, person: str, platform: str, topics: list[str], circle_hint: str | None = None,
+                      mode: str = "reply") -> list[dict]:
     result = graph.ro_query(
         RULES_FOR_CONTEXT,
         {"person": person, "platform": platform, "topics": topics,
-         "circle_hint": circle_hint, "stacking": STACKING_KINDS},
+         "circle_hint": circle_hint, "stacking": STACKING_KINDS, "mode": mode},
     )
     chosen = []
     for row in rows(result):

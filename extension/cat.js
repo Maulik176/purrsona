@@ -1,4 +1,4 @@
-// The Purrsona cat: a small pet that sits by the reply box you're in.
+// The Purrsona cat: a small pet that sits by the box you're typing in, and only while you're in it.
 // Runs inside the Chrome extension and directly on the practice page (same file).
 // Everything lives in a shadow DOM so the host page's CSS can't touch it.
 (() => {
@@ -32,8 +32,10 @@
   const CSS = `
 :host { all: initial; }
 .wrap { position: fixed; z-index: 2147483000; left: 0; top: 0; width: 46px; height: 46px; pointer-events: none;
-        transition: left .9s cubic-bezier(.45,.05,.55,.95), top .4s ease; font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.wrap.moving { transition: left .9s cubic-bezier(.45,.05,.55,.95), top .4s ease; }
 .wrap.hidden { display: none; }
+.wrap.offscreen { visibility: hidden; }
 .body { width: 46px; height: 46px; cursor: pointer; pointer-events: auto; transform-origin: 50% 100%; }
 .body.flip { transform: scaleX(-1); }
 .cat { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
@@ -78,20 +80,40 @@
   const wrap = root.querySelector(".wrap");
   const body = root.querySelector(".body");
   const bubble = root.querySelector(".bubble");
-  let box = null, bubbleTimer = null, onClick = () => {};
+  let box = null, bubbleTimer = null, onClick = () => {}, origin = { x: 0, y: 0 };
 
-  const mount = () => { if (!host.isConnected) (document.body || document.documentElement).appendChild(host); };
+  // A modal (LinkedIn's "Start a post") sits in the browser's top layer, above any z-index,
+  // so the cat has to live inside that dialog to be seen.
+  const mount = (el) => {
+    const into = el.closest("dialog") || document.body || document.documentElement;
+    if (host.parentElement !== into) into.appendChild(host);
+  };
+  // Where the cat sits: on the top-right edge of the box. null = the box has scrolled out of view
+  // (then the cat hides instead of clinging to the window's edge).
   const home = () => {
-    if (!box) return null;
+    if (!box || !box.isConnected) return null;
     const r = box.getBoundingClientRect();
+    if (!r.width || r.bottom < 24 || r.top > window.innerHeight - 24) return null;
     return { left: Math.min(window.innerWidth - 54, r.right - 54), top: Math.max(4, r.top - 44) };
   };
-  const place = (pos) => { wrap.style.left = `${pos.left}px`; wrap.style.top = `${pos.top}px`; };
-  const reposition = () => { const h = home(); if (h && !wrap.classList.contains("moving")) place(h); };
+  const place = (pos) => { wrap.style.left = `${pos.left - origin.x}px`; wrap.style.top = `${pos.top - origin.y}px`; };
+  const reposition = () => {
+    if (wrap.classList.contains("moving")) return;
+    if (box && !box.isConnected) return;  // the page swapped the box out (e.g. after sending): stay put
+    const h = home();
+    wrap.classList.toggle("offscreen", !h);
+    if (h) place(h);
+  };
+  // Inside a dialog with a transform, "fixed" is measured from the dialog, not the window: find our origin.
+  const measure = () => {
+    wrap.style.left = "0px"; wrap.style.top = "0px";
+    const r = wrap.getBoundingClientRect();
+    origin = { x: r.left, y: r.top };
+  };
   window.addEventListener("scroll", () => requestAnimationFrame(reposition), true);
   window.addEventListener("resize", () => requestAnimationFrame(reposition));
   body.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); onClick(); });
-  body.addEventListener("mousedown", (e) => e.preventDefault()); // keep focus in the reply box
+  wrap.addEventListener("mousedown", (e) => e.preventDefault()); // clicking the cat or its bubble keeps focus in the box
 
   function setMood(mood) {
     body.classList.remove("thinking", "happy", "error", "walking");
@@ -108,15 +130,22 @@
   const quiet = () => { clearTimeout(bubbleTimer); bubble.classList.remove("show"); };
 
   window.PurrsonaCat = {
-    attach(el) { mount(); box = el; wrap.classList.remove("hidden"); reposition(); },
+    attach(el) {
+      mount(el);
+      box = el;
+      wrap.classList.remove("hidden", "moving");
+      measure();
+      reposition();
+    },
     detach() { box = null; wrap.classList.add("hidden"); quiet(); },
     onClick(fn) { onClick = fn; },
     mood: setMood,
     say, quiet,
     // Walk along the top of the reply box and back, while the draft lands in it.
     async walkAlong() {
-      if (!box) return;
-      const r = box.getBoundingClientRect(), start = home();
+      const start = home();
+      if (!start) return;
+      const r = box.getBoundingClientRect();
       wrap.classList.add("moving");
       setMood("walking");
       body.classList.add("flip");

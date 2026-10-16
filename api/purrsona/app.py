@@ -52,12 +52,13 @@ class LearnRequest(BaseModel):
 
 
 class DraftRequest(BaseModel):
-    person_id: str
-    person_name: str
+    person_id: str = ""
+    person_name: str = ""
     platform: str
-    post_text: str
+    post_text: str = ""
     circle_hint: str | None = None
     user_note: str | None = None
+    mode: str = "reply"  # "reply" to someone, or "post" = your own new post (needs user_note)
 
 
 @app.get("/key")
@@ -107,20 +108,27 @@ def unplug():
 @app.post("/draft")
 def draft(req: DraftRequest):
     started = time.perf_counter()
+    if req.mode not in ("reply", "post"):
+        raise HTTPException(400, "mode must be 'reply' or 'post'")
+    if req.mode == "post" and not (req.user_note or "").strip():
+        raise HTTPException(400, "Type what your post is about first")
     key_id = state["key_id"]
     if key_id is None:
-        text = write_draft(claude(), req.post_text, req.person_name, req.platform, rules=None, note=req.user_note)
+        text = write_draft(claude(), req.post_text, req.person_name, req.platform, rules=None,
+                           note=req.user_note, mode=req.mode)
         return {"mode": "generic", "draft": text, "rules": [], "person": None,
                 "ms": round((time.perf_counter() - started) * 1000)}
 
     graph = db.select_graph(graph_name(key_id))
+    # A new post has nobody to reply to: only the topic, platform and your own rules apply.
     person = person_context(graph, req.person_id)
     circle = person["circle"] or req.circle_hint  # the hint only matters for someone new
-    topics = topics_in(graph, req.post_text)
-    rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle)
+    topics = topics_in(graph, req.post_text if req.mode == "reply" else req.user_note)
+    rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle, mode=req.mode)
     graph_ms = round((time.perf_counter() - started) * 1000)
 
-    text = write_draft(claude(), req.post_text, req.person_name, req.platform, rules, note=req.user_note)
+    text = write_draft(claude(), req.post_text, req.person_name, req.platform, rules,
+                       note=req.user_note, mode=req.mode)
     draft_id = f"d-{uuid.uuid4().hex[:8]}"
     record_draft(graph, draft_id, text, int(time.time() * 1000), req.person_id, req.platform,
                  topics, [r["id"] for r in rules])
