@@ -17,7 +17,7 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 from . import keys, learning  # noqa: E402
 from .db import connect, graph_name, rows  # noqa: E402
-from .drafter import write_draft  # noqa: E402
+from .drafter import refine_draft, write_draft  # noqa: E402
 from .queries import (DRAFT_RULES, graph_summary, people, person_context, record_draft,  # noqa: E402
                       rules_for_context, topics_in)
 
@@ -49,6 +49,7 @@ class LearnRequest(BaseModel):
     platform: str
     circle: str | None = None
     note_text: str | None = None
+    asks: list[str] = []  # what you asked the cat to change on the way ("make it shorter")
 
 
 class DraftRequest(BaseModel):
@@ -59,6 +60,17 @@ class DraftRequest(BaseModel):
     circle_hint: str | None = None
     user_note: str | None = None
     mode: str = "reply"  # "reply" to someone, or "post" = your own new post (needs user_note)
+
+
+class RefineRequest(BaseModel):
+    current_text: str
+    instruction: str
+    person_id: str = ""
+    person_name: str = ""
+    platform: str
+    post_text: str = ""
+    circle_hint: str | None = None
+    mode: str = "reply"
 
 
 @app.get("/key")
@@ -137,6 +149,22 @@ def draft(req: DraftRequest):
             "graph_ms": graph_ms, "ms": round((time.perf_counter() - started) * 1000)}
 
 
+@app.post("/refine")
+def refine(req: RefineRequest):
+    """The cat's chat: change the draft the way you ask, still in your voice (the graph's rules come along)."""
+    started = time.perf_counter()
+    rules = None
+    if state["key_id"] is not None:
+        graph = db.select_graph(graph_name(state["key_id"]))
+        circle = person_context(graph, req.person_id)["circle"] or req.circle_hint
+        topics = topics_in(graph, req.post_text or req.current_text)
+        rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle, mode=req.mode)
+    text = refine_draft(claude(), req.current_text, req.instruction, req.post_text, req.person_name,
+                        req.platform, rules, mode=req.mode)
+    return {"draft": text, "mode": "voice" if rules else "generic",
+            "ms": round((time.perf_counter() - started) * 1000)}
+
+
 @app.post("/learn")
 def learn(req: LearnRequest):
     """You sent something: learn your style from the edit, save it to the graph AND the key."""
@@ -154,7 +182,7 @@ def learn(req: LearnRequest):
     rule_ids = [r["id"] for r in rows(graph.ro_query(DRAFT_RULES, {"draft_id": req.draft_id}))]
     joined = f"{first} is now in your {circle} circle" if not person["known"] else None
 
-    if " ".join(req.sent_text.split()) == " ".join(req.draft_text.split()) and not req.note_text:
+    if " ".join(req.sent_text.split()) == " ".join(req.draft_text.split()) and not req.note_text and not req.asks:
         event = learning.build_sent_event(req.person_id, req.person_name, circle, not person["known"],
                                           req.platform, req.draft_id, req.draft_text, rule_ids)
         learning.apply_event(graph, event)
@@ -167,7 +195,7 @@ def learn(req: LearnRequest):
 
     started = time.perf_counter()
     proposals = learning.learn_rules(claude(), req.draft_text, req.sent_text, req.person_name,
-                                     req.platform, current, note=req.note_text)
+                                     req.platform, current, note=req.note_text, asks=req.asks)
     event = learning.build_event(req.person_id, req.person_name, circle, not person["known"], req.platform,
                                  req.draft_id, req.draft_text, req.sent_text, proposals, current, rule_ids=rule_ids)
     learning.apply_event(graph, event)        # the laptop's graph learns now...

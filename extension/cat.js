@@ -36,7 +36,7 @@
 .wrap.moving { transition: left .9s cubic-bezier(.45,.05,.55,.95), top .4s ease; }
 .wrap.hidden { display: none; }
 .wrap.offscreen { visibility: hidden; }
-.body { width: 46px; height: 46px; cursor: pointer; pointer-events: auto; transform-origin: 50% 100%; }
+.body { position: relative; width: 46px; height: 46px; cursor: pointer; pointer-events: auto; transform-origin: 50% 100%; }
 .body.flip { transform: scaleX(-1); }
 .cat { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
 .tail { transform-origin: 44px 50px; animation: tail 2.6s ease-in-out infinite; }
@@ -71,15 +71,48 @@
 .bubble .rule { margin-top: 6px; padding: 5px 7px; border-radius: 8px; background: #11131a; font-size: 12px; }
 .bubble .rule b { color: #ffc078; font-weight: 600; }
 .bubble .muted { color: #9aa1b3; font-size: 11px; }
+.wrap.leftside .bubble, .wrap.leftside .panel { right: auto; left: -6px; }
+.wrap.leftside .bubble::after { right: auto; left: 20px; }
+.wrap.below .bubble, .wrap.pbelow .panel { bottom: auto; top: 52px; }
+.wrap.below .bubble::after { display: none; }
+.badge { position: absolute; top: -4px; left: -4px; min-width: 18px; height: 18px; border-radius: 999px; background: #ff9f43;
+         color: #1a1205; font: 700 11px/18px -apple-system, sans-serif; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.35);
+         pointer-events: none; transform: scale(0); transition: transform .2s; }
+.badge.show { transform: scale(1); }
+/* The chat: click the cat (or tap Option twice) to change the draft or ask why. */
+.panel { position: absolute; bottom: 52px; right: -6px; width: 300px; padding: 10px; display: none; pointer-events: auto; overflow-y: auto;
+         background: #1c1f29; color: #eef0f6; border: 1px solid #343a4c; border-radius: 14px; box-shadow: 0 10px 28px rgba(0,0,0,.35); }
+.panel.show { display: block; }
+.panel .status { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; color: #c9cede; }
+.panel .link { all: unset; cursor: pointer; color: #ffc078; font-size: 12px; white-space: nowrap; }
+.panel .lesson { margin-top: 6px; font-size: 12px; color: #c9cede; }
+.panel .log { max-height: 170px; overflow: auto; margin: 8px 0; display: flex; flex-direction: column; gap: 5px; }
+.panel .log:empty { display: none; }
+.panel .me { align-self: flex-end; max-width: 85%; padding: 4px 9px; border-radius: 10px 10px 2px 10px; background: #ff9f43; color: #1a1205; font-size: 12px; }
+.panel .it { align-self: flex-start; max-width: 94%; padding: 5px 9px; border-radius: 10px 10px 10px 2px; background: #11131a; font-size: 12px; }
+.panel .it .rule { margin-top: 4px; }
+.panel .it b { color: #ffc078; font-weight: 600; }
+.panel .chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
+.panel .chip { all: unset; cursor: pointer; padding: 3px 9px; border-radius: 999px; background: #2a2f3e; color: #eef0f6; font-size: 12px; }
+.panel .chip:hover { background: #3a4154; }
+.panel form { display: flex; gap: 6px; }
+.panel input { all: unset; flex: 1; min-width: 0; padding: 7px 9px; border-radius: 9px; background: #11131a; border: 1px solid #343a4c; color: #eef0f6; font-size: 13px; }
+.panel input::placeholder { color: #7d8497; }
+.panel input:focus { border-color: #ff9f43; }
+.panel .hint, .panel .muted { color: #7d8497; font-size: 10.5px; }
+.panel .hint { margin-top: 6px; }
 `;
 
   const host = document.createElement("div");
   host.id = "purrsona-cat";
   const root = host.attachShadow({ mode: "open" });
-  root.innerHTML = `<style>${CSS}</style><div class="wrap hidden"><div class="bubble"></div><div class="body"><div class="inner">${CAT_SVG}</div></div></div>`;
+  root.innerHTML = `<style>${CSS}</style><div class="wrap hidden"><div class="panel"></div><div class="bubble"></div>
+    <div class="body" title="Click me to change the draft or ask why"><div class="inner">${CAT_SVG}</div><div class="badge"></div></div></div>`;
   const wrap = root.querySelector(".wrap");
   const body = root.querySelector(".body");
   const bubble = root.querySelector(".bubble");
+  const panel = root.querySelector(".panel");
+  const badge = root.querySelector(".badge");
   let box = null, bubbleTimer = null, onClick = () => {}, origin = { x: 0, y: 0 };
 
   // A modal (LinkedIn's "Start a post") sits in the browser's top layer, above any z-index,
@@ -102,7 +135,18 @@
     if (box && !box.isConnected) return;  // the page swapped the box out (e.g. after sending): stay put
     const h = home();
     wrap.classList.toggle("offscreen", !h);
-    if (h) place(h);
+    if (h) {
+      place(h);
+      wrap.classList.toggle("leftside", h.left < 260);   // room for the bubble and chat on the screen
+      wrap.classList.toggle("below", h.top < 240);
+      fitPanel(h.top);
+    }
+  };
+  // The chat opens above the cat when there's room (so you still see the box), else below; it scrolls if it must.
+  const fitPanel = (top) => {
+    const below = top < 220;
+    wrap.classList.toggle("pbelow", below);
+    panel.style.maxHeight = `${Math.max(160, below ? window.innerHeight - top - 64 : top - 12)}px`;
   };
   // Inside a dialog with a transform, "fixed" is measured from the dialog, not the window: find our origin.
   const measure = () => {
@@ -113,7 +157,10 @@
   window.addEventListener("scroll", () => requestAnimationFrame(reposition), true);
   window.addEventListener("resize", () => requestAnimationFrame(reposition));
   body.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); onClick(); });
-  wrap.addEventListener("mousedown", (e) => e.preventDefault()); // clicking the cat or its bubble keeps focus in the box
+  // Clicking the cat or its bubble keeps focus in the box (the chat's own text field can take focus).
+  wrap.addEventListener("mousedown", (e) => { if (!e.target.closest("input")) e.preventDefault(); });
+  // Keys typed in the chat stay in the chat.
+  panel.addEventListener("keydown", (e) => e.stopPropagation());
 
   function setMood(mood) {
     body.classList.remove("thinking", "happy", "error", "walking");
@@ -122,6 +169,7 @@
 
   function say(html, { ms = 0 } = {}) {
     clearTimeout(bubbleTimer);
+    if (panel.classList.contains("show")) return bubble;  // the chat is open: it shows the news instead
     bubble.innerHTML = html;
     bubble.classList.add("show");
     if (ms) bubbleTimer = setTimeout(() => bubble.classList.remove("show"), ms);
@@ -137,7 +185,11 @@
       measure();
       reposition();
     },
-    detach() { box = null; wrap.classList.add("hidden"); quiet(); },
+    detach() { box = null; wrap.classList.add("hidden"); quiet(); panel.classList.remove("show"); },
+    openPanel(html) { quiet(); panel.innerHTML = html; panel.classList.add("show"); reposition(); return panel; },
+    closePanel() { panel.classList.remove("show"); },
+    panelOpen: () => panel.classList.contains("show"),
+    badge(text) { if (text) badge.textContent = text; badge.classList.toggle("show", !!text); },
     onClick(fn) { onClick = fn; },
     mood: setMood,
     say, quiet,

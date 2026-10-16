@@ -40,7 +40,7 @@ def test_learn_passes_your_own_note_to_the_learner(monkeypatch):
     from purrsona import learning
     seen = {}
 
-    def fake_learn(client, draft, sent, name, platform, current, note=None):
+    def fake_learn(client, draft, sent, name, platform, current, note=None, asks=None):
         seen["note"] = note
         return [{"kind": "phrase_use", "text": "Calls Kabir 'the legend'"}]
 
@@ -83,4 +83,30 @@ def test_sending_unchanged_still_saves_who_you_wrote_to(monkeypatch):
     assert out["saved"] and out["person_added"] and out["learned"] == [] and "Work" in out["note"]
     who = client.get("/person", params={"id": "avery-new"}).json()
     assert who["known"] and who["circle"] == "Work" and who["sent"] == 1
+    client.post("/key/unplug")
+
+
+def test_refine_brings_the_graph_rules_and_asks_reach_the_learner(monkeypatch):
+    from purrsona import learning
+    seen = {}
+
+    def fake_refine(client, current, instruction, post_text, author_name, platform, rules, mode="reply"):
+        seen.update(instruction=instruction, rules={r["id"] for r in rules or []})
+        return "Shorter."
+
+    def fake_learn(client, draft, sent, name, platform, current, note=None, asks=None):
+        seen["asks"] = asks
+        return []
+
+    monkeypatch.setattr("purrsona.app.refine_draft", fake_refine)
+    monkeypatch.setattr(learning, "learn_rules", fake_learn)
+    monkeypatch.setattr("purrsona.app.claude", lambda: None)
+    client.post("/key/plug", json={"key_id": "demo-maulik"})
+    out = client.post("/refine", json={"current_text": "A long reply.", "instruction": "make it shorter",
+                                       "person_id": "priya-nair", "person_name": "Priya Nair", "platform": "linkedin"}).json()
+    assert out["draft"] == "Shorter." and out["mode"] == "voice" and "pp1" in seen["rules"]
+    client.post("/learn", json={"draft_id": "d-r1", "draft_text": "A long reply.", "sent_text": "Shorter.",
+                                "person_id": "priya-nair", "person_name": "Priya Nair", "platform": "linkedin",
+                                "asks": ["make it shorter"]})
+    assert seen["asks"] == ["make it shorter"]
     client.post("/key/unplug")

@@ -50,6 +50,29 @@ def write_draft(client: anthropic.Anthropic, post_text: str, author_name: str, p
         system += "\n" + NOTE_INSTRUCTIONS
         user += f"\n\nThe user's own note to turn into the reply:\n{note}"
 
+    return _ask(client, system, user)
+
+
+REFINE_SYSTEM = """You change a social-media draft the way the user asks, keeping it in their own writing voice.
+You get the post they're answering (or nothing, for their own new post), their style rules from their
+voice graph, the current draft, and their request. Do exactly what they ask; where the request clashes
+with a style rule, the request wins for this message. Keep everything else the same.
+Write only the new text, ready to paste: no quotes around it, no explanations, no options."""
+
+
+def refine_draft(client: anthropic.Anthropic, current: str, instruction: str, post_text: str,
+                 author_name: str, platform: str, rules: list[dict] | None, mode: str = "reply") -> str:
+    """The cat's chat: "make it shorter", "add my emojis". rules=None means the key is unplugged."""
+    user = f"Platform: {platform}\n"
+    user += (f"Replying to: {author_name}\n\nTheir post:\n{post_text}\n\n" if mode == "reply"
+             else "This is the user's own new post.\n\n")
+    if rules:
+        user += f"The user's style rules, most specific first:\n{_rules_block(rules)}\n\n"
+    user += f"Current draft:\n{current}\n\nThe user's request: {instruction}"
+    return _ask(client, REFINE_SYSTEM, user)
+
+
+def _ask(client: anthropic.Anthropic, system: str, user: str) -> str:
     response = client.beta.messages.create(
         model=MODEL,
         max_tokens=8000,

@@ -208,20 +208,30 @@
 
   // ---- The cat comes and goes with your typing ---------------------------------------------
   let current = null, last = null, busy = false, learning = false, circles = ["Friends", "Work", "Clients"];
-  let hideTimer = null, lingerUntil = 0;
+  let hideTimer = null, lingerUntil = 0, lastLesson = null, hinted = false;
+  const inCat = (e) => e.composedPath().some((n) => n.id === "purrsona-cat");
 
   document.addEventListener("focusin", (e) => {
+    if (inCat(e)) return;  // typing in the cat's chat
     const box = editableFrom(e.target);
-    if (kindOf(box)) { clearTimeout(hideTimer); current = box; cat.attach(box); }
-    else hideSoon();
+    if (kindOf(box)) {
+      clearTimeout(hideTimer);
+      if (box !== current) cat.closePanel();
+      current = box;
+      cat.attach(box);
+    } else hideSoon();
   }, true);
   document.addEventListener("focusout", () => hideSoon(), true);
-  // Hide the cat once you've left the box, unless it's working for you or still showing you something.
+  // A click anywhere but the box or the cat closes the chat.
+  document.addEventListener("mousedown", (e) => {
+    if (cat.panelOpen() && !inCat(e) && !(current && current.contains(e.target))) { cat.closePanel(); hideSoon(); }
+  }, true);
+  // Hide the cat once you've left the box, unless it's working for you or its chat is open.
   function hideSoon(ms = 250) {
     clearTimeout(hideTimer);
     hideTimer = setTimeout(() => {
       const wait = lingerUntil - Date.now();
-      if (busy || learning || wait > 0) return hideSoon(Math.max(wait, 250));
+      if (busy || learning || cat.panelOpen() || wait > 0) return hideSoon(Math.max(wait, 250));
       if (current && editableFrom(document.activeElement) === current) return;
       current = null;
       cat.detach();
@@ -229,17 +239,29 @@
   }
   const linger = (ms) => { lingerUntil = Date.now() + ms; hideSoon(ms); };
 
-  // ---- Option+M -----------------------------------------------------------------------------
+  // ---- Keys: Option+M writes, tapping Option twice opens the chat ----------------------------
   // On a Mac, Option+M also types a character (µ, or ˛ on some keyboard layouts). We stop it, and read
   // your note on keydown, before that character could land.
-  let swallowUntil = 0;
+  let swallowUntil = 0, altAt = 0;
   window.addEventListener("keydown", (e) => {
+    if (e.key === "Alt") {
+      if (e.repeat) return;
+      const now = Date.now();
+      if (now - altAt < 400) {  // a second tap, with no other key in between
+        altAt = 0;
+        const box = editableFrom(e.target) || current;
+        if (kindOf(box)) toggleChat(box);
+      } else altAt = now;
+      return;
+    }
+    altAt = 0;
     if (e.altKey && e.code === "KeyM" && !e.metaKey && !e.ctrlKey) {
       const box = editableFrom(e.target) || current;
       if (!kindOf(box)) return;
       e.preventDefault();
       e.stopImmediatePropagation();
       swallowUntil = Date.now() + 600;
+      cat.closePanel();
       draft(box, readBox(box));
       return;
     }
@@ -254,7 +276,7 @@
     }
   }, true);
 
-  cat.onClick(() => draft(current));
+  cat.onClick(() => toggleChat(current));
   document.addEventListener("click", (e) => {
     const btn = e.target.closest?.("button");
     if (!btn) return;
@@ -278,28 +300,9 @@
     });
   }
 
-  function showDone(r, ctx) {
-    if (r.mode !== "voice") { cat.say("No key plugged in, so this is a generic draft 🙀", { ms: 5000 }); return 5000; }
-    const forWhom = ctx.mode === "post" ? "your post, in your voice" : `in your voice for <b>${esc(first(ctx.person_name))}</b>`;
-    const b = cat.say(`✨ ${forWhom} · ${r.rules.length} rules
-      <div class="muted">${ctx.mode === "post" ? "edit it if you like, then post it yourself"
-                                                : "edit it if you like, then send it: I learn from what you send"}</div>
-      <div class="row"><button data-why>why?</button></div>`, { ms: 9000 });
-    b.querySelector("[data-why]").addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      const top = [...r.rules].sort((a, z) => a.rank - z.rank).slice(0, 5);
-      const label = (x) => (x.scope === "User" ? "You" : x.scope === "Person" ? first(ctx.person_name)
-        : x.scope === "Platform" ? (x.scope_name === "x" ? "X" : "LinkedIn") : x.scope_name);
-      cat.say(`<b>Why it sounds like you</b>${top.map((x) => `<div class="rule"><b>${esc(label(x))}</b> · ${esc(x.text)}
-        <span class="muted">· from ${x.evidence} ${x.evidence === 1 ? "edit" : "edits"}</span></div>`).join("")}
-        <div class="muted" style="margin-top:6px">the narrowest rule of each kind wins</div>`, { ms: 12000 });
-      linger(12000);
-    });
-    return 9000;
-  }
-
   // Two ways in: an empty box = "draft a reply for me"; a box with your own words = "polish my note in
   // my voice" (and what you typed is a strong lesson). A new post always starts from your note.
+  // Quiet by design: the draft just lands. The why and what the cat learned wait in its chat.
   async function draft(box, noteSnapshot) {
     box = box || editableFrom(document.activeElement);
     if (busy || !kindOf(box)) return;
@@ -314,7 +317,7 @@
       return;
     }
     busy = true;
-    let showFor = 2500;
+    let showFor = 1500;
     try {
       cat.mood("thinking");
       let plugged = true, remembered = "";
@@ -323,7 +326,7 @@
         const who = await bridge(`/person?id=${encodeURIComponent(ctx.person_id)}`);
         plugged = who.plugged;
         if (who.circles) circles = who.circles;
-        if (who.known) {  // the graph remembers them: say so
+        if (who.known) {  // the graph remembers them: say so while it works
           const when = who.last_sent ? `, last on ${new Date(who.last_sent).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : "";
           remembered = `<div class="muted">${esc(who.circle)}${
             who.sent ? ` · you've written to ${esc(first(ctx.person_name))} ${who.sent}× with me${when}` : ""}</div>`;
@@ -345,10 +348,11 @@
       const walking = cat.walkAlong();
       const ok = insertText(box, r.draft);
       await walking;
-      last = { box, ctx, r };
+      last = { box, ctx, r, asks: [] };
       cat.mood("happy");
-      if (ok) showFor = showDone(r, ctx);
-      else { cat.say("Your draft is on the clipboard: press ⌘V to paste it", { ms: 6000 }); showFor = 6000; }
+      if (!ok) { cat.say("Your draft is on the clipboard: press ⌘V to paste it", { ms: 6000 }); showFor = 6000; }
+      else if (r.mode !== "voice") { cat.say("No key plugged in, so this is a generic draft 🙀", { ms: 3500 }); showFor = 3500; }
+      else if (!hinted) { hinted = true; cat.say("✨ click me to change it", { ms: 2500 }); showFor = 2500; }
     } catch (e) {
       cat.mood("error");
       cat.say(`🙀 ${esc(e.message)}`, { ms: 5000 });
@@ -360,35 +364,125 @@
     }
   }
 
+  // ---- The chat: change the draft ("make it shorter"), ask why, see what the cat learned ------
+  const CHIPS = [["shorter", "make it shorter"], ["add my emojis", "add my usual emojis"],
+                 ["more formal", "make it more formal"], ["more casual", "make it more casual"]];
+  const ruleLabel = (x, ctx) => (x.scope === "User" ? "You" : x.scope === "Person" ? first(ctx.person_name)
+    : x.scope === "Platform" ? (x.scope_name === "x" ? "X" : "LinkedIn") : x.scope_name);
+
+  function toggleChat(box) {
+    if (!kindOf(box)) return;
+    if (cat.panelOpen()) { cat.closePanel(); box.focus(); return; }
+    current = box;
+    cat.attach(box);
+    openChat(box);
+  }
+
+  function openChat(box) {
+    const has = !!last && last.box === box;
+    const voice = has && last.r.mode === "voice";
+    const status = !has ? "✍️ I'll write it in your voice"
+      : !voice ? "no key plugged in: this one is generic"
+      : `✨ ${last.ctx.mode === "post" ? "your post" : `for <b>${esc(first(last.ctx.person_name))}</b>`} · ${last.r.rules.length} rules from your graph`;
+    const chips = has ? CHIPS.map(([t, a]) => `<button class="chip" data-ask="${esc(a)}">${esc(t)}</button>`).join("")
+      : `<button class="chip" data-write>${kindOf(box) === "post" ? "write my post" : "write a reply"} · ⌥M</button>`;
+    const p = cat.openPanel(`<div class="status"><span>${status}</span>${voice ? '<button class="link" data-why>why?</button>' : ""}</div>
+      ${lastLesson ? `<div class="lesson">🐾 ${esc(lastLesson.summary)} <button class="link" data-lesson>show</button></div>` : ""}
+      <div class="log"></div><div class="chips">${chips}</div>
+      <form><input maxlength="300" placeholder="${has ? "Change it… e.g. mention the go-live" : "Tell me what to say…"}"></form>
+      <div class="hint">Enter to send · Esc to close · tap Option twice to open me</div>`);
+    cat.badge(null);
+    const input = p.querySelector("input"), log = p.querySelector(".log");
+    const line = (cls, html) => {
+      const d = document.createElement("div");
+      d.className = cls; d.innerHTML = html; log.append(d); log.scrollTop = log.scrollHeight;
+      return d;
+    };
+    if (has) last.asks.forEach((a) => line("me", esc(a)));
+
+    function showWhy() {
+      const top = [...last.r.rules].sort((a, z) => a.rank - z.rank).slice(0, 5);
+      line("it", `<b>Why it sounds like you</b>${top.map((x) => `<div class="rule"><b>${esc(ruleLabel(x, last.ctx))}</b> · ${esc(x.text)}
+        <span class="muted">· from ${x.evidence} ${x.evidence === 1 ? "edit" : "edits"}</span></div>`).join("")}
+        <div class="muted">the narrowest rule of each kind wins</div>`);
+    }
+    async function ask(text) {
+      if (busy) return;
+      if (!last || last.box !== box) {  // nothing drafted yet: what you typed here is the note to write from
+        cat.closePanel();
+        return draft(box, [readBox(box).trim(), text].filter(Boolean).join("\n"));
+      }
+      line("me", esc(text));
+      if (/^(why|how did|how come|what rules)\b/i.test(text)) return voice ? showWhy() : line("it", "no key plugged in, so no graph behind this one");
+      const reply = line("it", "on it…");
+      busy = true;
+      cat.mood("thinking");
+      try {
+        const { ctx } = last;
+        const r = await bridge("/refine", { current_text: readBox(box).trim(), instruction: text, person_id: ctx.person_id || "",
+          person_name: ctx.person_name || "", platform: ctx.platform, post_text: ctx.post_text || "",
+          circle_hint: ctx.circle_hint || null, mode: ctx.mode });
+        const ok = insertText(box, r.draft);
+        last.asks.push(text);
+        reply.innerHTML = ok ? "done ✓ edit it, or ask for more" : "it's on your clipboard: press ⌘V";
+        cat.mood("happy");
+      } catch (e) {
+        reply.innerHTML = `🙀 ${esc(e.message)}`;
+        cat.mood("error");
+      } finally {
+        busy = false;
+        setTimeout(() => cat.mood(null), 1200);
+        input.focus();
+      }
+    }
+
+    p.querySelectorAll("[data-ask]").forEach((b) => b.addEventListener("click", () => ask(b.dataset.ask)));
+    p.querySelector("[data-why]")?.addEventListener("click", showWhy);
+    p.querySelector("[data-write]")?.addEventListener("click", () => { cat.closePanel(); draft(box); });
+    p.querySelector("[data-lesson]")?.addEventListener("click", (ev) => {
+      ev.target.closest(".lesson").innerHTML = lastLesson.lines.map((l) => `🐾 ${esc(l)}`).join("<br>")
+        + (lastLesson.saved ? '<div class="muted">saved to your key</div>' : "");
+    });
+    p.querySelector("form").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const t = input.value.trim();
+      if (t) { input.value = ""; ask(t); }
+    });
+    input.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { cat.closePanel(); box.focus(); } });
+    setTimeout(() => input.focus(), 0);
+  }
+
+  // ---- Learning on send --------------------------------------------------------------------
   // You pressed send: every send leaves a memory. Who you wrote to (and their circle, if they're new),
-  // plus either the lessons from your edits or "the draft was right as it was".
-  // (Replies only for now: the Learner saves rules about a person.)
+  // plus either the lessons from your edits and chat requests, or "the draft was right as it was".
+  // Quiet: a 🐾 on the cat; the details wait in its chat. (Replies only for now.)
   async function captureSend(box) {
     if (!last || last.box !== box || last.r.mode !== "voice" || last.ctx.mode !== "reply") return;
     const sent = readBox(box).trim();   // read now, before the page clears the box
-    const { r, ctx } = last;
+    const { r, ctx, asks } = last;
     last = null;
+    cat.closePanel();
     if (!sent) return;
     learning = true;
-    let showFor = 4000;
     try {
       cat.mood("thinking");
-      cat.say("learning from what you sent…");
       const out = await bridge("/learn", { draft_id: r.draft_id, draft_text: r.draft, sent_text: sent,
         person_id: ctx.person_id, person_name: ctx.person_name, platform: ctx.platform,
-        circle: ctx.circle_hint || r.person?.circle || null, note_text: ctx.note || null });
+        circle: ctx.circle_hint || r.person?.circle || null, note_text: ctx.note || null, asks });
+      const lines = out.learned.map((x) => `learned: ${x.text}`);
+      if (out.note) lines.push(out.note);
+      const n = out.learned.length;
+      lastLesson = { lines, saved: !!out.saved,
+        summary: n ? `your last send taught me ${n} new ${n === 1 ? "thing" : "things"}` : "your last send is saved to your key" };
       cat.mood("happy");
-      const lines = out.learned.map((x) => `🐾 learned: ${esc(x.text)}`);
-      if (out.note) lines.push(`🐾 ${esc(out.note)}`);
-      cat.say(`${lines.join("<br>") || "🐾 nothing new"}${out.saved ? '<div class="muted">saved to your key</div>' : ""}`, { ms: 7000 });
-      showFor = 7000;
+      cat.badge("🐾");
     } catch (e) {
       cat.mood("error");
       cat.say(`🙀 couldn't learn: ${esc(e.message)}`, { ms: 4000 });
     } finally {
       learning = false;
       setTimeout(() => cat.mood(null), 1200);
-      linger(showFor);
+      linger(2500);
     }
   }
 })();

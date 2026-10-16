@@ -46,9 +46,10 @@ SCHEMA = {
 
 
 def learn_rules(client: anthropic.Anthropic, draft: str, sent: str, person_name: str, platform: str,
-                current_rules: list[dict], note: str | None = None) -> list[dict]:
+                current_rules: list[dict], note: str | None = None, asks: list[str] | None = None) -> list[dict]:
     """One Claude call: which personal rules does this edit teach? Returns [{kind, text}].
-    note = words the user typed themselves before asking for the draft (strong evidence of their style)."""
+    note = words the user typed themselves before asking for the draft (strong evidence of their style).
+    asks = what they asked the cat to change ("make it shorter"), in order."""
     known = "\n".join(f"- [{r['kind']}] {r['text']}" for r in current_rules) or "- (none yet)"
     user = (f"Recipient: {person_name}\nPlatform: {platform}\n\nAI draft:\n{draft}\n\n"
             f"What they actually sent:\n{sent}\n\nTheir current rules for this recipient:\n{known}")
@@ -56,6 +57,11 @@ def learn_rules(client: anthropic.Anthropic, draft: str, sent: str, person_name:
         user += (f"\n\nBefore asking for the draft they typed this note themselves:\n{note}\n"
                  "Their own words in it (nicknames, pet names, phrases) are strong evidence of how they write "
                  "to this recipient, even if the draft already kept them.")
+    if asks:
+        user += ("\n\nOn the way, they asked the assistant to change the draft: "
+                 + "; ".join(f"'{a}'" for a in asks)
+                 + "\nRequests about style (length, emojis, formality) are strong evidence of a habit with this "
+                   "recipient. Requests about this message's content only (a fact, a date, a topic) are not habits.")
     response = client.beta.messages.create(
         model=MODEL,
         max_tokens=8000,
