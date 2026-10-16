@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-from . import keys  # noqa: E402
+from . import keys, learning  # noqa: E402
 from .db import connect, graph_name  # noqa: E402
 from .drafter import write_draft  # noqa: E402
 from .queries import (graph_summary, people, person_context, record_draft,  # noqa: E402
@@ -40,6 +40,16 @@ class PlugRequest(BaseModel):
     key_id: str = "demo-maulik"
 
 
+class LearnRequest(BaseModel):
+    draft_id: str
+    draft_text: str
+    sent_text: str
+    person_id: str
+    person_name: str
+    platform: str
+    circle: str | None = None
+
+
 class DraftRequest(BaseModel):
     person_id: str
     person_name: str
@@ -53,7 +63,8 @@ def key_status():
     if state["key_id"] is None:
         return {"plugged": False, "key_id": None}
     graph = db.select_graph(graph_name(state["key_id"]))
-    return {"plugged": True, "key_id": state["key_id"], **graph_summary(graph)}
+    return {"plugged": True, "key_id": state["key_id"], "memories": len(keys.load_events(state["key_id"])),
+            **graph_summary(graph)}
 
 
 @app.get("/people")
@@ -105,6 +116,44 @@ def draft(req: DraftRequest):
     return {"mode": "voice", "draft": text, "draft_id": draft_id, "rules": rules,
             "person": {**person, "circle": circle}, "topics": topics,
             "graph_ms": graph_ms, "ms": round((time.perf_counter() - started) * 1000)}
+
+
+@app.post("/learn")
+def learn(req: LearnRequest):
+    """You sent something: learn your style from the edit, save it to the graph AND the key."""
+    key_id = state["key_id"]
+    if key_id is None:
+        raise HTTPException(409, "Plug in a key first: there's nowhere to save what Purrsona learns")
+    if " ".join(req.sent_text.split()) == " ".join(req.draft_text.split()):
+        return {"learned": [], "note": "You sent the draft as it was, so there's nothing new to learn.",
+                "memories": len(keys.load_events(key_id))}
+
+    graph = db.select_graph(graph_name(key_id))
+    person = person_context(graph, req.person_id)
+    circle = person["circle"] or req.circle
+    if not person["known"] and not circle:
+        raise HTTPException(400, f"{req.person_name} is new: which circle are they in?")
+    current = rules_for_context(graph, req.person_id, req.platform, topics_in(graph, req.draft_text),
+                                circle_hint=circle)
+
+    started = time.perf_counter()
+    proposals = learning.learn_rules(claude(), req.draft_text, req.sent_text, req.person_name,
+                                     req.platform, current)
+    event = learning.build_event(req.person_id, req.person_name, circle, not person["known"], req.platform,
+                                 req.draft_id, req.draft_text, req.sent_text, proposals, current)
+    learning.apply_event(graph, event)        # the laptop's graph learns now...
+    memories = keys.append_event(key_id, event)  # ...and the key remembers, in the same step
+    return {"learned": event["rules"], "person_added": event["person"]["new"], "edit_id": event["edit"]["id"],
+            "memories": memories, "ms": round((time.perf_counter() - started) * 1000)}
+
+
+@app.post("/key/reset")
+def reset_key(req: PlugRequest):
+    """Demo helper: wipe what the virtual key learned (back to the seed), then re-plug if plugged."""
+    keys.reset_memories(req.key_id)
+    if state["key_id"] == req.key_id:
+        keys.plug(db, req.key_id)
+    return {"key_id": req.key_id, "memories": 0}
 
 
 # The demo console (served last so the API routes above take precedence).

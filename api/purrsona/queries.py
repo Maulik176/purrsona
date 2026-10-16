@@ -121,3 +121,46 @@ def people(graph) -> list[dict]:
 
 def graph_summary(graph) -> dict:
     return rows(graph.ro_query(GRAPH_SUMMARY))[0]
+
+
+# ---- Remembering an edit (the Learner's save step). Maulik's design, Oct 16: three small queries,
+# one idea each: "this person is someone I know" -> "save what I changed" -> "remember the rule
+# and where it came from".
+
+# 1. Someone new joins the graph (only run for people the graph doesn't know yet).
+SAVE_PERSON = """
+MATCH (u:User), (c:Circle {name: $circle})
+MERGE (p:Person {id: $person_id})
+SET p.name = $name
+MERGE (u)-[:KNOWS]->(p)
+MERGE (p)-[:IN_CIRCLE]->(c)
+"""
+
+# 2. Save what I changed: the edit, linked to the draft it corrected (recreated after a re-plug).
+SAVE_EDIT = """
+MATCH (p:Person {id: $person_id})
+OPTIONAL MATCH (pl:Platform {name: $platform})
+MERGE (d:Draft {id: $draft_id})
+  ON CREATE SET d.text = $before, d.at = $at
+MERGE (d)-[:TO]->(p)
+FOREACH (_ IN CASE WHEN pl IS NULL THEN [] ELSE [1] END | MERGE (d)-[:ON]->(pl))
+CREATE (:Edit {id: $edit_id, before: $before, after: $after, at: $at})-[:OF]->(d)
+"""
+
+# 3. Remember the rule and the edit that taught it.
+SAVE_LEARNED_RULE = """
+MATCH (p:Person {id: $person_id}), (e:Edit {id: $edit_id})
+CREATE (p)-[:HAS_RULE]->(r:StyleRule {id: $rule_id, kind: $kind, text: $text, created_at: $at})-[:LEARNED_FROM]->(e)
+RETURN r.id AS id
+"""
+
+# A new narrower rule beats a broader one of the same kind (never deleted, only outranked).
+LINK_OVERRIDES = """
+MATCH (r:StyleRule {id: $rule_id})
+UNWIND $old_ids AS oid
+MATCH (old:StyleRule {id: oid})
+CREATE (r)-[:OVERRIDES]->(old)
+"""
+
+# A person's old rule replaced by a newer one for the same person stays as history.
+SUPERSEDE = "MATCH (old:StyleRule) WHERE old.id IN $old_ids SET old.superseded_at = $at"

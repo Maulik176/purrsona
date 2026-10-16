@@ -1,0 +1,101 @@
+"""The Learner agent: turns what you actually sent into new style rules.
+
+Each lesson becomes one event. The event is applied to the voice graph and appended to the key's
+log in the same step, and replayed on every plug-in, so the memory lives on the key.
+"""
+import json
+import time
+import uuid
+
+import anthropic
+
+from . import queries
+
+MODEL = "claude-opus-5-5"
+KINDS = ["tone", "greeting", "signoff", "emoji", "length", "format", "phrase_use", "phrase_avoid"]
+
+LEARNER_SYSTEM = """You study how someone edits AI drafts of their own messages, to learn their personal writing style.
+You get the AI's draft and what the person actually sent to one recipient.
+List the habits this edit shows about how they write to this particular recipient: nicknames, greetings,
+emojis, tone, length, sign-offs, phrases they add or remove.
+Only include habits the edit clearly shows, at most 3, and never repeat a habit already in their rules.
+Write each as a short instruction that names the recipient by first name, for example
+"Calls Kabir 'bhaila'" or "Adds a 🏏 when writing to Kabir about cricket".
+If the edit only fixes facts or typos, return no rules."""
+
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        "rules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"kind": {"type": "string", "enum": KINDS}, "text": {"type": "string"}},
+                "required": ["kind", "text"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["rules"],
+    "additionalProperties": False,
+}
+
+
+def learn_rules(client: anthropic.Anthropic, draft: str, sent: str, person_name: str, platform: str,
+                current_rules: list[dict]) -> list[dict]:
+    """One Claude call: which personal rules does this edit teach? Returns [{kind, text}]."""
+    known = "\n".join(f"- [{r['kind']}] {r['text']}" for r in current_rules) or "- (none yet)"
+    user = (f"Recipient: {person_name}\nPlatform: {platform}\n\nAI draft:\n{draft}\n\n"
+            f"What they actually sent:\n{sent}\n\nTheir current rules for this recipient:\n{known}")
+    response = client.beta.messages.create(
+        model=MODEL,
+        max_tokens=8000,
+        system=LEARNER_SYSTEM,
+        messages=[{"role": "user", "content": user}],
+        output_config={"effort": "low", "format": {"type": "json_schema", "schema": SCHEMA}},
+        betas=["server-side-fallback-2026-07-01"],
+        fallbacks="default",
+    )
+    if response.stop_reason == "refusal":
+        raise RuntimeError("The model declined to learn from this edit.")
+    text = next(b.text for b in response.content if b.type == "text")
+    return json.loads(text)["rules"][:3]
+
+
+def build_event(person_id: str, person_name: str, circle: str | None, person_is_new: bool, platform: str,
+                draft_id: str, draft_text: str, sent_text: str, proposals: list[dict],
+                current_rules: list[dict], at: int | None = None) -> dict:
+    """Package one lesson. Works out which existing rules each new rule outranks."""
+    at = at or int(time.time() * 1000)
+    winners = {r["kind"]: r for r in current_rules if r["kind"] not in queries.STACKING_KINDS}
+    rules = []
+    for p in proposals:
+        old = winners.get(p["kind"])
+        overrides = [old["id"]] if old else []
+        supersedes = [old["id"]] if old and old["scope"] == "Person" else []
+        rules.append({"id": f"r-{uuid.uuid4().hex[:8]}", "kind": p["kind"], "text": p["text"],
+                      "overrides": overrides, "supersedes": supersedes})
+    return {"type": "learned", "at": at, "platform": platform,
+            "person": {"id": person_id, "name": person_name, "circle": circle, "new": person_is_new},
+            "draft": {"id": draft_id, "text": draft_text},
+            "edit": {"id": f"e-{uuid.uuid4().hex[:8]}", "before": draft_text, "after": sent_text},
+            "rules": rules}
+
+
+def apply_event(graph, event: dict) -> None:
+    """Write one lesson into the voice graph (used live and when replaying the key's log)."""
+    person, edit, at = event["person"], event["edit"], event["at"]
+    if person["new"]:
+        graph.query(queries.SAVE_PERSON, {"person_id": person["id"], "name": person["name"],
+                                          "circle": person["circle"]})
+    graph.query(queries.SAVE_EDIT, {"person_id": person["id"], "platform": event["platform"],
+                                    "draft_id": event["draft"]["id"], "edit_id": edit["id"],
+                                    "before": edit["before"], "after": edit["after"], "at": at})
+    for r in event["rules"]:
+        graph.query(queries.SAVE_LEARNED_RULE, {"person_id": person["id"], "edit_id": edit["id"],
+                                                "rule_id": r["id"], "kind": r["kind"], "text": r["text"],
+                                                "at": at})
+        if r["overrides"]:
+            graph.query(queries.LINK_OVERRIDES, {"rule_id": r["id"], "old_ids": r["overrides"]})
+        if r["supersedes"]:
+            graph.query(queries.SUPERSEDE, {"old_ids": r["supersedes"], "at": at})
