@@ -60,9 +60,9 @@ a { color: var(--accent-dark); }
     <table class="modes">
       <tr><th>Where</th><th>What the cat does</th><th>What it reads</th></tr>
       <tr><td>Public posts: LinkedIn, X, Reddit</td><td>Option+M drafts a reply in your voice</td><td>only the post you're replying to, when you press the key</td></tr>
-      <tr><td>Private apps: Slack, Teams, Gmail, DMs</td><td>type a rough message, Option+M rewrites it in your voice</td><td>only what <b>you</b> typed, never the conversation; you say who it's for</td></tr>
+      <tr><td>Private apps: Slack, Teams, Gmail, DMs</td><td>type a rough message, Option+M rewrites it in your voice</td><td>only what <b>you</b> typed, never the conversation; who it's for comes from the message box's own name ("Message Neha Kulkarni"), and in a group it asks</td></tr>
     </table>
-    Try the private kind in the made-up chat at the bottom of this page.</div>
+    Try the private kind in the two made-up chats at the bottom of this page.</div>
 
   <article class="post" data-post data-author-id="priya-nair" data-author-name="Priya Nair" data-platform="linkedin">
     <div class="who"><div class="avatar" style="background:#7c6cf0">PN</div><div><div class="name">Priya Nair</div><div class="headline">Engineering Manager · 2h</div></div></div>
@@ -100,12 +100,20 @@ a { color: var(--accent-dark); }
   </article>
   <section class="chat" data-chat data-platform="slack">
     <h3># team-launch</h3>
-    <div class="sub">A made-up private chat, like Slack or Teams. The cat never reads these messages: type your own rough reply, press ⌥ Option + M, and tell it who it's for.</div>
+    <div class="sub">A made-up group chat, like Slack or Teams. The cat never reads these messages: type your own rough reply, press ⌥ Option + M, and tell it who it's for.</div>
     <div class="msgs">
       <div class="msg"><b>Neha Kulkarni</b>The approval flow is live in production. Can you check the dashboard numbers before the client call?</div>
       <div class="msg"><b>Neha Kulkarni</b>Also, are we still on for the demo tomorrow at 3?</div>
     </div>
-    <div class="reply"><textarea id="chatBox" placeholder="Message #team-launch"></textarea><button class="send" id="chatSend">Send</button></div>
+    <div class="reply"><textarea placeholder="Message #team-launch"></textarea><button class="send" data-chat-send>Send</button></div>
+  </section>
+  <section class="chat" data-chat data-platform="slack">
+    <h3>Neha Kulkarni</h3>
+    <div class="sub">A made-up direct message. The message box says who it's for, so the cat doesn't need to ask (it still never reads the messages).</div>
+    <div class="msgs">
+      <div class="msg"><b>Neha Kulkarni</b>Quick one: can you review my update set before Friday's release?</div>
+    </div>
+    <div class="reply"><textarea placeholder="Message Neha Kulkarni"></textarea><button class="send" data-chat-send>Send</button></div>
   </section>
 </main>
 <footer>Everyone on this page is made up. Purrsona only reads a post when you press the shortcut or click the cat, and never posts for you.</footer>
@@ -139,18 +147,20 @@ document.querySelectorAll("[data-send]").forEach((btn) => btn.addEventListener("
   box.value = "";
   setTimeout(refreshKey, 4500);
 }));
-// The made-up chat: Send (or Enter) posts your message, like a chat app.
-function sendChat() {
-  const box = $("chatBox");
-  if (!box.value.trim()) return;
-  const div = document.createElement("div");
-  div.className = "msg mine"; div.innerHTML = "<b>You</b>"; div.append(document.createTextNode(box.value));
-  document.querySelector(".msgs").append(div);
-  box.value = "";
-  setTimeout(refreshKey, 4500);
-}
-$("chatSend").addEventListener("click", sendChat);
-$("chatBox").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.altKey) { e.preventDefault(); sendChat(); } });
+// The made-up chats: Send (or Enter) posts your message, like a chat app.
+document.querySelectorAll("[data-chat]").forEach((chat) => {
+  const box = chat.querySelector("textarea");
+  const send = () => {
+    if (!box.value.trim()) return;
+    const div = document.createElement("div");
+    div.className = "msg mine"; div.innerHTML = "<b>You</b>"; div.append(document.createTextNode(box.value));
+    chat.querySelector(".msgs").append(div);
+    box.value = "";
+    setTimeout(refreshKey, 4500);
+  };
+  chat.querySelector("[data-chat-send]").addEventListener("click", send);
+  box.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.altKey) { e.preventDefault(); send(); } });
+});
 // Reply boxes grow to fit the draft.
 document.querySelectorAll("textarea").forEach((box) => box.addEventListener("input", () => {
   box.style.height = "auto"; box.style.height = `${box.scrollHeight + 2}px`;

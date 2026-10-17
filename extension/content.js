@@ -88,9 +88,9 @@
   }
 
   const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
-  // Wait (up to ~0.7 s) for the editor to change the box: some handle a paste a moment later.
+  // Wait (up to 1 s) for the editor to change the box: some handle a paste a moment later.
   async function settle(box, before) {
-    for (let t = 0; t < 700 && readBox(box) === before; t += 50) await wait(50);
+    for (let t = 0; t < 1000 && readBox(box) === before; t += 50) await wait(50);
   }
 
   // Resolves true (the draft is in), "check" (the editor took something different: look at it), or
@@ -159,6 +159,8 @@
   // someone who only liked it; and "Reply" under a comment starts the box with an @mention of the commenter.
   const LI_MENU = 'button[aria-label^="Open control menu for post by"]';
   const LI_COMMENT = '[componentkey^="replaceableComment_"]';
+  // The post's words: the new feed's text box, or the older markup company pages still use (Oct 17).
+  const LI_TEXT = '[data-testid="expandable-text-box"], .update-components-update-v2__commentary, .update-components-text';
   let liReplyTo = null;  // the comment whose "Reply" you clicked last
   function liCard(box) {
     for (let el = box.parentElement; el && el !== document.body; el = el.parentElement) {
@@ -212,7 +214,7 @@
         if (!card) return liComposer(box) ? { mode: "post", platform: "linkedin" } : null;
         const author = norm(card.querySelector(LI_MENU).getAttribute("aria-label").replace(/^Open control menu for post by/, ""));
         // Image and video posts can have no text: fall back to the image's description, if it has one.
-        const postText = (norm(card.querySelector('[data-testid="expandable-text-box"]')?.innerText)
+        const postText = (norm(card.querySelector(LI_TEXT)?.innerText)
           || norm([...card.querySelectorAll("img[alt]")].map((i) => i.alt)
             .filter((t) => t.length > 20 && !/no alternative text|profile|logo/i.test(t)).slice(0, 2).join(" · "))).slice(0, 3000);
         const mention = norm(box.querySelector(MENTION)?.innerText);
@@ -221,7 +223,7 @@
             ? liReplyTo : [...card.querySelectorAll(LI_COMMENT)].find((x) => sameName(liCommentAuthor(x), mention));
           if (c) {
             const name = liCommentAuthor(c);
-            const said = norm(c.querySelector('[data-testid="expandable-text-box"]')?.innerText).slice(0, 2000);
+            const said = norm(c.querySelector(LI_TEXT)?.innerText).slice(0, 2000);
             return { mode: "reply", person_id: liProfile(c, name), person_name: name, platform: "linkedin",
                      post_text: `${said}\n\n(Their comment is on ${author}'s post: ${postText.slice(0, 600)})` };
           }
@@ -294,11 +296,30 @@
   ];
   // Your-words mode, for every other message box on our sites (Slack, Teams, Gmail, DMs). Private
   // conversations are off limits (the hackathon's data rule, and plain respect): the cat never reads the
-  // page here, only what you typed, and asks who it's for.
+  // messages here, only what you typed. Who it's for comes from the box's own label when it names one
+  // person ("Message Neha Kulkarni" in Slack); otherwise the cat asks.
   const PLATFORMS = [[/linkedin\.com$/, "linkedin"], [/(^|\.)(x|twitter)\.com$/, "x"], [/reddit\.com$/, "reddit"],
                      [/slack\.com$/, "slack"], [/teams\.(microsoft|live)\.com$/, "teams"], [/mail\.google\.com$/, "email"]];
   const platformOf = (box) => box?.closest?.("[data-platform]")?.dataset.platform
     || (PLATFORMS.find(([re]) => re.test(location.hostname)) || [])[1] || "web";
+  function labelName(box) {
+    const label = [box.getAttribute("aria-label"), box.getAttribute("placeholder"), box.dataset?.placeholder,
+                   box.parentElement?.querySelector(".ql-placeholder")?.innerText].find((t) => t && /\S/.test(t)) || "";
+    const m = norm(label).match(/^(?:message|send a message to|write to|chat with)\s+(?:to\s+)?(.+?)[.…]*$/i);
+    const name = norm(m?.[1]?.replace(/\((you|me)\)/i, ""));
+    // A channel (#team-launch), a group ("Neha, Rohan and 2 others") or no name at all: nobody in particular.
+    if (!name || /^#/.test(name) || /,|\band\b|\bothers?\b/i.test(name) || /^(a message|here|everyone)$/i.test(name)) return null;
+    return name.replace(/^@/, "");
+  }
+  // One person you already write to with that name ("Neha" or "Neha Kulkarni"), or null.
+  function matchPerson(people, name) {
+    const n = name.toLowerCase();
+    const hits = people.filter((p) => {
+      const pn = p.name.toLowerCase();
+      return pn === n || (n.includes(" ") ? pn.startsWith(n) : first(p.name).toLowerCase() === n);
+    });
+    return hits.length === 1 ? hits[0] : null;
+  }
   const WORDS = {
     name: "words",
     kind(box) {
@@ -443,20 +464,23 @@
   }, true);
   if (IN_EXTENSION) chrome.runtime.onMessage.addListener((m) => { if (m.type === "trigger") draft(current); });
 
-  // Your-words mode can't see the conversation, so you say who it's for (remembered for this chat).
-  // Asked every time (a chat can have several people), with the last person for this chat first:
-  // Enter in the name box picks them.
+  // Your-words mode can't see the conversation. If the box's label names one person you know, that's
+  // who it's for; otherwise you say (a chat can have several people), with the last person for this
+  // chat first: Enter in the name box picks them.
   const chosenFor = {};
-  async function choosePerson(ctx) {
-    const here = location.pathname + location.hash;
+  async function choosePerson(ctx, box, askAnyway = false) {
+    const here = `${location.pathname}${location.hash}|${box.getAttribute("aria-label") || box.getAttribute("placeholder") || ""}`;
     const lastPick = chosenFor[here];
     let people;
     try { people = await bridge("/people"); } catch { return Object.assign(ctx, { person_id: "", person_name: "" }); }
+    const named = labelName(box);
+    const known = named && matchPerson(people, named);
+    if (known && !askAnyway) return Object.assign(ctx, { person_id: known.id, person_name: known.name, guessed: true });
     if (lastPick?.person_id) people = [{ id: lastPick.person_id, name: lastPick.person_name }, ...people.filter((p) => p.id !== lastPick.person_id)];
     const pick = await new Promise((resolve) => {
       const b = cat.say(`Who's this message for?
         <div class="row">${people.slice(0, 8).map((p, i) => `<button data-i="${i}">${esc(first(p.name))}${i === 0 && lastPick?.person_id ? " ↩" : ""}</button>`).join("")}</div>
-        <form><input maxlength="60" placeholder="${lastPick?.person_id ? `Enter = ${esc(first(lastPick.person_name))} again, or type a name` : "someone else: their name"}"></form>
+        <form><input maxlength="60" value="${named && !known ? esc(named) : ""}" placeholder="${lastPick?.person_id ? `Enter = ${esc(first(lastPick.person_name))} again, or type a name` : "someone else: their name"}"></form>
         <div class="row"><button class="ghost" data-none>no one in particular</button></div>
         <div class="muted">in private apps I only use what you typed, never the conversation</div>`);
       const timer = setTimeout(() => done(undefined), 45000);
@@ -507,7 +531,7 @@
   // Two ways in: an empty box = "draft a reply for me"; a box with your own words = "polish my note in
   // my voice" (and what you typed is a strong lesson). A new post always starts from your note.
   // Quiet by design: the draft just lands. The why and what the cat learned wait in its chat.
-  async function draft(box, noteSnapshot) {
+  async function draft(box, noteSnapshot, askWho = false) {
     box = box || editableFrom(deepActive());
     const found = adapterFor(box);
     if (busy || !found) return;
@@ -535,11 +559,12 @@
       let plugged = true, remembered = "";
       if (ctx.mode === "note") {
         cat.mood(null);
-        if ((await choosePerson(ctx)) === undefined) return;  // no answer: no draft
+        if ((await choosePerson(ctx, box, askWho)) === undefined) return;  // no answer: no draft
         cat.mood("thinking");
       }
       if (ctx.mode === "reply" || (ctx.mode === "note" && ctx.person_id)) {
-        cat.say(ctx.mode === "reply" ? `reading ${esc(first(ctx.person_name))}'s post…` : `getting your voice for ${esc(first(ctx.person_name))}…`);
+        cat.say(ctx.mode === "reply" ? `reading ${esc(first(ctx.person_name))}'s post…` : `getting your voice for ${esc(first(ctx.person_name))}…${
+          ctx.guessed ? '<div class="muted">from the message box\'s name</div>' : ""}`);
         const who = await bridge(`/person?id=${encodeURIComponent(ctx.person_id)}`);
         plugged = who.plugged;
         if (who.circles) circles = who.circles;
@@ -616,7 +641,7 @@
           : last.r.critic?.still?.length ? " · the Critic flagged something" : last.r.critic ? " · checked by the Critic" : ""}`;
     const chips = has ? CHIPS.map(([t, a]) => `<button class="chip" data-ask="${esc(a)}">${esc(t)}</button>`).join("")
       : `<button class="chip" data-write>${{ post: "write my post", note: "say it in my voice" }[kindOf(box)] || "write a reply"} · ⌥M</button>`;
-    const p = cat.openPanel(`<div class="status"><span>${status}</span>${voice ? '<button class="link" data-why>why?</button>' : ""}</div>
+    const p = cat.openPanel(`<div class="status"><span>${status}</span>${has && last.ctx.guessed ? `<button class="link" data-who>not ${esc(first(last.ctx.person_name))}?</button>` : ""}${voice ? '<button class="link" data-why>why?</button>' : ""}</div>
       ${lastLesson ? `<div class="lesson">🐾 ${esc(lastLesson.summary)} <button class="link" data-lesson>show</button></div>` : ""}
       <div class="log"></div><div class="chips">${chips}</div>
       <form><input maxlength="300" placeholder="${has ? "Change it… e.g. mention the go-live" : "Tell me what to say…"}"></form>
@@ -673,6 +698,7 @@
 
     p.querySelectorAll("[data-ask]").forEach((b) => b.addEventListener("click", () => ask(b.dataset.ask)));
     p.querySelector("[data-why]")?.addEventListener("click", showWhy);
+    p.querySelector("[data-who]")?.addEventListener("click", () => { cat.closePanel(); draft(box, last.ctx.note || readBox(box), true); });
     p.querySelector("[data-write]")?.addEventListener("click", () => { cat.closePanel(); draft(box); });
     p.querySelector("[data-lesson]")?.addEventListener("click", (ev) => {
       ev.target.closest(".lesson").innerHTML = lastLesson.lines.map((l) => `🐾 ${esc(l)}`).join("<br>")

@@ -18,7 +18,7 @@ The rules ask for data that is "public, synthetic, or your own" and nothing priv
 | Where | What the cat does | What it reads |
 |---|---|---|
 | **Public posts:** LinkedIn, X, Reddit | Option+M drafts a reply in your voice | only the public post you're replying to, at the moment you press the key |
-| **Private apps:** Slack web, Teams web, Gmail, LinkedIn and X messages | you type a rough message, Option+M rewrites it in your voice | **only what you typed.** It never reads the conversation; you tell it who the message is for |
+| **Private apps:** Slack web, Teams web, Gmail, LinkedIn and X messages | you type a rough message, Option+M rewrites it in your voice | **only what you typed.** It never reads the conversation. Who it's for comes from the message box's own name ("Message Neha Kulkarni") when that names one person you already write to; in a channel or group, or for someone new, it asks |
 
 - **Nothing is read in the background.** The cat reads a page only when you press Option+M, click it, or press send.
 - **It never posts for you.** It fills the box; you press send.
