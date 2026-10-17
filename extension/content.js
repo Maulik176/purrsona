@@ -13,9 +13,15 @@
   const norm = (s) => String(s || "").replace(/\s+/g, " ").trim();
   const slug = (name) => norm(name).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
 
+  // After the extension is reloaded, a page that was already open keeps the old script with no way to
+  // reach the extension ("Extension context invalidated"): say what to do instead.
+  const UPDATED = "Purrsona was just updated: refresh this page (⌘R)";
   async function bridge(path, body) {
     if (IN_EXTENSION) {
-      const r = await chrome.runtime.sendMessage({ type: "bridge", path, body });
+      if (!chrome.runtime?.id) throw new Error(UPDATED);
+      let r;
+      try { r = await chrome.runtime.sendMessage({ type: "bridge", path, body }); }
+      catch (e) { throw new Error(/context invalidated/i.test(e.message) ? UPDATED : e.message); }
       if (!r || !r.ok) throw new Error(r?.data?.detail || (r?.status === 0 ? "Purrsona's bridge isn't running" : `error ${r?.status}`));
       return r.data;
     }
@@ -59,6 +65,28 @@
   let composing = false;
   document.addEventListener("compositionstart", () => { composing = true; }, true);
   document.addEventListener("compositionend", () => { composing = false; }, true);
+  // On some Mac keyboard layouts Option+M is a dead key ("˛"), and macOS inserts its mark in a way a page
+  // can't block. When no draft lands to replace it, take the stray mark back out: only if it's the
+  // only change since you pressed the keys, so nothing you typed is ever touched.
+  const STRAY = /[˛µ¸˙˝ˇ]/g;
+  function undoStray(box, before) {
+    if (before == null || !box?.isConnected) return;
+    if (composing) box.blur();
+    for (const wait of [30, 300]) setTimeout(() => {  // twice: macOS can commit the mark a little late
+      const now = readBox(box);
+      if (now === before || now.replace(STRAY, "").trim() !== before.replace(STRAY, "").trim()) return;
+      box.focus();
+      if (box.tagName === "TEXTAREA" || before.trim()) { insertText(box, before); return; }
+      const range = document.createRange();  // the box was empty: clear what's after any @mention
+      range.selectNodeContents(box);
+      const m = box.querySelector(MENTION);
+      if (m) range.setStartAfter(m);
+      const sel = window.getSelection();
+      sel.removeAllRanges(); sel.addRange(range);
+      document.execCommand("delete");
+    }, wait);
+  }
+
   function insertText(box, text) {
     if (composing) box.blur();  // finish a half-typed accent first (macOS Option keys start one)
     box.focus();
@@ -418,20 +446,22 @@
     current = box;
     cat.attach(box);
     const ctx = found.adapter.context(box);
-    if (!ctx) { cat.mood("error"); cat.say("I can't see whose post this is 🙀", { ms: 3500 }); linger(3500); return; }
+    if (!ctx) { cat.mood("error"); cat.say("I can't see whose post this is 🙀", { ms: 3500 }); linger(3500); undoStray(box, noteSnapshot); return; }
     const note = (noteSnapshot ?? readBox(box)).trim();
     if (ctx.mode === "post" && !note) {
       cat.say("Writing your own post? Type a few words about it, then press ⌥M", { ms: 5000 });
       linger(5000);
+      undoStray(box, noteSnapshot);
       return;
     }
     if (ctx.mode === "note" && !note) {
       cat.say("Type a rough message first, then press ⌥M<div class=\"muted\">here I only use your own words, never the conversation</div>", { ms: 5000 });
       linger(5000);
+      undoStray(box, noteSnapshot);
       return;
     }
     busy = true;
-    let showFor = 1500;
+    let showFor = 1500, landed = false;
     try {
       cat.mood("thinking");
       let plugged = true, remembered = "";
@@ -473,6 +503,7 @@
       cat.quiet();
       const walking = cat.walkAlong();
       const ok = insertText(box, r.draft);
+      landed = true;
       await walking;
       last = { box, ctx, r, asks: [] };
       cat.mood("happy");
@@ -485,6 +516,7 @@
       showFor = 5000;
     } finally {
       busy = false;
+      if (!landed) undoStray(box, noteSnapshot);  // no draft replaced the box: remove a stray "˛"
       setTimeout(() => cat.mood(null), 1200);
       linger(showFor);
     }
