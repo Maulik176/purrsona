@@ -16,7 +16,11 @@
   ],
   "platforms": [
     "linkedin",
-    "x"
+    "x",
+    "reddit",
+    "slack",
+    "teams",
+    "email"
   ],
   "topics": [
     "ServiceNow",

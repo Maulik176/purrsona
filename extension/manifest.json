@@ -2,19 +2,49 @@
   "manifest_version": 3,
   "name": "Purrsona",
   "version": "0.1.0",
-  "description": "Your writing voice on a key you own. Press Option+M in a reply box and the cat drafts in your voice.",
-  "permissions": ["storage"],
-  "host_permissions": ["http://127.0.0.1:8765/*", "http://localhost:8765/*"],
-  "background": { "service_worker": "background.js" },
+  "description": "Your writing voice on a key you own. Option+M drafts replies to public posts (LinkedIn, X, Reddit) and rewrites your own words in private apps (Slack, Teams, Gmail), where it never reads the conversation.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8765/*",
+    "http://localhost:8765/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": ["https://www.linkedin.com/*", "https://x.com/*", "http://localhost:8765/practice/*", "http://127.0.0.1:8765/practice/*"],
-      "js": ["cat.js", "content.js"],
+      "matches": [
+        "https://www.linkedin.com/*",
+        "https://x.com/*",
+        "https://twitter.com/*",
+        "https://www.reddit.com/*",
+        "https://old.reddit.com/*",
+        "https://app.slack.com/*",
+        "https://teams.microsoft.com/*",
+        "https://teams.live.com/*",
+        "https://mail.google.com/*",
+        "http://localhost:8765/practice/*",
+        "http://127.0.0.1:8765/practice/*"
+      ],
+      "js": [
+        "cat.js",
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
   "commands": {
-    "draft-reply": { "suggested_key": { "default": "Alt+M", "mac": "Alt+M" }, "description": "Draft a reply in your voice" }
+    "draft-reply": {
+      "suggested_key": {
+        "default": "Alt+M",
+        "mac": "Alt+M"
+      },
+      "description": "Draft a reply in your voice"
+    }
   },
-  "action": { "default_title": "Purrsona" }
+  "action": {
+    "default_title": "Purrsona"
+  }
 }

@@ -28,13 +28,21 @@
 
   //Text boxes: find the nearest editable element.
   const isEditable = (el) => !!el && (el.tagName === "TEXTAREA" || el.isContentEditable || el.getAttribute?.("role") === "textbox");
+  // Some sites (new Reddit) put their text boxes inside web components: step out of those too.
+  const up = (el) => el.parentElement || (el.getRootNode?.() instanceof ShadowRoot ? el.getRootNode().host : null);
   function editableFrom(el) {
-    while (el && el !== document.body) {
+    while (el && el !== document.body && el.nodeType === 1) {
       if (isEditable(el)) return el.tagName === "TEXTAREA" ? el : (el.closest('[contenteditable="true"]') || el);
-      el = el.parentElement;
+      el = up(el);
     }
     return null;
   }
+  function closestDeep(el, selector) {
+    for (; el && el.nodeType === 1; el = up(el)) if (el.matches(selector)) return el;
+    return null;
+  }
+  const deepActive = () => { let a = document.activeElement; while (a?.shadowRoot?.activeElement) a = a.shadowRoot.activeElement; return a; };
+  const realTarget = (e) => e.composedPath?.()[0] || e.target;
   const MENTION = '[data-type="mention"]';
   // Read the box, without @mentions (LinkedIn starts a reply to a comment with one).
   function readBox(box) {
@@ -86,7 +94,7 @@
 
   // The nearest button (walking up from the box) that passes the test: finds the box's own send button.
   function nearestButton(box, test, maxUp = 16) {
-    for (let el = box.parentElement, i = 0; el && el !== document.body && i < maxUp; el = el.parentElement, i++) {
+    for (let el = up(box), i = 0; el && el !== document.body && i < maxUp; el = up(el), i++) {
       const b = [...el.querySelectorAll("button")].find(test);
       if (b) return { scope: el, button: b };
     }
@@ -202,9 +210,66 @@
       },
       isSend: (btn) => btn.matches('[data-testid="tweetButtonInline"], [data-testid="tweetButton"]'),
     },
+    {
+      // Reddit: public posts and comments. New Reddit keeps the author in attributes
+      // (<shreddit-post author=…>, <shreddit-comment author=…>); old Reddit in .thing[data-author].
+      name: "reddit",
+      match: () => /(^|\.)reddit\.com$/.test(location.hostname),
+      kind: (box) => (closestDeep(box, "shreddit-composer, comment-composer-host, shreddit-comment, .usertext-edit, form.usertext")
+        ? "reply" : null),
+      context(box) {
+        const old = closestDeep(box, ".thing[data-author]") || (closestDeep(box, ".commentarea") && document.querySelector("#siteTable .thing.link[data-author]"));
+        if (old) {
+          const author = old.dataset.author;
+          const said = old.querySelector(".usertext-body .md")?.innerText || old.querySelector("a.title")?.innerText || "";
+          return { mode: "reply", person_id: `reddit-${author.toLowerCase()}`, person_name: `u/${author}`, platform: "reddit",
+                   post_text: norm(said).slice(0, 3000) };
+        }
+        const comment = closestDeep(box, "shreddit-comment");
+        const post = document.querySelector("shreddit-post");
+        const target = comment || post;
+        const author = target?.getAttribute("author");
+        if (!author) return null;
+        const said = comment ? comment.querySelector('[slot="comment"]')?.innerText
+          : `${post.getAttribute("post-title") || ""}\n${post.querySelector('[slot="text-body"]')?.innerText || ""}`;
+        return { mode: "reply", person_id: `reddit-${author.toLowerCase()}`, person_name: `u/${author}`, platform: "reddit",
+                 post_text: norm(said).slice(0, 3000) };
+      },
+      isSend(btn, box) {
+        if (!/^(comment|reply|save)$/i.test(norm(btn.innerText))) return false;
+        const scope = closestDeep(box, "shreddit-composer, comment-composer-host, form");
+        return !!scope && (scope.contains(btn) || closestDeep(btn, "shreddit-composer, comment-composer-host, form") === scope);
+      },
+    },
   ];
-  const adapter = () => ADAPTERS.find((a) => a.match());
-  const kindOf = (box) => (box && adapter()?.kind(box)) || null;
+  // Your-words mode, for every other message box on our sites (Slack, Teams, Gmail, DMs). Private
+  // conversations are off limits (the hackathon's data rule, and plain respect): the cat never reads the
+  // page here, only what you typed, and asks who it's for.
+  const PLATFORMS = [[/linkedin\.com$/, "linkedin"], [/(^|\.)(x|twitter)\.com$/, "x"], [/reddit\.com$/, "reddit"],
+                     [/slack\.com$/, "slack"], [/teams\.(microsoft|live)\.com$/, "teams"], [/mail\.google\.com$/, "email"]];
+  const platformOf = (box) => box?.closest?.("[data-platform]")?.dataset.platform
+    || (PLATFORMS.find(([re]) => re.test(location.hostname)) || [])[1] || "web";
+  const WORDS = {
+    name: "words",
+    kind(box) {
+      if (closestDeep(box, 'header, nav, [role="search"], [role="combobox"]')) return null;
+      const r = box.getBoundingClientRect();
+      return r.width >= 120 && r.height >= 16 ? "note" : null;  // a message box, not a tiny field
+    },
+    context: (box) => ({ mode: "note", platform: platformOf(box) }),
+    isSend: (btn) => /^send\b/i.test(norm(btn.innerText) || btn.getAttribute("aria-label") || btn.getAttribute("data-tooltip") || ""),
+    sendsOnEnter: () => !/mail\.google\.com$/.test(location.hostname),  // chat apps send on Enter; email doesn't
+  };
+  // The site's own adapter if it knows this box (a reply or a post), else your-words mode.
+  function adapterFor(box) {
+    if (!box) return null;
+    const site = ADAPTERS.find((a) => a.match());
+    const kind = site?.kind(box);
+    if (kind) return { adapter: site, kind };
+    const words = WORDS.kind(box);
+    return words ? { adapter: WORDS, kind: words } : null;
+  }
+  const kindOf = (box) => adapterFor(box)?.kind || null;
 
   //The cat comes and goes with your typing 
   let current = null, last = null, busy = false, learning = false, circles = ["Friends", "Work", "Clients"];
@@ -213,7 +278,7 @@
 
   document.addEventListener("focusin", (e) => {
     if (inCat(e)) return;  // typing in the cat's chat
-    const box = editableFrom(e.target);
+    const box = editableFrom(realTarget(e));
     if (kindOf(box)) {
       clearTimeout(hideTimer);
       if (box !== current) cat.closePanel();
@@ -232,7 +297,7 @@
     hideTimer = setTimeout(() => {
       const wait = lingerUntil - Date.now();
       if (busy || learning || cat.panelOpen() || wait > 0) return hideSoon(Math.max(wait, 250));
-      if (current && editableFrom(document.activeElement) === current) return;
+      if (current && editableFrom(deepActive()) === current) return;
       current = null;
       cat.detach();
     }, ms);
@@ -249,14 +314,14 @@
       const now = Date.now();
       if (now - altAt < 400) {  // a second tap, with no other key in between
         altAt = 0;
-        const box = editableFrom(e.target) || current;
+        const box = editableFrom(realTarget(e)) || current;
         if (kindOf(box)) toggleChat(box);
       } else altAt = now;
       return;
     }
     altAt = 0;
     if (e.altKey && e.code === "KeyM" && !e.metaKey && !e.ctrlKey) {
-      const box = editableFrom(e.target) || current;
+      const box = editableFrom(realTarget(e)) || current;
       if (!kindOf(box)) return;
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -265,7 +330,11 @@
       draft(box, readBox(box));
       return;
     }
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && last && editableFrom(e.target) === last.box) captureSend(last.box);
+    const inLast = last && editableFrom(realTarget(e)) === last.box;
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && inLast) captureSend(last.box);
+    // Chat apps send on a plain Enter: learn from the box before the app clears it.
+    else if (e.key === "Enter" && !e.shiftKey && !e.altKey && !e.isComposing && inLast
+             && adapterFor(last.box)?.adapter.sendsOnEnter?.()) captureSend(last.box);
   }, true);
   window.addEventListener("keypress", (e) => {
     if (e.altKey && Date.now() < swallowUntil) { e.preventDefault(); e.stopImmediatePropagation(); }
@@ -278,13 +347,42 @@
 
   cat.onClick(() => toggleChat(current));
   document.addEventListener("click", (e) => {
-    const btn = e.target.closest?.("button");
+    const btn = e.composedPath().find((n) => n.nodeType === 1 && n.matches?.('button, [role="button"]'));
     if (!btn) return;
-    const ad = adapter();
-    ad?.noteClick?.(btn);
-    if (last && last.box.isConnected && ad?.isSend?.(btn, last.box)) captureSend(last.box);
+    ADAPTERS.find((a) => a.match())?.noteClick?.(btn);
+    if (last && last.box.isConnected && adapterFor(last.box)?.adapter.isSend?.(btn, last.box)) captureSend(last.box);
   }, true);
   if (IN_EXTENSION) chrome.runtime.onMessage.addListener((m) => { if (m.type === "trigger") draft(current); });
+
+  // Your-words mode can't see the conversation, so you say who it's for (remembered for this chat).
+  const chosenFor = {};
+  async function choosePerson(ctx) {
+    const here = location.pathname + location.hash;
+    if (chosenFor[here]) return Object.assign(ctx, chosenFor[here]);
+    let people;
+    try { people = await bridge("/people"); } catch { return Object.assign(ctx, { person_id: "", person_name: "" }); }
+    const pick = await new Promise((resolve) => {
+      const b = cat.say(`Who's this message for?
+        <div class="row">${people.slice(0, 8).map((p, i) => `<button data-i="${i}">${esc(first(p.name))}</button>`).join("")}</div>
+        <form><input maxlength="60" placeholder="someone else: their name"></form>
+        <div class="row"><button class="ghost" data-none>no one in particular</button></div>
+        <div class="muted">in private apps I only use what you typed, never the conversation</div>`);
+      const timer = setTimeout(() => { cat.quiet(); resolve(undefined); }, 45000);
+      const done = (v) => { clearTimeout(timer); cat.quiet(); resolve(v); };
+      b.querySelectorAll("[data-i]").forEach((el) => el.addEventListener("click", (ev) => {
+        ev.stopPropagation(); const p = people[+el.dataset.i]; done({ person_id: p.id, person_name: p.name });
+      }));
+      b.querySelector("[data-none]").addEventListener("click", (ev) => { ev.stopPropagation(); done({ person_id: "", person_name: "" }); });
+      b.querySelector("form").addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        const t = norm(b.querySelector("input").value);
+        if (t) done({ person_id: slug(t), person_name: t.replace(/\b\w/g, (c) => c.toUpperCase()) });
+      });
+    });
+    if (pick === undefined) return undefined;
+    chosenFor[here] = pick;
+    return Object.assign(ctx, pick);
+  }
 
   // ---- Drafting ----------------------------------------------------------------------------
   // Someone new: tap a circle, or say it in your own words ("my manager"), which the graph maps to a circle.
@@ -314,15 +412,21 @@
   // my voice" (and what you typed is a strong lesson). A new post always starts from your note.
   // Quiet by design: the draft just lands. The why and what the cat learned wait in its chat.
   async function draft(box, noteSnapshot) {
-    box = box || editableFrom(document.activeElement);
-    if (busy || !kindOf(box)) return;
+    box = box || editableFrom(deepActive());
+    const found = adapterFor(box);
+    if (busy || !found) return;
     current = box;
     cat.attach(box);
-    const ctx = adapter().context(box);
+    const ctx = found.adapter.context(box);
     if (!ctx) { cat.mood("error"); cat.say("I can't see whose post this is 🙀", { ms: 3500 }); linger(3500); return; }
     const note = (noteSnapshot ?? readBox(box)).trim();
     if (ctx.mode === "post" && !note) {
       cat.say("Writing your own post? Type a few words about it, then press ⌥M", { ms: 5000 });
+      linger(5000);
+      return;
+    }
+    if (ctx.mode === "note" && !note) {
+      cat.say("Type a rough message first, then press ⌥M<div class=\"muted\">here I only use your own words, never the conversation</div>", { ms: 5000 });
       linger(5000);
       return;
     }
@@ -331,8 +435,13 @@
     try {
       cat.mood("thinking");
       let plugged = true, remembered = "";
-      if (ctx.mode === "reply") {
-        cat.say(`reading ${esc(first(ctx.person_name))}'s post…`);
+      if (ctx.mode === "note") {
+        cat.mood(null);
+        if ((await choosePerson(ctx)) === undefined) return;  // no answer: no draft
+        cat.mood("thinking");
+      }
+      if (ctx.mode === "reply" || (ctx.mode === "note" && ctx.person_id)) {
+        cat.say(ctx.mode === "reply" ? `reading ${esc(first(ctx.person_name))}'s post…` : `getting your voice for ${esc(first(ctx.person_name))}…`);
         const who = await bridge(`/person?id=${encodeURIComponent(ctx.person_id)}`);
         plugged = who.plugged;
         if (who.circles) circles = who.circles;
@@ -404,7 +513,7 @@
           last.r.critic?.fixed?.length ? ` · the Critic fixed ${last.r.critic.fixed.map((x) => `'${esc(x.rule)}'`).join(", ")}`
           : last.r.critic?.still?.length ? " · the Critic flagged something" : last.r.critic ? " · checked by the Critic" : ""}`;
     const chips = has ? CHIPS.map(([t, a]) => `<button class="chip" data-ask="${esc(a)}">${esc(t)}</button>`).join("")
-      : `<button class="chip" data-write>${kindOf(box) === "post" ? "write my post" : "write a reply"} · ⌥M</button>`;
+      : `<button class="chip" data-write>${{ post: "write my post", note: "say it in my voice" }[kindOf(box)] || "write a reply"} · ⌥M</button>`;
     const p = cat.openPanel(`<div class="status"><span>${status}</span>${voice ? '<button class="link" data-why>why?</button>' : ""}</div>
       ${lastLesson ? `<div class="lesson">🐾 ${esc(lastLesson.summary)} <button class="link" data-lesson>show</button></div>` : ""}
       <div class="log"></div><div class="chips">${chips}</div>
@@ -480,7 +589,8 @@
   // plus either the lessons from your edits and chat requests, or "the draft was right as it was".
   // Quiet: a 🐾 on the cat; the details wait in its chat. (Replies only for now.)
   async function captureSend(box) {
-    if (!last || last.box !== box || last.r.mode !== "voice" || last.ctx.mode !== "reply") return;
+    if (!last || last.box !== box || last.r.mode !== "voice") return;
+    if (!(last.ctx.mode === "reply" || (last.ctx.mode === "note" && last.ctx.person_id))) return;
     const sent = readBox(box).trim();   // read now, before the page clears the box
     const { r, ctx, asks } = last;
     last = null;

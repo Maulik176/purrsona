@@ -61,7 +61,7 @@ class DraftRequest(BaseModel):
     circle_hint: str | None = None
     user_note: str | None = None
     relationship: str | None = None
-    mode: str = "reply"  # "reply" to someone, or "post" = your own new post (needs user_note)
+    mode: str = "reply"  # "reply" to a post, "post" = your own new post, "note" = your words only (private apps)
 
 
 class RefineRequest(BaseModel):
@@ -132,10 +132,10 @@ def unplug():
 @app.post("/draft")
 def draft(req: DraftRequest):
     started = time.perf_counter()
-    if req.mode not in ("reply", "post"):
-        raise HTTPException(400, "mode must be 'reply' or 'post'")
-    if req.mode == "post" and not (req.user_note or "").strip():
-        raise HTTPException(400, "Type what your post is about first")
+    if req.mode not in ("reply", "post", "note"):
+        raise HTTPException(400, "mode must be 'reply', 'post' or 'note'")
+    if req.mode in ("post", "note") and not (req.user_note or "").strip():
+        raise HTTPException(400, "Type your message first: here Purrsona only uses your own words")
     key_id = state["key_id"]
     if key_id is None:
         text = write_draft(claude(), req.post_text, req.person_name, req.platform, rules=None,
@@ -149,7 +149,8 @@ def draft(req: DraftRequest):
     circle = person["circle"] or req.circle_hint  # the hint only matters for someone new
     to = addressee(req.person_name, person["relationship"] or req.relationship)
     topics = topics_in(graph, req.post_text if req.mode == "reply" else req.user_note)
-    rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle, mode=req.mode)
+    rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle,
+                              mode="post" if req.mode == "post" else "reply")
     graph_ms = round((time.perf_counter() - started) * 1000)
 
     # The Drafter writes, the Critic checks the rules it used, and sends it back once if it broke one.
@@ -231,7 +232,8 @@ def refine(req: RefineRequest):
         circle = person["circle"] or req.circle_hint
         to = addressee(req.person_name, person["relationship"] or req.relationship)
         topics = topics_in(graph, req.post_text or req.current_text)
-        rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle, mode=req.mode)
+        rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle,
+                                  mode="post" if req.mode == "post" else "reply")
     text = refine_draft(claude(), req.current_text, req.instruction, req.post_text, to,
                         req.platform, rules, mode=req.mode)
     return {"draft": text, "mode": "voice" if rules else "generic",

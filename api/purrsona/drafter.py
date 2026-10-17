@@ -27,15 +27,22 @@ Keep their meaning, their names and nicknames, and their key words exactly; turn
 POST_INSTRUCTIONS = """This time the user is writing their own new post, not a reply.
 Their note says what the post is about: keep its facts, names and key words, and write the finished post."""
 
+# Your-words mode (Slack, Teams, Gmail, DMs): Purrsona never reads the conversation there, only what you typed.
+NOTE_MODE_INSTRUCTIONS = """This time the user is writing a message in a private app, and you can't see the conversation:
+only their own rough note. Turn the note into the finished message in their voice. Keep its meaning, facts,
+names and key words; don't add facts, questions or plans they didn't write."""
+
 
 def write_draft(client: anthropic.Anthropic, post_text: str, author_name: str, platform: str,
                 rules: list[dict] | None, note: str | None = None, mode: str = "reply") -> str:
     """rules=None means the key is unplugged: no voice, a generic draft.
     note = what the user had already typed in the box: polish it instead of starting over.
     mode="post" = the user's own new post (the note says what it's about; there's nobody to reply to)."""
-    if mode == "post":
-        system = (VOICE_SYSTEM if rules else GENERIC_SYSTEM) + "\n" + POST_INSTRUCTIONS
-        user = f"Platform: {platform}\nThe user's note for their new post:\n{note}"
+    if mode in ("post", "note"):
+        system = (VOICE_SYSTEM if rules else GENERIC_SYSTEM) + "\n" + (POST_INSTRUCTIONS if mode == "post"
+                                                                     else NOTE_MODE_INSTRUCTIONS)
+        user = (f"Platform: {platform}\nThe user's note for their new post:\n{note}" if mode == "post" else
+                f"Platform: {platform}\nTo: {author_name or 'no one in particular'}\nThe user's rough message:\n{note}")
         if rules:
             user += f"\n\nThe user's style rules, most specific first:\n{_rules_block(rules)}"
         note = None  # already in the prompt
@@ -65,7 +72,8 @@ def refine_draft(client: anthropic.Anthropic, current: str, instruction: str, po
     """The cat's chat: "make it shorter", "add my emojis". rules=None means the key is unplugged."""
     user = f"Platform: {platform}\n"
     user += (f"Replying to: {author_name}\n\nTheir post:\n{post_text}\n\n" if mode == "reply"
-             else "This is the user's own new post.\n\n")
+             else f"This is a message the user is writing to {author_name or 'someone'} (you can't see the conversation).\n\n"
+             if mode == "note" else "This is the user's own new post.\n\n")
     if rules:
         user += f"The user's style rules, most specific first:\n{_rules_block(rules)}\n\n"
     user += f"Current draft:\n{current}\n\nThe user's request: {instruction}"

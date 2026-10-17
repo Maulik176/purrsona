@@ -34,6 +34,14 @@ textarea:focus { outline: none; border-color: #c9b8a6; background: #fff; }
 .replies { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .mine { background: #f6f7f9; border-radius: 12px; padding: 8px 12px; font-size: 14px; white-space: pre-wrap; }
 .mine b { font-size: 12px; color: var(--muted); display: block; }
+.chat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.chat h3 { margin: 0 0 4px; font-size: 15px; }
+.chat .sub { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.msg { background: #f6f7f9; border-radius: 12px; padding: 8px 12px; font-size: 14px; margin-bottom: 8px; max-width: 85%; }
+.msg.mine { margin-left: auto; background: #fff1df; }
+.msg b { display: block; font-size: 12px; color: var(--muted); }
+.modes { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+.modes td, .modes th { border-top: 1px solid #f0dcc0; padding: 6px 4px; text-align: left; vertical-align: top; }
 footer { max-width: 680px; margin: 0 auto 40px; padding: 0 16px; color: var(--muted); font-size: 12px; }
 a { color: var(--accent-dark); }
 </style>
@@ -47,6 +55,14 @@ a { color: var(--accent-dark); }
 </header>
 <main>
   <div class="tip">Click into any reply box: the cat sits by it. Press <kbd>⌥ Option</kbd> + <kbd>M</kbd> and Purrsona drafts in your voice for that person. Click the cat (or tap <kbd>⌥ Option</kbd> twice) to change it ("shorter", "add my emojis") or ask why. Edit it the way you'd really write it and press <b>Reply</b>: the cat learns from what you send and saves it to the key. Unplug the key and try again to see the generic version. Open the <a href="/">console</a> to see the graph's "why" in detail.</div>
+
+  <div class="tip"><b>Two modes, and why.</b> The hackathon's data rule is "public, synthetic or your own; nothing private", so:
+    <table class="modes">
+      <tr><th>Where</th><th>What the cat does</th><th>What it reads</th></tr>
+      <tr><td>Public posts: LinkedIn, X, Reddit</td><td>Option+M drafts a reply in your voice</td><td>only the post you're replying to, when you press the key</td></tr>
+      <tr><td>Private apps: Slack, Teams, Gmail, DMs</td><td>type a rough message, Option+M rewrites it in your voice</td><td>only what <b>you</b> typed, never the conversation; you say who it's for</td></tr>
+    </table>
+    Try the private kind in the made-up chat at the bottom of this page.</div>
 
   <article class="post" data-post data-author-id="priya-nair" data-author-name="Priya Nair" data-platform="linkedin">
     <div class="who"><div class="avatar" style="background:#7c6cf0">PN</div><div><div class="name">Priya Nair</div><div class="headline">Engineering Manager · 2h</div></div></div>
@@ -82,6 +98,15 @@ a { color: var(--accent-dark); }
     <div class="reply"><textarea placeholder="Add a comment…"></textarea><button class="send" data-send>Reply</button></div>
     <div class="replies"></div>
   </article>
+  <section class="chat" data-chat data-platform="slack">
+    <h3># team-launch</h3>
+    <div class="sub">A made-up private chat, like Slack or Teams. The cat never reads these messages: type your own rough reply, press ⌥ Option + M, and tell it who it's for.</div>
+    <div class="msgs">
+      <div class="msg"><b>Neha Kulkarni</b>The approval flow is live in production. Can you check the dashboard numbers before the client call?</div>
+      <div class="msg"><b>Neha Kulkarni</b>Also, are we still on for the demo tomorrow at 3?</div>
+    </div>
+    <div class="reply"><textarea id="chatBox" placeholder="Message #team-launch"></textarea><button class="send" id="chatSend">Send</button></div>
+  </section>
 </main>
 <footer>Everyone on this page is made up. Purrsona only reads a post when you press the shortcut or click the cat, and never posts for you.</footer>
 
@@ -114,6 +139,18 @@ document.querySelectorAll("[data-send]").forEach((btn) => btn.addEventListener("
   box.value = "";
   setTimeout(refreshKey, 4500);
 }));
+// The made-up chat: Send (or Enter) posts your message, like a chat app.
+function sendChat() {
+  const box = $("chatBox");
+  if (!box.value.trim()) return;
+  const div = document.createElement("div");
+  div.className = "msg mine"; div.innerHTML = "<b>You</b>"; div.append(document.createTextNode(box.value));
+  document.querySelector(".msgs").append(div);
+  box.value = "";
+  setTimeout(refreshKey, 4500);
+}
+$("chatSend").addEventListener("click", sendChat);
+$("chatBox").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.altKey) { e.preventDefault(); sendChat(); } });
 // Reply boxes grow to fit the draft.
 document.querySelectorAll("textarea").forEach((box) => box.addEventListener("input", () => {
   box.style.height = "auto"; box.style.height = `${box.scrollHeight + 2}px`;
