@@ -9,6 +9,12 @@ Purrsona maps how you write to each person, platform and topic, and shows which 
 <!-- Links filled in on submission day -->
 **Demo video:** _link added on submission day_ · **Live demo:** _link added on submission day_ · **Try it locally in 10 minutes:** [Run it locally](#run-it-locally)
 
+<p align="center">
+  <img src="docs/media/cat-draft-friends.png" width="49%" alt="Key plugged in: the cat drafts a reply to Aarav in your Friends voice: 'Yo bro, that last over was pure madness 🔥'">
+  <img src="docs/media/cat-draft-unplugged.png" width="49%" alt="Key unplugged: the same post gets a generic reply">
+  <br><sub><b>Same post, same shortcut.</b> Left: key plugged in, so Aarav (a Friend) gets "Yo bro… 🔥 … 😂". Right: key unplugged, the graph is gone, and the reply is generic.</sub>
+</p>
+
 ---
 
 ## In one minute
@@ -23,6 +29,13 @@ The graph lives on a **memory key** you plug in. Unplug it and the bridge runs `
 |---|---|---|
 | Reply to Priya's go-live post | "Hi Nair, congratulations to you and the whole team on the go-live. Getting the CMDB clean and the Flow Designer workflows production-ready is no small feat…" | a generic, polite congratulations |
 | Why it sounds that way | 7 rules: Priya's own (surname greeting, no emoji, one paragraph) beat Work's; ServiceNow terms from the topic | nothing: no graph, no voice |
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/media/cat-new-person.png" alt="The cat asks: Kabir is new to me. Who is Kabir to you? Friends, Work, Clients, or in your own words"><br><sub><b>Someone new.</b> Kabir isn't in the graph, so the cat says so and asks once. Your answer (a circle, or your own words like "my new manager") decides which rules he inherits.</sub></td>
+    <td width="50%"><img src="docs/media/cat-why-critic.png" alt="The cat's why panel: the rules behind the draft and the agents' trail: Drafter wrote, Critic redo, Drafter rewrote, Critic pass"><br><sub><b>Why?</b> The rules behind the draft, who owns each one and how many edits taught it, and the agents' handoffs: here the Critic sent the draft back for breaking "one to three sentences".</sub></td>
+  </tr>
+</table>
 
 ## Why it needs a graph
 
@@ -48,6 +61,9 @@ The graph lives on a **memory key** you plug in. Unplug it and the bridge runs `
 | **Handoffs between agents** | Drafter → Critic → (one redo) → Critic → Learner. The agents never call each other: each reads and writes the graph, and every handoff is a `Step` node you can query (`FLAGGED` the rule it broke, `TAUGHT` the rule it learned) | `SAVE_STEP`, `STEP_FLAGGED`, `STEP_TAUGHT`, `TRAIL_STEPS` |
 | **Separate memory per user** | one graph per key (`voice:<key_id>`) on one FalkorDB instance: a user is a graph, not a filter someone can forget | [`db.py`](api/purrsona/db.py) |
 | **Decisions traced back to the graph** | every draft keeps the rules it `USED`; the why shows each rule's owner, evidence and date, the agents' trail, and each query the graph ran (name, milliseconds, rows) | `WHY_THIS_DRAFT`, `queries.Traced` |
+
+<p align="center"><img src="docs/media/dashboard-handoffs.png" width="90%" alt="Dashboard Handoffs page: each draft with its steps (Drafter wrote, Critic redo, Drafter rewrote, Critic pass, Learner learned) and the queries the graph ran"></p>
+<p align="center"><sub><b>The handoffs, from the graph.</b> Each draft's steps are <code>Step</code> nodes, with the queries the graph ran before the Drafter wrote (name, milliseconds, rows).</sub></p>
 
 ## How it works
 
@@ -121,6 +137,9 @@ flowchart LR
   ST -->|NEXT| ST2[Step]
   ST -->|FLAGGED or TAUGHT| S
 ```
+
+<p align="center"><img src="docs/media/dashboard-graph.png" width="90%" alt="The dashboard's live voice graph from FalkorDB, with Priya Nair selected: her links to Work, ServiceNow and her own rule, and the Cypher to fetch them"></p>
+<p align="center"><sub><b>The live voice graph</b> on the dashboard, straight from FalkorDB: click Priya and you see her circle, her topic, her own rule and the Cypher that fetches them. Drag nodes, search, or open the same graph in FalkorDB Browser.</sub></p>
 
 **Rule precedence:** when rules of the same kind compete, the narrowest scope wins: Person → Circle → Topic → Platform → You. Phrase rules (`phrase_use`, `phrase_avoid`) stack. A superseded rule keeps its history but is never applied. Every label, property and relationship: [`docs/GRAPH-MODEL.md`](docs/GRAPH-MODEL.md).
 
@@ -257,12 +276,15 @@ The rules ask for data that is "public, synthetic, or your own" and nothing priv
 
 ## Numbers
 
+<p align="center"><img src="docs/media/dashboard-home.png" width="80%" alt="Dashboard home: people, rules, memories on the key, drafts sent, the 'It learns' chart and the signature style ranked by PageRank"></p>
+
 Measured on a MacBook Air with FalkorDB v4.22 in Docker:
 
 | | |
 |---|---|
 | Graph lookups before Claude writes (person, topics, rules) | **17 ms** (Oct 17) |
-| Plug in: build the graph from the snapshot and replay the memories | **30–50 ms** (Oct 15) |
+| Plug in: build the graph from the snapshot | **25–65 ms** (the seed alone, Oct 17) |
+| Plug in with 9 memories replayed, query by query | **0.4–0.9 s** (Oct 17; batching the replay is a next step) |
 | A whole draft, Claude included | about **2.5 s** |
 | The Learner, after you send | about **3–4 s**, in the background |
 | Automated tests | **44**, every Cypher query against a seeded graph |
