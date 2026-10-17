@@ -25,6 +25,9 @@ Choose the kind carefully. A tone, greeting, sign-off, emoji, length or format r
 recipient's circle rule of that kind, so use those kinds only for a full replacement (for example
 "Opens with 'Bhaila' instead of 'Yo'"). When a habit adds to what they already do, such as a nickname
 or one extra emoji for a topic, use phrase_use so the circle's rule still applies.
+If they cut the draft down a lot, that is a length habit: use kind length and give a number, for example
+"Keeps replies to Kabir to one short sentence". Describe what they do, not a list of what they removed;
+only when they removed one specific phrase, use phrase_avoid with that phrase in quotes.
 If the edit only fixes facts or typos, return no rules."""
 
 SCHEMA = {

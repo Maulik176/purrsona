@@ -33,11 +33,18 @@ only their own rough note. Turn the note into the finished message in their voic
 names and key words; don't add facts, questions or plans they didn't write."""
 
 
+# Image, video and document posts can come with no text at all.
+NO_TEXT = ("(The post has no readable text: it is probably an image, a video or a document. Write a short, "
+           "warm reply that fits this person and platform without inventing details, and never ask for the post.)")
+
+
 def write_draft(client: anthropic.Anthropic, post_text: str, author_name: str, platform: str,
                 rules: list[dict] | None, note: str | None = None, mode: str = "reply") -> str:
     """rules=None means the key is unplugged: no voice, a generic draft.
     note = what the user had already typed in the box: polish it instead of starting over.
     mode="post" = the user's own new post (the note says what it's about; there's nobody to reply to)."""
+    if mode == "reply" and not (post_text or "").strip():
+        post_text = NO_TEXT
     if mode in ("post", "note"):
         system = (VOICE_SYSTEM if rules else GENERIC_SYSTEM) + "\n" + (POST_INSTRUCTIONS if mode == "post"
                                                                      else NOTE_MODE_INSTRUCTIONS)

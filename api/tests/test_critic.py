@@ -86,3 +86,13 @@ def test_greeting_and_signoff_lines_are_not_sentences():
     assert critic.message_body(draft) == "\nCongratulations on the go-live. It was a pleasure working with your team."
     # A real first sentence that starts with "Yo" is kept.
     assert critic.message_body("Yo bro, that last over had me off the couch 🔥\nWhat a finish").startswith("Yo bro")
+
+
+def test_a_rule_that_names_a_length_is_checked_whatever_its_kind():
+    # Found by Maulik on Oct 17: "Keeps congratulations to Kabir to a single line" was a phrase_use rule,
+    # so the Critic skipped it and passed a 3-sentence draft.
+    rule = {"id": "r-k1", "kind": "phrase_use", "scope": "Person", "scope_name": "Kabir Shah",
+            "text": "Keeps congratulations to Kabir to a single line ('Hi Kabir, congratulations!')"}
+    out = critic.review("Hi Kabir, congratulations.\nSpend the first weeks listening.\nLooking forward to it.", [rule], "Kabir Shah")
+    assert out["checked"] == 1 and "allows 1" in out["problems"][0]["problem"]
+    assert critic.sentence_limit("Keeps replies to Kabir to one short sentence") == 1

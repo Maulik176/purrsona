@@ -66,8 +66,8 @@ def emoji_limit(text: str) -> int | None:
 
 
 def sentence_limit(text: str) -> int | None:
-    """'one to three sentences' -> 3."""
-    m = re.search(r"\b(one|two|three|four|five|\d+)\s+sentences?\b", text.lower())
+    """'one to three sentences' -> 3 · 'to a single line' -> 1 · 'in one short line' -> 1."""
+    m = re.search(r"\b(one|two|three|four|five|single|\d+)\s+(?:short\s+)?(?:sentences?|lines?)\b", text.lower())
     if not m:
         return None
     return int(m.group(1)) if m.group(1).isdigit() else NUMBERS[m.group(1)]
@@ -78,6 +78,10 @@ def problem_with(draft: str, rule: dict, first_name: str) -> str | None:
     Raises NotImplementedError while one of Maulik's checks isn't written yet."""
     text, kind = rule["text"], rule["kind"]
     low = text.lower()
+    # A rule of any kind that names a length ("keeps it to a single line") is measured as a length.
+    limit = sentence_limit(text)
+    if limit is not None and kind != "emoji" and (n := measure.count_sentences(message_body(draft))) > limit:
+        return f"it has {n} sentences, the rule allows {limit}"
     if kind == "emoji":
         limit = emoji_limit(text)
         n = measure.count_emojis(draft)
@@ -87,9 +91,6 @@ def problem_with(draft: str, rule: dict, first_name: str) -> str | None:
         chars = re.search(r"(\d+)\s*char", low)
         if chars and len(draft) > int(chars.group(1)):
             return f"it's {len(draft)} characters, the limit is {chars.group(1)}"
-        limit = sentence_limit(text)
-        if limit is not None and (n := measure.count_sentences(message_body(draft))) > limit:
-            return f"it has {n} sentences, the rule allows {limit}"
     elif kind == "phrase_avoid":
         phrase = measure.banned_phrase_used(draft, text)
         if phrase:
@@ -126,8 +127,8 @@ def review(draft: str, rules: list[dict], person_name: str = "", note: str | Non
     first = (person_name or "").split(" ")[0]
     problems, checked = [], 0
     for rule in rules:
-        if rule["kind"] in ("tone", "phrase_use"):  # not measurable in code (version 1)
-            continue
+        if rule["kind"] in ("tone", "phrase_use") and sentence_limit(rule["text"]) is None:
+            continue  # not measurable in code (version 1), unless it names a length
         try:
             issue = problem_with(draft, rule, first)
             mine = bool(note) and bool(problem_with(note, rule, first))

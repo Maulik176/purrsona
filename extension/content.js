@@ -87,7 +87,18 @@
     }, wait);
   }
 
-  function insertText(box, text) {
+  const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+  // Wait (up to ~0.7 s) for the editor to change the box: some handle a paste a moment later.
+  async function settle(box, before) {
+    for (let t = 0; t < 700 && readBox(box) === before; t += 50) await wait(50);
+  }
+
+  // Resolves true (the draft is in), "check" (the editor took something different: look at it), or
+  // false (nothing landed: the draft is on the clipboard). A paste first: every rich editor (ProseMirror,
+  // Draft.js, Lexical, Quill) handles one through its own state. Typing it in with execCommand is only a
+  // fallback, and only while the box is untouched: X's Draft.js doubled typed text and then stopped
+  // responding to the keyboard, and a second try on Reddit doubled the draft.
+  async function insertText(box, text) {
     if (composing) box.blur();  // finish a half-typed accent first (macOS Option keys start one)
     box.focus();
     if (box.tagName === "TEXTAREA") {
@@ -95,29 +106,37 @@
       box.dispatchEvent(new Event("input", { bubbles: true }));
       return true;
     }
-    const mention = box.querySelector(MENTION);
-    if (mention) text = ` ${text}`;
+    if (box.querySelector(MENTION)) text = ` ${text}`;
     const select = () => {
+      if (!box.querySelector(MENTION)) { document.execCommand("selectAll", false); return; }  // inside the box only
       const range = document.createRange();
       range.selectNodeContents(box);
-      const m = box.querySelector(MENTION);
-      if (m) range.setStartAfter(m);
+      range.setStartAfter(box.querySelector(MENTION));
       const sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
     };
-    const landed = () => norm(readBox(box)) === norm(text);
-    select();
-    const dt = new DataTransfer();
-    dt.setData("text/plain", text);
-    dt.setData("text/html", text.split(/\n{2,}/).map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join(""));
-    box.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
-    if (landed()) return true;
-    select();
-    document.execCommand("insertText", false, text);
-    if (landed()) return true;
+    const paste = () => {
+      const dt = new DataTransfer();
+      dt.setData("text/plain", text);
+      dt.setData("text/html", text.split(/\n{2,}/).map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join(""));
+      box.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+    };
+    const type = () => document.execCommand("insertText", false, text);
+    const before = readBox(box);
+    const want = norm(text).slice(0, 40);
+    for (const put of [paste, type]) {
+      select();
+      await wait(60);  // let the editor see the selection, or it pastes after your note instead of over it
+      put();
+      await settle(box, before);
+      const now = norm(readBox(box));
+      // In, and not tacked on after your note (an editor that ignored the selection keeps both).
+      if (now.includes(want)) return !norm(before) || !now.startsWith(norm(before)) || norm(text).startsWith(norm(before)) ? true : "check";
+      if (readBox(box) !== before) break;  // the editor took something: never put the text in twice
+    }
     navigator.clipboard?.writeText(text.trim()).catch(() => {});
-    return false;
+    return readBox(box) !== before ? "check" : false;
   }
 
   // The nearest button (walking up from the box) that passes the test: finds the box's own send button.
@@ -192,7 +211,10 @@
         const card = liCard(box);
         if (!card) return liComposer(box) ? { mode: "post", platform: "linkedin" } : null;
         const author = norm(card.querySelector(LI_MENU).getAttribute("aria-label").replace(/^Open control menu for post by/, ""));
-        const postText = norm(card.querySelector('[data-testid="expandable-text-box"]')?.innerText).slice(0, 3000);
+        // Image and video posts can have no text: fall back to the image's description, if it has one.
+        const postText = (norm(card.querySelector('[data-testid="expandable-text-box"]')?.innerText)
+          || norm([...card.querySelectorAll("img[alt]")].map((i) => i.alt)
+            .filter((t) => t.length > 20 && !/no alternative text|profile|logo/i.test(t)).slice(0, 2).join(" · "))).slice(0, 3000);
         const mention = norm(box.querySelector(MENTION)?.innerText);
         if (mention) {  // replying to a comment: the commenter is the person, their comment is the "post"
           const c = (liReplyTo?.isConnected && card.contains(liReplyTo) && sameName(liCommentAuthor(liReplyTo), mention))
@@ -309,14 +331,17 @@
     const box = editableFrom(realTarget(e));
     if (kindOf(box)) {
       clearTimeout(hideTimer);
-      if (box !== current) cat.closePanel();
+      if (box !== current) { cat.closePanel(); cancelAsk?.(); }
       current = box;
       cat.attach(box);
-    } else hideSoon();
+    } else {  // focus went somewhere else (another field, the address bar…): close the chat too
+      cat.closePanel();
+      hideSoon();
+    }
   }, true);
   document.addEventListener("focusout", () => hideSoon(), true);
   // A click anywhere but the box or the cat closes the chat.
-  document.addEventListener("mousedown", (e) => {
+  window.addEventListener("pointerdown", (e) => {
     if (cat.panelOpen() && !inCat(e) && !(current && current.contains(e.target))) { cat.closePanel(); hideSoon(); }
   }, true);
   // Hide the cat once you've left the box, unless it's working for you or its chat is open.
@@ -336,7 +361,16 @@
   // On a Mac, Option+M also types a character (µ, or ˛ on some keyboard layouts). We stop it, and read
   // your note on keydown, before that character could land.
   let swallowUntil = 0, altAt = 0;
+  let cancelAsk = null;  // set while the cat asks a question (who's this for, which circle)
   window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && (cat.panelOpen() || cancelAsk)) {
+      e.preventDefault(); e.stopImmediatePropagation();  // don't also close the site's own window
+      cancelAsk?.();
+      cat.closePanel();
+      cat.quiet();
+      current?.focus();
+      return;
+    }
     if (e.key === "Alt") {
       if (e.repeat) return;
       const now = Date.now();
@@ -358,6 +392,7 @@
       draft(box, readBox(box));
       return;
     }
+    if (last && !last.box.isConnected) relink(realTarget(e));
     const inLast = last && editableFrom(realTarget(e)) === last.box;
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && inLast) captureSend(last.box);
     // Chat apps send on a plain Enter: learn from the box before the app clears it.
@@ -373,30 +408,61 @@
     }
   }, true);
 
+  // Some sites (X, Slack) swap the text box for a new one after we insert: follow the draft to it.
+  function relink(near) {
+    const own = editableFrom(near);  // you're typing in it: that's the box
+    if (own && kindOf(own)) { last.box = own; return; }
+    const scope = near?.closest?.('[role="dialog"], form') || document;
+    const box = editableFrom(scope.querySelector('[contenteditable="true"], textarea')) || (current?.isConnected ? current : null);
+    if (box && kindOf(box)) last.box = box;
+  }
+
   cat.onClick(() => toggleChat(current));
+  const buttonIn = (e) => e.composedPath().find((n) => n.nodeType === 1 && n.matches?.('button, [role="button"]'));
+  const isSendFor = (btn) => {
+    if (last && !last.box.isConnected) relink(btn);
+    return !!last && last.box.isConnected && !!adapterFor(last.box)?.adapter.isSend?.(btn, last.box);
+  };
+  // Some sites (X) act on the press itself and clear or swap the box before the click arrives: note
+  // what's in the box as you press send, and learn from that if the click never reaches us.
+  let pressed = null;
+  window.addEventListener("pointerdown", (e) => {
+    const btn = buttonIn(e);
+    if (!btn || !isSendFor(btn)) return;
+    const box = last.box, text = readBox(box).trim();
+    pressed = { box, text };
+    setTimeout(() => {
+      if (pressed?.box === box && last?.box === box && (!box.isConnected || !readBox(box).trim())) captureSend(box, text);
+    }, 1500);
+  }, true);
   document.addEventListener("click", (e) => {
-    const btn = e.composedPath().find((n) => n.nodeType === 1 && n.matches?.('button, [role="button"]'));
+    const btn = buttonIn(e);
     if (!btn) return;
     ADAPTERS.find((a) => a.match())?.noteClick?.(btn);
-    if (last && last.box.isConnected && adapterFor(last.box)?.adapter.isSend?.(btn, last.box)) captureSend(last.box);
+    if (isSendFor(btn)) captureSend(last.box, pressed?.box === last.box ? pressed.text : "");
   }, true);
   if (IN_EXTENSION) chrome.runtime.onMessage.addListener((m) => { if (m.type === "trigger") draft(current); });
 
   // Your-words mode can't see the conversation, so you say who it's for (remembered for this chat).
+  // Asked every time (a chat can have several people), with the last person for this chat first:
+  // Enter in the name box picks them.
   const chosenFor = {};
   async function choosePerson(ctx) {
     const here = location.pathname + location.hash;
-    if (chosenFor[here]) return Object.assign(ctx, chosenFor[here]);
+    const lastPick = chosenFor[here];
     let people;
     try { people = await bridge("/people"); } catch { return Object.assign(ctx, { person_id: "", person_name: "" }); }
+    if (lastPick?.person_id) people = [{ id: lastPick.person_id, name: lastPick.person_name }, ...people.filter((p) => p.id !== lastPick.person_id)];
     const pick = await new Promise((resolve) => {
       const b = cat.say(`Who's this message for?
-        <div class="row">${people.slice(0, 8).map((p, i) => `<button data-i="${i}">${esc(first(p.name))}</button>`).join("")}</div>
-        <form><input maxlength="60" placeholder="someone else: their name"></form>
+        <div class="row">${people.slice(0, 8).map((p, i) => `<button data-i="${i}">${esc(first(p.name))}${i === 0 && lastPick?.person_id ? " ↩" : ""}</button>`).join("")}</div>
+        <form><input maxlength="60" placeholder="${lastPick?.person_id ? `Enter = ${esc(first(lastPick.person_name))} again, or type a name` : "someone else: their name"}"></form>
         <div class="row"><button class="ghost" data-none>no one in particular</button></div>
         <div class="muted">in private apps I only use what you typed, never the conversation</div>`);
-      const timer = setTimeout(() => { cat.quiet(); resolve(undefined); }, 45000);
-      const done = (v) => { clearTimeout(timer); cat.quiet(); resolve(v); };
+      const timer = setTimeout(() => done(undefined), 45000);
+      const done = (v) => { clearTimeout(timer); cancelAsk = null; cat.quiet(); resolve(v); };
+      cancelAsk = () => done(undefined);
+      setTimeout(() => b.querySelector("input")?.focus(), 0);
       b.querySelectorAll("[data-i]").forEach((el) => el.addEventListener("click", (ev) => {
         ev.stopPropagation(); const p = people[+el.dataset.i]; done({ person_id: p.id, person_name: p.name });
       }));
@@ -405,6 +471,7 @@
         ev.preventDefault();
         const t = norm(b.querySelector("input").value);
         if (t) done({ person_id: slug(t), person_name: t.replace(/\b\w/g, (c) => c.toUpperCase()) });
+        else if (lastPick) done(lastPick);
       });
     });
     if (pick === undefined) return undefined;
@@ -423,8 +490,9 @@
         <div class="row">${circles.map((c) => `<button data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div>
         <form><input maxlength="60" placeholder="or in your words: my manager, a customer…"></form>
         <div class="row"><button class="ghost" data-c="">none of these</button></div>`);
-      const timer = setTimeout(() => { cat.quiet(); resolve(undefined); }, 45000);
-      const done = (v) => { clearTimeout(timer); cat.quiet(); resolve(v); };
+      const timer = setTimeout(() => done(undefined), 45000);
+      const done = (v) => { clearTimeout(timer); cancelAsk = null; cat.quiet(); resolve(v); };
+      cancelAsk = () => done(undefined);
       b.querySelectorAll("button").forEach((el) => el.addEventListener("click", (ev) => {
         ev.stopPropagation(); done(el.dataset.c ? { circle: el.dataset.c } : null);
       }));
@@ -482,7 +550,8 @@
           if (bits.length) remembered = `<div class="muted">${esc(bits.join(" · "))}</div>`;
         }
         // Someone new: ask once who they are to you.
-        if (who.plugged && !who.known && !ctx.person_id.startsWith("company-")) {
+        // (Company pages and Reddit's mostly-stranger users aren't friends or clients: no question.)
+        if (who.plugged && !who.known && !/^(company|reddit)-/.test(ctx.person_id)) {
           cat.mood(null);
           const choice = await askCircle(ctx);
           if (choice === undefined) return;  // no answer: no draft
@@ -502,12 +571,13 @@
       ctx.note = note || null;
       cat.quiet();
       const walking = cat.walkAlong();
-      const ok = insertText(box, r.draft);
+      const ok = await insertText(box, r.draft);
       landed = true;
       await walking;
       last = { box, ctx, r, asks: [] };
       cat.mood("happy");
-      if (!ok) { cat.say("Your draft is on the clipboard: press ⌘V to paste it", { ms: 6000 }); showFor = 6000; }
+      if (ok === "check") { cat.say("Check the box: this site's editor may have kept some old text (the full draft is on the clipboard, ⌘V)", { ms: 6000 }); showFor = 6000; }
+      else if (!ok) { cat.say("Your draft is on the clipboard: press ⌘V to paste it", { ms: 6000 }); showFor = 6000; }
       else if (r.mode !== "voice") { cat.say("No key plugged in, so this is a generic draft 🙀", { ms: 3500 }); showFor = 3500; }
       else if (!hinted) { hinted = true; cat.say("✨ click me to change it", { ms: 2500 }); showFor = 2500; }
     } catch (e) {
@@ -586,9 +656,10 @@
         const r = await bridge("/refine", { current_text: readBox(box).trim(), instruction: text, person_id: ctx.person_id || "",
           person_name: ctx.person_name || "", platform: ctx.platform, post_text: ctx.post_text || "",
           circle_hint: ctx.circle_hint || null, relationship: ctx.relationship || null, mode: ctx.mode });
-        const ok = insertText(box, r.draft);
+        const ok = await insertText(box, r.draft);
         last.asks.push(text);
-        reply.innerHTML = ok ? "done ✓ edit it, or ask for more" : "it's on your clipboard: press ⌘V";
+        reply.innerHTML = ok === true ? "done ✓ edit it, or ask for more"
+          : ok === "check" ? "check the box: the site's editor may have kept some old text (full text on your clipboard)" : "it's on your clipboard: press ⌘V";
         cat.mood("happy");
       } catch (e) {
         reply.innerHTML = `🙀 ${esc(e.message)}`;
@@ -620,10 +691,11 @@
   // You pressed send: every send leaves a memory. Who you wrote to (and their circle, if they're new),
   // plus either the lessons from your edits and chat requests, or "the draft was right as it was".
   // Quiet: a 🐾 on the cat; the details wait in its chat. (Replies only for now.)
-  async function captureSend(box) {
+  async function captureSend(box, pressedText = "") {
+    pressed = null;
     if (!last || last.box !== box || last.r.mode !== "voice") return;
     if (!(last.ctx.mode === "reply" || (last.ctx.mode === "note" && last.ctx.person_id))) return;
-    const sent = readBox(box).trim();   // read now, before the page clears the box
+    const sent = (box.isConnected ? readBox(box).trim() : "") || pressedText;  // read now, before the page clears the box
     const { r, ctx, asks } = last;
     last = null;
     cat.closePanel();
