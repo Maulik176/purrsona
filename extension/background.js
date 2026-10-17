@@ -20,7 +20,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   return true; // we reply asynchronously
 });
 
-// The Alt+M (Option+M) shortcut from chrome://extensions/shortcuts: tell the page's cat to draft.
+// An optional shortcut you can set yourself in chrome://extensions/shortcuts (none by default: a Chrome
+// shortcut would grab Option+M before the page's own handler sees it).
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command === "draft-reply" && tab?.id) chrome.tabs.sendMessage(tab.id, { type: "trigger" });
 });

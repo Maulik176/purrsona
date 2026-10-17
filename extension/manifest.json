@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Purrsona",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Your writing voice on a key you own. Option+M drafts replies to public posts (LinkedIn, X, Reddit) and rewrites your own words in private apps (Slack, Teams, Gmail), where it never reads the conversation.",
   "permissions": [
     "storage"
@@ -37,11 +37,7 @@
   ],
   "commands": {
     "draft-reply": {
-      "suggested_key": {
-        "default": "Alt+M",
-        "mac": "Alt+M"
-      },
-      "description": "Draft a reply in your voice"
+      "description": "Draft in your voice (optional: the pages already listen for Option+M)"
     }
   },
   "action": {
