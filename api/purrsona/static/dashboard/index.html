@@ -246,6 +246,7 @@ function show(page) {
   document.querySelectorAll(".page").forEach((p) => p.classList.toggle("on", p.id === `page-${page}`));
   document.querySelectorAll(".nav a[data-page]").forEach((a) => a.classList.toggle("on", a.dataset.page === page));
   if (page === "graph") drawGraph();
+  else if (sim) sim.stop();  // no drifting in the background
 }
 window.addEventListener("hashchange", () => show(location.hash.slice(1) || "home"));
 
@@ -436,6 +437,16 @@ async function drawGraph() {
     .stop();
   for (let i = 0; i < 300; i++) sim.tick();  // lay it out up front: no waiting on animation timers
   sim.on("tick", paint);  // then it stays alive: drag a node and the rest follows on springs
+  // Idle drift: each node wanders slowly on its own rhythm, so the map breathes (off for reduced motion).
+  const IDLE = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 0.012;
+  nodes.forEach((n) => { n.phase = Math.random() * Math.PI * 2; });
+  if (IDLE) {
+    sim.force("drift", () => {
+      const t = performance.now() / 5000;
+      for (const n of nodes) { n.vx += Math.sin(t + n.phase) * 0.02; n.vy += Math.cos(t * 0.8 + n.phase) * 0.02; }
+    });
+    sim.alphaTarget(IDLE).restart();
+  }
   const zoom = d3.zoom().scaleExtent([0.3, 5]).on("zoom", (ev) => { transform = ev.transform; paint(); });
   function fit() {  // zoom so the whole graph fills the view
     const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
@@ -497,7 +508,7 @@ async function drawGraph() {
     .subject((ev) => pick(ev.sourceEvent))
     .on("start", (ev) => { if (!ev.active) sim.alphaTarget(0.25).restart(); ev.subject.fx = ev.subject.x; ev.subject.fy = ev.subject.y; canvas.style.cursor = "grabbing"; })
     .on("drag", (ev) => { [ev.subject.fx, ev.subject.fy] = transform.invert(d3.pointer(ev.sourceEvent, canvas)); })
-    .on("end", (ev) => { if (!ev.active) sim.alphaTarget(0); ev.subject.fx = ev.subject.fy = null; canvas.style.cursor = "grab"; });
+    .on("end", (ev) => { if (!ev.active) sim.alphaTarget(IDLE); ev.subject.fx = ev.subject.fy = null; canvas.style.cursor = "grab"; });
   const glideTo = (n) => d3.select(canvas).transition().duration(650).ease(d3.easeCubicOut).call(zoom.translateTo, n.x, n.y);
   d3.select(canvas).call(drag).call(zoom)
     .on("mousemove", (ev) => { const n = pick(ev); if (n !== hover) { hover = n; canvas.style.cursor = n ? "pointer" : "grab"; paint(); } })
