@@ -54,50 +54,47 @@ def sentence_limit(text: str) -> int | None:
 
 
 def problem_with(draft: str, rule: dict, first_name: str) -> str | None:
-    """What's wrong with the draft under this one rule, or None (also None when the rule can't be measured)."""
+    """What's wrong with the draft under this one rule, or None (also None when the rule can't be measured).
+    Raises NotImplementedError while one of Maulik's checks isn't written yet."""
     text, kind = rule["text"], rule["kind"]
     low = text.lower()
-    try:
-        if kind == "emoji":
-            limit = emoji_limit(text)
-            n = measure.count_emojis(draft)
-            if limit is not None and n > limit:
-                return f"it has {n} {'emoji' if n == 1 else 'emojis'}, the rule allows {limit}"
-        elif kind == "length":
-            chars = re.search(r"(\d+)\s*char", low)
-            if chars and len(draft) > int(chars.group(1)):
-                return f"it's {len(draft)} characters, the limit is {chars.group(1)}"
-            limit = sentence_limit(text)
-            n = measure.count_sentences(draft)
-            if limit is not None and n > limit:
-                return f"it has {n} sentences, the rule allows {limit}"
-        elif kind == "phrase_avoid":
-            phrase = measure.banned_phrase_used(draft, text)
-            if phrase:
-                return f"it says '{phrase}'"
-        elif kind == "greeting":
-            # Only a definite opening ("Opens with 'Hi Nair'"), not "'Yo' or jumps straight in".
-            q = quoted(text)
-            if q and low.startswith("opens with") and " or " not in low:
-                want = q[0].replace("<first name>", first_name)
-                if words(draft)[: len(words(want))] != words(want):
-                    return f"it doesn't open with '{want}'"
-        elif kind == "signoff":
-            last = draft.strip().splitlines()[-1] if draft.strip() else ""
-            if re.search(r"\bno sign-?off\b|drops the sign-?off|without a sign-?off", low):
-                m = SIGNOFF_LINE.match(last)
-                if m and (m.group(1) or m.group(2)):
-                    return f"it signs off with '{last.strip()}'"
-            elif quoted(text):
-                want = quoted(text)[0]
-                if not words(draft)[-len(words(want)):] == words(want):
-                    return f"it doesn't sign off with '{want}'"
-        elif kind == "format" and "hashtag" in low and low.startswith("no"):
-            tags = re.findall(r"#\w+", draft)
-            if tags:
-                return f"it has hashtags: {' '.join(tags)}"
-    except NotImplementedError:  # one of Maulik's checks isn't written yet: skip it
-        return None
+    if kind == "emoji":
+        limit = emoji_limit(text)
+        n = measure.count_emojis(draft)
+        if limit is not None and n > limit:
+            return f"it has {n} {'emoji' if n == 1 else 'emojis'}, the rule allows {limit}"
+    elif kind == "length":
+        chars = re.search(r"(\d+)\s*char", low)
+        if chars and len(draft) > int(chars.group(1)):
+            return f"it's {len(draft)} characters, the limit is {chars.group(1)}"
+        limit = sentence_limit(text)
+        if limit is not None and (n := measure.count_sentences(draft)) > limit:
+            return f"it has {n} sentences, the rule allows {limit}"
+    elif kind == "phrase_avoid":
+        phrase = measure.banned_phrase_used(draft, text)
+        if phrase:
+            return f"it says '{phrase}'"
+    elif kind == "greeting":
+        # Only a definite opening ("Opens with 'Hi Nair'"), not "'Yo' or jumps straight in".
+        q = quoted(text)
+        if q and low.startswith("opens with") and " or " not in low:
+            want = q[0].replace("<first name>", first_name)
+            if words(draft)[: len(words(want))] != words(want):
+                return f"it doesn't open with '{want}'"
+    elif kind == "signoff":
+        last = draft.strip().splitlines()[-1] if draft.strip() else ""
+        if re.search(r"\bno sign-?off\b|drops the sign-?off|without a sign-?off", low):
+            m = SIGNOFF_LINE.match(last)
+            if m and (m.group(1) or m.group(2)):
+                return f"it signs off with '{last.strip()}'"
+        elif quoted(text):
+            want = quoted(text)[0]
+            if not words(draft)[-len(words(want)):] == words(want):
+                return f"it doesn't sign off with '{want}'"
+    elif kind == "format" and "hashtag" in low and low.startswith("no"):
+        tags = re.findall(r"#\w+", draft)
+        if tags:
+            return f"it has hashtags: {' '.join(tags)}"
     return None
 
 
@@ -112,9 +109,13 @@ def review(draft: str, rules: list[dict], person_name: str = "", note: str | Non
     for rule in rules:
         if rule["kind"] in ("tone", "phrase_use"):  # not measurable in code (version 1)
             continue
+        try:
+            issue = problem_with(draft, rule, first)
+            mine = bool(note) and bool(problem_with(note, rule, first))
+        except NotImplementedError:  # one of Maulik's checks isn't written yet: skip this rule
+            continue
         checked += 1
-        issue = problem_with(draft, rule, first)
-        if issue and not (note and problem_with(note, rule, first)):
+        if issue and not mine:
             problems.append({"id": rule["id"], "kind": rule["kind"], "rule": rule["text"],
                              "owner": owner(rule), "problem": issue})
     return {"checked": checked, "problems": problems}
