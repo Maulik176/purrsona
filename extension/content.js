@@ -94,10 +94,11 @@
   }
 
   // Resolves true (the draft is in), "check" (the editor took something different: look at it), or
-  // false (nothing landed: the draft is on the clipboard). A paste first: every rich editor (ProseMirror,
-  // Draft.js, Lexical, Quill) handles one through its own state. Typing it in with execCommand is only a
-  // fallback, and only while the box is untouched: X's Draft.js doubled typed text and then stopped
-  // responding to the keyboard, and a second try on Reddit doubled the draft.
+  // false (nothing landed: the draft is on the clipboard). A paste first: rich editors (ProseMirror,
+  // Draft.js, Lexical, Quill) handle one through their own state, and typing with execCommand broke X's
+  // Draft.js (doubled text, then a box that ignored Backspace). Slack is the exception (checked Oct 17):
+  // it clears the box on a script's paste and drops the text, but takes typed text cleanly.
+  const TYPE_FIRST = /(^|\.)slack\.com$/;
   async function insertText(box, text) {
     if (composing) box.blur();  // finish a half-typed accent first (macOS Option keys start one)
     box.focus();
@@ -125,7 +126,7 @@
     const type = () => document.execCommand("insertText", false, text);
     const before = readBox(box);
     const want = norm(text).slice(0, 40);
-    for (const put of [paste, type]) {
+    for (const put of TYPE_FIRST.test(location.hostname) ? [type, paste] : [paste, type]) {
       select();
       await wait(60);  // let the editor see the selection, or it pastes after your note instead of over it
       put();
@@ -133,6 +134,7 @@
       const now = norm(readBox(box));
       // In, and not tacked on after your note (an editor that ignored the selection keeps both).
       if (now.includes(want)) return !norm(before) || !now.startsWith(norm(before)) || norm(text).startsWith(norm(before)) ? true : "check";
+      if (put === paste && !norm(readBox(box))) continue;  // the paste only emptied the box: type it instead
       if (readBox(box) !== before) break;  // the editor took something: never put the text in twice
     }
     navigator.clipboard?.writeText(text.trim()).catch(() => {});
@@ -307,8 +309,9 @@
                    box.parentElement?.querySelector(".ql-placeholder")?.innerText].find((t) => t && /\S/.test(t)) || "";
     const m = norm(label).match(/^(?:message|send a message to|write to|chat with)\s+(?:to\s+)?(.+?)[.…]*$/i);
     const name = norm(m?.[1]?.replace(/\((you|me)\)/i, ""));
-    // A channel (#team-launch), a group ("Neha, Rohan and 2 others") or no name at all: nobody in particular.
-    if (!name || /^#/.test(name) || /,|\band\b|\bothers?\b/i.test(name) || /^(a message|here|everyone)$/i.test(name)) return null;
+    // A channel (#team-launch; Slack's page title says "(Channel)"), a group ("Neha, Rohan and 2 others")
+    // or no name at all: nobody in particular.
+    if (!name || /\((private )?channel\)/i.test(document.title) || /^#/.test(name) || /,|\band\b|\bothers?\b/i.test(name) || /^(a message|here|everyone)$/i.test(name)) return null;
     return name.replace(/^@/, "");
   }
   // One person you already write to with that name ("Neha" or "Neha Kulkarni"), or null.
