@@ -27,6 +27,26 @@ def owner(rule: dict) -> str:
     return f"{name}'s"
 
 
+GREETING_WORDS = re.compile(r"^\W*(hi|hello|hey|yo|dear|bhaila)\b", re.I)
+
+
+def is_signoff_line(line: str) -> bool:
+    m = SIGNOFF_LINE.match(line)
+    return bool(m and (m.group(1) or m.group(2)))
+
+
+def message_body(draft: str) -> str:
+    """The draft without a greeting line on top ("Hi Rohan,") or sign-off lines at the bottom
+    ("Regards," / "Maulik"): those aren't sentences, and Clients rules even require them.
+    Found live on Oct 17: Rohan's 2-sentence reply was counted as 5, so no redo could pass."""
+    lines = [l for l in draft.strip().splitlines()]
+    if len(lines) > 1 and GREETING_WORDS.match(lines[0]) and len(lines[0].split()) <= 4:
+        lines = lines[1:]
+    while lines and (not lines[-1].strip() or is_signoff_line(lines[-1])):
+        lines = lines[:-1]
+    return "\n".join(lines)
+
+
 def quoted(text: str) -> list[str]:
     """Phrases in quotes: Opens with 'Hi Nair' instead of 'Hi Priya' -> ['Hi Nair', 'Hi Priya']."""
     return re.findall(r"'([^']+)'", text)
@@ -68,7 +88,7 @@ def problem_with(draft: str, rule: dict, first_name: str) -> str | None:
         if chars and len(draft) > int(chars.group(1)):
             return f"it's {len(draft)} characters, the limit is {chars.group(1)}"
         limit = sentence_limit(text)
-        if limit is not None and (n := measure.count_sentences(draft)) > limit:
+        if limit is not None and (n := measure.count_sentences(message_body(draft))) > limit:
             return f"it has {n} sentences, the rule allows {limit}"
     elif kind == "phrase_avoid":
         phrase = measure.banned_phrase_used(draft, text)
@@ -84,8 +104,7 @@ def problem_with(draft: str, rule: dict, first_name: str) -> str | None:
     elif kind == "signoff":
         last = draft.strip().splitlines()[-1] if draft.strip() else ""
         if re.search(r"\bno sign-?off\b|drops the sign-?off|without a sign-?off", low):
-            m = SIGNOFF_LINE.match(last)
-            if m and (m.group(1) or m.group(2)):
+            if is_signoff_line(last):
                 return f"it signs off with '{last.strip()}'"
         elif quoted(text):
             want = quoted(text)[0]

@@ -78,3 +78,11 @@ def test_never_more_than_one_redo(monkeypatch):
     assert len(calls) == 1
     assert d["trail"][-1]["action"] == "still breaks" and [p["id"] for p in d["critic"]["still"]] == ["w2"]
     client.post("/key/unplug")
+
+
+def test_greeting_and_signoff_lines_are_not_sentences():
+    # Found live on Oct 17: Rohan's 2-sentence Clients reply counted as 5, so no redo could pass.
+    draft = "Hi Rohan,\n\nCongratulations on the go-live. It was a pleasure working with your team.\n\nRegards,\nMaulik"
+    assert critic.message_body(draft) == "\nCongratulations on the go-live. It was a pleasure working with your team."
+    # A real first sentence that starts with "Yo" is kept.
+    assert critic.message_body("Yo bro, that last over had me off the couch 🔥\nWhat a finish").startswith("Yo bro")

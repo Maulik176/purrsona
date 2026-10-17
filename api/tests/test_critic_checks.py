@@ -24,3 +24,9 @@ def test_banned_phrase_used():
     tricky = "Drops closing well-wishes like 'Enjoy the moment, it's well earned' when congratulating Neha"
     assert banned_phrase_used("Great work. Enjoy the moment, it's well earned!", tricky) == "Enjoy the moment, it's well earned"
     assert banned_phrase_used("No quotes in this rule", "Keeps it short") is None
+
+
+def test_real_world_cases_found_in_review():
+    # Oct 17 review: dots inside words aren't sentence ends, and rules may use curly quotes.
+    assert count_sentences("Visit rippling.com/builds today") == 1
+    assert banned_phrase_used("i hope this finds you well", "Never says ‘I hope this finds you well’") == "I hope this finds you well"
