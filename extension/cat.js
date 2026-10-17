@@ -61,8 +61,8 @@
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 .bubble { position: absolute; bottom: 52px; right: -6px; min-width: 150px; max-width: 280px; padding: 8px 11px;
           background: #1c1f29; color: #eef0f6; border: 1px solid #343a4c; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.3);
-          pointer-events: auto; opacity: 0; transform: translateY(4px); transition: opacity .2s, transform .2s; }
-.bubble.show { opacity: 1; transform: none; }
+          pointer-events: none; opacity: 0; transform: translateY(4px); transition: opacity .2s, transform .2s; }
+.bubble.show { opacity: 1; transform: none; pointer-events: auto; }  /* a hidden bubble must not catch clicks (it covered why?) */
 .bubble::after { content: ""; position: absolute; bottom: -6px; right: 20px; width: 10px; height: 10px; background: #1c1f29;
                  border-right: 1px solid #343a4c; border-bottom: 1px solid #343a4c; transform: rotate(45deg); }
 .bubble .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
