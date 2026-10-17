@@ -86,6 +86,14 @@ canvas#map { width: 100%; height: 100%; display: block; cursor: grab; }
 .detail .links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .detail .links .pill { cursor: pointer; }
 .hint { position: absolute; left: 16px; top: 14px; color: var(--faint); font-size: 12px; }
+code, .cy { font: 12px/1.5 "SF Mono", Menlo, Consolas, monospace; }
+.cypher { position: absolute; right: 16px; top: 14px; width: min(520px, calc(100% - 32px)); background: rgba(23,24,30,.95); border: 1px solid var(--line);
+          border-radius: 14px; padding: 14px 16px; display: none; backdrop-filter: blur(6px); }
+.cypher.on { display: block; }
+.cypher pre { margin: 8px 0; padding: 10px 12px; background: #0f1015; border: 1px solid var(--line); border-radius: 10px; white-space: pre-wrap; color: #ffc078; }
+.cypher a { color: var(--amber2); }
+.nodeq { display: inline-block; margin-top: 4px; color: #ffc078; }
+.copy { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 1px 8px; font-size: 11px; margin-left: 6px; }
 /* Rules */
 .rgroup { margin-bottom: 16px; }
 .rgroup h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--amber); font-weight: 600; }
@@ -157,7 +165,17 @@ table.modes th { color: var(--muted); font-weight: 500; border-top: 0; }
     <div class="mapbar" id="chips"></div>
     <div class="mapwrap">
       <canvas id="map"></canvas>
-      <div class="hint">drag to move · scroll to zoom · click a node</div>
+      <div class="hint">drag a node · scroll to zoom · click to focus</div>
+      <div class="cypher" id="cypher">
+        <b>The same graph, in Cypher</b> <span class="faint">· graph <code>voice:demo-maulik</code> in FalkorDB</span>
+        <pre id="cyText">MATCH p = (:User)-[:KNOWS]->(:Person)-[:IN_CIRCLE]->(:Circle)
+RETURN p
+
+MATCH p = (owner)-[:HAS_RULE]->(r:StyleRule)
+WHERE r.superseded_at IS NULL
+RETURN p</pre>
+        <div class="faint">Paste it into <a href="http://localhost:3001" target="_blank" rel="noopener">FalkorDB Browser ↗</a> (localhost:3001) to see the same nodes and links. <button class="copy" id="cyCopy">copy</button></div>
+      </div>
       <div class="detail" id="detail"><button class="x" id="detailX" aria-label="Close">×</button><div id="detailBody"></div></div>
     </div>
   </section>
@@ -382,9 +400,11 @@ async function drawGraph() {
   const G = graphCache;
   const counts = {}; G.nodes.forEach((n) => counts[n.label] = (counts[n.label] || 0) + 1);
   $("chips").innerHTML = Object.keys(NAMES).filter((l) => counts[l]).map((l) => `<span class="chip ${hidden.has(l) ? "off" : ""}" data-l="${l}"><i style="background:${COLORS[l]}"></i>${NAMES[l]} <b>${counts[l]}</b></span>`).join("")
-    + `<button class="toggle ${bySignature ? "on" : ""}" id="sigBtn" title="Size rules by PageRank over your drafts">Signature style</button><input class="search" id="mapSearch" placeholder="search the graph…">`;
+    + `<button class="toggle ${bySignature ? "on" : ""}" id="sigBtn" title="Size rules by PageRank over your drafts">Signature style</button><button class="toggle" id="cyBtn">Cypher</button><input class="search" id="mapSearch" placeholder="search the graph…">`;
   $("chips").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { hidden.has(c.dataset.l) ? hidden.delete(c.dataset.l) : hidden.add(c.dataset.l); drawGraph(); }));
   $("sigBtn").addEventListener("click", () => { bySignature = !bySignature; drawGraph(); });
+  $("cyBtn").addEventListener("click", () => { $("cypher").classList.toggle("on"); $("cyBtn").classList.toggle("on"); });
+  $("cyCopy").onclick = () => navigator.clipboard?.writeText($("cyText").textContent);
 
   let nodes = G.nodes.filter((n) => !hidden.has(n.label)).map((n) => ({ ...n }));
   let ids = new Set(nodes.map((n) => n.id));
@@ -415,6 +435,7 @@ async function drawGraph() {
     .force("collide", d3.forceCollide().radius((d) => d.r + 4))
     .stop();
   for (let i = 0; i < 300; i++) sim.tick();  // lay it out up front: no waiting on animation timers
+  sim.on("tick", paint);  // then it stays alive: drag a node and the rest follows on springs
   const zoom = d3.zoom().scaleExtent([0.3, 5]).on("zoom", (ev) => { transform = ev.transform; paint(); });
   function fit() {  // zoom so the whole graph fills the view
     const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
@@ -440,6 +461,11 @@ async function drawGraph() {
       ctx.beginPath(); ctx.moveTo(l.source.x, l.source.y); ctx.lineTo(l.target.x, l.target.y); ctx.stroke();
     }
     ctx.setLineDash([]);
+    if (focus) {  // the relationship types, as FalkorDB stores them
+      ctx.font = "600 9px Inter, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,192,120,.9)";
+      for (const l of links) if (l.source === focus || l.target === focus)
+        ctx.fillText(l.type, (l.source.x + l.target.x) / 2, (l.source.y + l.target.y) / 2 - 3);
+    }
     for (const n of nodes) {
       const on = lit(n);
       ctx.globalAlpha = on ? 1 : 0.15;
@@ -467,10 +493,21 @@ async function drawGraph() {
     const [mx, my] = transform.invert(d3.pointer(ev, canvas));
     return nodes.find((n) => (n.x - mx) ** 2 + (n.y - my) ** 2 <= (n.r + 4) ** 2) || null;
   };
-  d3.select(canvas).call(zoom)
+  const drag = d3.drag()
+    .subject((ev) => pick(ev.sourceEvent))
+    .on("start", (ev) => { if (!ev.active) sim.alphaTarget(0.25).restart(); ev.subject.fx = ev.subject.x; ev.subject.fy = ev.subject.y; canvas.style.cursor = "grabbing"; })
+    .on("drag", (ev) => { [ev.subject.fx, ev.subject.fy] = transform.invert(d3.pointer(ev.sourceEvent, canvas)); })
+    .on("end", (ev) => { if (!ev.active) sim.alphaTarget(0); ev.subject.fx = ev.subject.fy = null; canvas.style.cursor = "grab"; });
+  const glideTo = (n) => d3.select(canvas).transition().duration(650).ease(d3.easeCubicOut).call(zoom.translateTo, n.x, n.y);
+  d3.select(canvas).call(drag).call(zoom)
     .on("mousemove", (ev) => { const n = pick(ev); if (n !== hover) { hover = n; canvas.style.cursor = n ? "pointer" : "grab"; paint(); } })
-    .on("click", (ev) => { const n = pick(ev); selected = n; detail(n); paint(); });
+    .on("click", (ev) => { const n = pick(ev); selected = n; detail(n); paint(); if (n) glideTo(n); });
   $("mapSearch").addEventListener("input", (e) => { query = e.target.value.trim().toLowerCase(); paint(); });
+  $("mapSearch").addEventListener("keydown", (e) => {  // Enter jumps to the first match
+    if (e.key !== "Enter" || !query) return;
+    const n = nodes.find((x) => x.name.toLowerCase().includes(query));
+    if (n) { selected = n; query = ""; e.target.value = ""; detail(n); paint(); glideTo(n); }
+  });
   $("detailX").onclick = () => { selected = null; detail(null); paint(); };
   fit();
 
@@ -485,14 +522,22 @@ async function drawGraph() {
       const r = D.rules.find((x) => x.id === n.key) || {};
       extra = `${esc(ownerLabel(r))} · ${esc((r.kind || "").replace("_", " "))} · from ${r.evidence ?? 0} edits/posts${G.pagerank[n.key] ? ` · PageRank ${(G.pagerank[n.key] / maxPR * 100).toFixed(0)}%` : ""}`;
     } else extra = `${linked.length} links`;
+    const prop = ["Circle", "Platform", "Topic", "Relationship"].includes(n.label) ? "name" : "id";
+    const nodeQ = `MATCH (n:${n.label} {${prop}: '${(prop === "name" ? n.name : n.key || n.name).replace(/'/g, "\\'")}'})-[r]-(m) RETURN n, r, m`;
+    const rels = links.filter((l) => l.source === n || l.target === n).map((l) => ({ other: l.source === n ? l.target : l.source, type: l.type, out: l.source === n }));
     $("detailBody").innerHTML = `<h3><i class="dot" style="background:${COLORS[n.label]};width:10px;height:10px"></i>${esc(n.label === "User" ? "You" : n.label === "Platform" ? (PLATFORM[n.name] || n.name) : n.name)}
-      <span class="faint" style="font-weight:400">${esc(NAMES[n.label] || n.label)}</span></h3><div class="muted">${extra}</div>
-      <div class="links">${linked.slice(0, 18).map((x) => `<span class="pill" data-id="${x.id}"><i class="dot" style="background:${COLORS[x.label]}"></i>${esc((x.name || "").slice(0, 40))}</span>`).join("")}</div>`;
+      <code class="faint" style="font-weight:400">:${esc(n.label)}</code></h3><div class="muted">${extra}</div>
+      <code class="nodeq">${esc(nodeQ)}</code><button class="copy" id="nodeCopy">copy</button>
+      <div class="links">${rels.slice(0, 18).map((x) => `<span class="pill" data-id="${x.other.id}"><code class="faint">${x.out ? "" : "←"}${esc(x.type)}${x.out ? "→" : ""}</code><i class="dot" style="background:${COLORS[x.other.label]}"></i>${esc((x.other.name || "").slice(0, 40))}</span>`).join("")}</div>`;
     $("detail").classList.add("on");
-    $("detailBody").querySelectorAll("[data-id]").forEach((el) => el.addEventListener("click", () => { selected = nodes.find((x) => x.id === +el.dataset.id); detail(selected); paint(); }));
+    $("nodeCopy").onclick = () => navigator.clipboard?.writeText(nodeQ);
+    $("detailBody").querySelectorAll("[data-id]").forEach((el) => el.addEventListener("click", () => { selected = nodes.find((x) => x.id === +el.dataset.id); detail(selected); paint(); glideTo(selected); }));
   }
   detail(null);
 }
+
+let resizeTimer = null;  // redraw the map when the window changes size
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if ($("page-graph").classList.contains("on")) drawGraph(); }, 250); });
 
 load();
 setInterval(async () => {  // notice plug / unplug from the practice page or the console
