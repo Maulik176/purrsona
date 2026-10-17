@@ -399,6 +399,7 @@ document.querySelectorAll("#platform button").forEach((b) => b.addEventListener(
 }));
 document.querySelectorAll("[data-post]").forEach((b) => b.addEventListener("click", () => { $("postText").value = b.dataset.post; }));
 window.addEventListener("keydown", (e) => { if (e.altKey && e.code === "KeyM") { e.preventDefault(); draft(); } });
+window.addEventListener("purrsona:trigger", () => draft());  // Option+M via the extension's Chrome shortcut
 
 (async () => {
   try {

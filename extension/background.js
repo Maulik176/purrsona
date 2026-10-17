@@ -20,8 +20,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   return true; // we reply asynchronously
 });
 
-// An optional shortcut you can set yourself in chrome://extensions/shortcuts (none by default: a Chrome
-// shortcut would grab Option+M before the page's own handler sees it).
+// Option+M as a Chrome shortcut: Chrome takes the key before the page sees it (so macOS never types its
+// "˛" mark) and tells the page's cat, or the demo console, to draft. Set in chrome://extensions/shortcuts.
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command === "draft-reply" && tab?.id) chrome.tabs.sendMessage(tab.id, { type: "trigger" });
 });
