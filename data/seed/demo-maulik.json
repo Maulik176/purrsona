@@ -12,7 +12,8 @@
   "circles": [
     "Friends",
     "Work",
-    "Clients"
+    "Clients",
+    "Community"
   ],
   "platforms": [
     "linkedin",
@@ -616,6 +617,18 @@
       "family",
       "roommate",
       "neighbour"
+    ],
+    "Community": [
+      "founder",
+      "creator",
+      "organiser",
+      "organizer",
+      "community",
+      "follower",
+      "influencer",
+      "speaker",
+      "hackathon organiser",
+      "someone i follow"
     ]
   }
 }
