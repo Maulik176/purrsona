@@ -109,6 +109,14 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 5
 .bar .g { background: var(--good); } .bar .c { background: var(--accent); }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--line); padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .3s; pointer-events: none; }
 .toast.show { opacity: 1; }
+.trail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; font-size: 12px; }
+.trail .lbl { color: var(--muted); margin-right: 4px; }
+.trail .st { border: 1px solid var(--line); background: var(--panel2); border-radius: 999px; padding: 4px 10px; }
+.trail .st b { color: var(--text); }
+.trail .st.redo, .trail .st.still { border-color: var(--accent); color: var(--accent2); }
+.trail .st.pass { border-color: var(--good); color: var(--good); }
+.trail .st.learn { border-color: var(--user); color: var(--user); }
+.trail .arrow { color: var(--muted); }
 @media (max-width: 960px) { main { grid-template-columns: 1fr; } .lanes { grid-template-columns: 1fr 1fr; } .drafts { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -189,6 +197,7 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 5
       <h2>Why this draft sounds like you</h2>
       <div class="path" id="whyPath">Draft with the key plugged in to see which rules the graph picked, and where each one came from.</div>
       <div class="lanes" id="lanes"></div>
+      <div class="trail" id="trail"></div>
       <div class="timing" id="timing"></div>
     </div>
   </div>
@@ -308,7 +317,7 @@ async function draft() {
       if (S.lastKey !== key) { $("voiceBox").className = "draft voice placeholder";
         $("voiceBox").textContent = "Plug the key in and draft the same reply to compare."; }
       $("whyPath").innerHTML = "<b>No why:</b> the key is unplugged, so there's no graph to explain the draft.";
-      $("lanes").innerHTML = ""; $("timing").innerHTML = "";
+      $("lanes").innerHTML = ""; $("timing").innerHTML = ""; $("trail").innerHTML = "";
       toast("Generic draft: nothing from your graph");
     }
   } catch (e) { toast("Error: " + e.message); }
@@ -331,8 +340,18 @@ function renderWhy(r) {
       : `<div class="empty" style="font-size:12px">${scope === "Person" && !p.known ? "new person: no own rules yet" : "no rules here"}</div>`;
     return `<div class="lane ${scope} ${rules.length ? "" : "none"}">${head}${body}</div>`;
   }).join("");
+  renderTrail(r.trail || []);
   const claudeMs = Math.max(r.ms - r.graph_ms, 1);
   $("timing").innerHTML = `<span>Graph ${r.graph_ms} ms</span><div class="bar"><div class="g" style="width:${Math.max(r.graph_ms / r.ms * 100, 1.5)}%"></div><div class="c" style="width:${claudeMs / r.ms * 100}%"></div></div><span>Claude ${(claudeMs / 1000).toFixed(1)} s</span>`;
+}
+
+// The agents' handoffs for this draft, as saved in the graph: Drafter -> Critic -> (one redo) -> Learner.
+function renderTrail(steps) {
+  const cls = { redo: "redo", "still breaks": "still", pass: "pass", learned: "learn", "sent as-is": "learn", "nothing new": "learn" };
+  $("trail").innerHTML = steps.length ? '<span class="lbl">How the agents made it</span>' + steps.map((st) =>
+    `<span class="st ${cls[st.action] || ""}" title="${esc(st.detail || "")}"><b>${esc(st.agent)}</b> ${esc(st.action)}${
+      st.action === "redo" || st.action === "still breaks" ? ": " + esc(st.detail) : ""}${st.ms ? ` · ${(st.ms / 1000).toFixed(1)} s` : ""}</span>`
+  ).join('<span class="arrow">→</span>') : "";
 }
 
 async function teach() {
@@ -344,6 +363,7 @@ async function teach() {
   screen("thinking", "AI is learning your voice", `from your edit to ${esc(S.person.name.split(" ")[0])}…`);
   try {
     const out = await api("/learn", body);
+    api(`/trail/${r.draft_id}`).then((t) => renderTrail(t.steps)).catch(() => {});
     if (!out.learned.length) {
       $("learned").innerHTML = `<div class="empty">${esc(out.note || "Nothing new to learn from this one.")}</div>`;
     } else {

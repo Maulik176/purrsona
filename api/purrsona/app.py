@@ -15,11 +15,11 @@ from pydantic import BaseModel
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-from . import keys, learning, relationships  # noqa: E402
+from . import critic, keys, learning, relationships  # noqa: E402
 from .db import connect, graph_name, rows  # noqa: E402
 from .drafter import refine_draft, write_draft  # noqa: E402
 from .queries import (DRAFT_RULES, graph_summary, people, person_context, record_draft,  # noqa: E402
-                      rules_for_context, topics_in, why_this_draft)
+                      rules_for_context, save_trail, topics_in, trail_steps, why_this_draft)
 
 app = FastAPI(title="Purrsona bridge")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -152,13 +152,52 @@ def draft(req: DraftRequest):
     rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle, mode=req.mode)
     graph_ms = round((time.perf_counter() - started) * 1000)
 
+    # The Drafter writes, the Critic checks the rules it used, and sends it back once if it broke one.
+    steps: list[dict] = []
+
+    def step(agent, action, detail="", since=None, **links):
+        steps.append({"n": len(steps) + 1, "agent": agent, "action": action, "detail": detail,
+                      "at": int(time.time() * 1000), **links,
+                      "ms": round((time.perf_counter() - since) * 1000) if since else 0})
+
+    t = time.perf_counter()
     text = write_draft(claude(), req.post_text, to, req.platform, rules, note=req.user_note, mode=req.mode)
+    step("Drafter", "wrote", f"from {len(rules)} rules in your graph", t)
+    first = critic.review(text, rules, req.person_name, note=req.user_note)
+    last = first
+    if first["problems"]:
+        step("Critic", "redo", critic.describe(first["problems"]), flagged=[p["id"] for p in first["problems"]])
+        t = time.perf_counter()
+        text = refine_draft(claude(), text, critic.fix_request(first["problems"]), req.post_text, to,
+                            req.platform, rules, mode=req.mode)
+        step("Drafter", "rewrote", "fixed what the Critic flagged", t)
+        last = critic.review(text, rules, req.person_name, note=req.user_note)
+    if last["problems"] and first["problems"]:  # at most one redo: deliver it, and say what's still off
+        step("Critic", "still breaks", critic.describe(last["problems"]), flagged=[p["id"] for p in last["problems"]])
+    else:
+        step("Critic", "pass", f"checked {last['checked']} rules")
+    still = {p["id"] for p in last["problems"]}
+
     draft_id = f"d-{uuid.uuid4().hex[:8]}"
     record_draft(graph, draft_id, text, int(time.time() * 1000), req.person_id, req.platform,
                  topics, [r["id"] for r in rules])
+    save_trail(graph, draft_id, steps)
     return {"mode": "voice", "draft": text, "draft_id": draft_id, "rules": rules,
-            "person": {**person, "circle": circle}, "topics": topics,
+            "person": {**person, "circle": circle}, "topics": topics, "trail": steps,
+            "critic": {"checked": last["checked"], "still": last["problems"],
+                       "fixed": [p for p in first["problems"] if p["id"] not in still]},
             "graph_ms": graph_ms, "ms": round((time.perf_counter() - started) * 1000)}
+
+
+@app.get("/trail/{draft_id}")
+def trail(draft_id: str):
+    """The handoff trail behind a draft: which agent did what, and which rules each step flagged or taught."""
+    if state["key_id"] is None:
+        raise HTTPException(409, "Plug in a key first")
+    steps = trail_steps(db.select_graph(graph_name(state["key_id"])), draft_id)
+    if not steps:
+        raise HTTPException(404, "No trail for that draft in the plugged-in graph")
+    return {"draft_id": draft_id, "steps": steps}
 
 
 @app.get("/why/{draft_id}")
@@ -220,6 +259,7 @@ def learn(req: LearnRequest):
         event = learning.build_sent_event(req.person_id, req.person_name, circle, not person["known"],
                                           req.platform, req.draft_id, req.draft_text, rule_ids)
         event["person"]["relationship"] = rel
+        event["trail"] = learner_step(graph, req.draft_id, "sent as-is", "the draft was right as it was")
         learning.apply_event(graph, event)
         memories = keys.append_event(key_id, event)
         return {"learned": [], "saved": True, "person_added": event["person"]["new"], "memories": memories,
@@ -234,11 +274,22 @@ def learn(req: LearnRequest):
     event = learning.build_event(req.person_id, req.person_name, circle, not person["known"], req.platform,
                                  req.draft_id, req.draft_text, req.sent_text, proposals, current, rule_ids=rule_ids)
     event["person"]["relationship"] = rel
+    event["trail"] = learner_step(graph, req.draft_id, "learned" if event["rules"] else "nothing new",
+                                  "; ".join(r["text"] for r in event["rules"]), [r["id"] for r in event["rules"]],
+                                  round((time.perf_counter() - started) * 1000))
     learning.apply_event(graph, event)        # the laptop's graph learns now...
     memories = keys.append_event(key_id, event)  # ...and the key remembers, in the same step
     return {"learned": event["rules"], "saved": True, "person_added": event["person"]["new"],
             "edit_id": event["edit"]["id"], "memories": memories, "note": joined,
             "ms": round((time.perf_counter() - started) * 1000)}
+
+
+def learner_step(graph, draft_id: str, action: str, detail: str, taught: list[str] | None = None,
+                 ms: int = 0) -> list[dict]:
+    """The draft's trail so far, plus the Learner's step: it all goes onto the key with the memory."""
+    trail = trail_steps(graph, draft_id)
+    return [*trail, {"n": len(trail) + 1, "agent": "Learner", "action": action, "detail": detail,
+                     "taught": taught or [], "at": int(time.time() * 1000), "ms": ms}]
 
 
 @app.post("/key/reset")

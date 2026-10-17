@@ -144,6 +144,56 @@ def why_this_draft(graph, draft_id: str) -> list[dict]:
     return rows(graph.ro_query(WHY_THIS_DRAFT, {"draft": draft_id}))
 
 
+# ---- The handoff trail (Track 02: agents coordinating through the graph) -------------------------
+# Every draft keeps a chain of steps: Drafter wrote -> Critic redo (FLAGGED the rule it broke) ->
+# Drafter rewrote -> Critic pass -> Learner learned (TAUGHT the new rules). MERGE on the step number,
+# so writing a trail twice (live, then when the key replays it) never duplicates it.
+SAVE_STEP = """
+MATCH (d:Draft {id: $draft_id})
+MERGE (d)-[:HAS_STEP]->(s:Step {n: $n})
+  ON CREATE SET s.agent = $agent, s.action = $action, s.detail = $detail, s.at = $at, s.ms = $ms
+WITH d, s
+OPTIONAL MATCH (d)-[:HAS_STEP]->(prev:Step {n: $prev})
+FOREACH (_ IN CASE WHEN prev IS NULL THEN [] ELSE [1] END | MERGE (prev)-[:NEXT]->(s))
+"""
+STEP_FLAGGED = """
+MATCH (:Draft {id: $draft_id})-[:HAS_STEP]->(s:Step {n: $n})
+UNWIND $rule_ids AS rid
+MATCH (r:StyleRule {id: rid})
+MERGE (s)-[:FLAGGED]->(r)
+"""
+STEP_TAUGHT = """
+MATCH (:Draft {id: $draft_id})-[:HAS_STEP]->(s:Step {n: $n})
+UNWIND $rule_ids AS rid
+MATCH (r:StyleRule {id: rid})
+MERGE (s)-[:TAUGHT]->(r)
+"""
+# The steps as data (to carry them onto the key with the memory).
+TRAIL_STEPS = """
+MATCH (:Draft {id: $draft_id})-[:HAS_STEP]->(s:Step)
+OPTIONAL MATCH (s)-[:FLAGGED]->(f:StyleRule)
+OPTIONAL MATCH (s)-[:TAUGHT]->(t:StyleRule)
+RETURN s.n AS n, s.agent AS agent, s.action AS action, s.detail AS detail, s.at AS at, s.ms AS ms,
+       collect(DISTINCT f.id) AS flagged, collect(DISTINCT t.id) AS taught
+ORDER BY n
+"""
+
+
+def save_trail(graph, draft_id: str, steps: list[dict]) -> None:
+    for st in steps:
+        graph.query(SAVE_STEP, {"draft_id": draft_id, "n": st["n"], "prev": st["n"] - 1,
+                                "agent": st["agent"], "action": st["action"],
+                                "detail": st.get("detail", ""), "at": st["at"], "ms": st.get("ms", 0)})
+        if st.get("flagged"):
+            graph.query(STEP_FLAGGED, {"draft_id": draft_id, "n": st["n"], "rule_ids": st["flagged"]})
+        if st.get("taught"):
+            graph.query(STEP_TAUGHT, {"draft_id": draft_id, "n": st["n"], "rule_ids": st["taught"]})
+
+
+def trail_steps(graph, draft_id: str) -> list[dict]:
+    return rows(graph.ro_query(TRAIL_STEPS, {"draft_id": draft_id}))
+
+
 # The people and circles in the plugged-in voice graph (for the demo console's picker).
 PEOPLE = """
 MATCH (:User)-[:KNOWS]->(p:Person)-[:IN_CIRCLE]->(c:Circle)

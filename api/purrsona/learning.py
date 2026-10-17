@@ -121,6 +121,7 @@ def apply_event(graph, event: dict) -> None:
         graph.query(queries.SAVE_SENT, {"person_id": person["id"], "platform": event["platform"],
                                         "draft_id": event["draft"]["id"], "text": event["draft"]["text"], "at": at})
         graph.query(queries.LINK_USED, {"draft_id": event["draft"]["id"], "rule_ids": rule_ids})
+        queries.save_trail(graph, event["draft"]["id"], event.get("trail", []))  # the agents' handoffs
         return
     edit = event["edit"]
     graph.query(queries.SAVE_EDIT, {"person_id": person["id"], "platform": event["platform"],
@@ -135,3 +136,4 @@ def apply_event(graph, event: dict) -> None:
             graph.query(queries.LINK_OVERRIDES, {"rule_id": r["id"], "old_ids": r["overrides"]})
         if r["supersedes"]:
             graph.query(queries.SUPERSEDE, {"old_ids": r["supersedes"], "at": at})
+    queries.save_trail(graph, event["draft"]["id"], event.get("trail", []))  # after the rules: TAUGHT links them

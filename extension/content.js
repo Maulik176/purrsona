@@ -400,7 +400,9 @@
     const voice = has && last.r.mode === "voice";
     const status = !has ? "✍️ I'll write it in your voice"
       : !voice ? "no key plugged in: this one is generic"
-      : `✨ ${last.ctx.mode === "post" ? "your post" : `for <b>${esc(first(last.ctx.person_name))}</b>`} · ${last.r.rules.length} rules from your graph`;
+      : `✨ ${last.ctx.mode === "post" ? "your post" : `for <b>${esc(first(last.ctx.person_name))}</b>`} · ${last.r.rules.length} rules from your graph${
+          last.r.critic?.fixed?.length ? ` · the Critic fixed ${last.r.critic.fixed.map((x) => `'${esc(x.rule)}'`).join(", ")}`
+          : last.r.critic?.still?.length ? " · the Critic flagged something" : last.r.critic ? " · checked by the Critic" : ""}`;
     const chips = has ? CHIPS.map(([t, a]) => `<button class="chip" data-ask="${esc(a)}">${esc(t)}</button>`).join("")
       : `<button class="chip" data-write>${kindOf(box) === "post" ? "write my post" : "write a reply"} · ⌥M</button>`;
     const p = cat.openPanel(`<div class="status"><span>${status}</span>${voice ? '<button class="link" data-why>why?</button>' : ""}</div>
@@ -422,6 +424,10 @@
       line("it", `<b>Why it sounds like you</b>${top.map((x) => `<div class="rule"><b>${esc(ruleLabel(x, last.ctx))}</b> · ${esc(x.text)}
         <span class="muted">· from ${x.evidence} ${x.evidence === 1 ? "edit" : "edits"}</span></div>`).join("")}
         <div class="muted">the narrowest rule of each kind wins</div>`);
+      // The agents' handoffs for this draft: Drafter -> Critic -> (one redo) -> Critic.
+      const trail = last.r.trail || [];
+      if (trail.length) line("it", `<b>How the agents made it</b><div class="rule">${trail.map((st) =>
+        `${esc(st.agent)} ${esc(st.action)}${st.action === "redo" || st.action === "still breaks" ? `: ${esc(st.detail)}` : ""}`).join(" → ")}</div>`);
     }
     async function ask(text) {
       if (busy) return;
