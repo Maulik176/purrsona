@@ -15,7 +15,7 @@ def count_emojis(text: str) -> int:
     Hint: most emojis live in these Unicode ranges: U+1F300 to U+1FAFF and U+2600 to U+27BF.
     A regex character class like r"[\\U0001F300-\\U0001FAFF\\u2600-\\u27BF]" matches one of them.
     """
-    raise NotImplementedError("Maulik: write count_emojis")
+    return len(re.findall(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]", text))
 
 
 def count_sentences(text: str) -> int:
@@ -25,7 +25,8 @@ def count_sentences(text: str) -> int:
 
     Hint: split on . ! ? and line breaks, then count the pieces that aren't empty.
     """
-    raise NotImplementedError("Maulik: write count_sentences")
+    parts = re.split(r"[.!?]+(?=\s|$)|\n+", text)
+    return sum(1 for p in parts if p.strip())
 
 
 def banned_phrase_used(draft: str, rule_text: str) -> str | None:
@@ -38,4 +39,12 @@ def banned_phrase_used(draft: str, rule_text: str) -> str | None:
     "Drops closing well-wishes like 'Enjoy the moment, it's well earned'".
     Hint: take the text between the FIRST and the LAST ' in the rule.
     """
-    raise NotImplementedError("Maulik: write banned_phrase_used")
+    rule_text = rule_text.replace("‘", "'").replace("’", "'")
+    first = rule_text.find("'")
+    last = rule_text.rfind("'")
+    if first < 0 or last <= first:
+        return None
+    phrase = rule_text[first + 1 : last]
+    if phrase and phrase.lower() in draft.lower():
+        return phrase
+    return None
