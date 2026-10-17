@@ -379,6 +379,123 @@
       ]
     },
     {
+      "id": "rd1",
+      "scope": "Platform",
+      "scope_id": "reddit",
+      "kind": "greeting",
+      "text": "Jumps straight in, no greeting",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "rd2",
+      "scope": "Platform",
+      "scope_id": "reddit",
+      "kind": "length",
+      "text": "One to three sentences",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "rd3",
+      "scope": "Platform",
+      "scope_id": "reddit",
+      "kind": "emoji",
+      "text": "No emojis",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "sl1",
+      "scope": "Platform",
+      "scope_id": "slack",
+      "kind": "greeting",
+      "text": "Opens with 'hey' or jumps straight in",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "sl2",
+      "scope": "Platform",
+      "scope_id": "slack",
+      "kind": "length",
+      "text": "One to three sentences",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "sl3",
+      "scope": "Platform",
+      "scope_id": "slack",
+      "kind": "signoff",
+      "text": "No sign-off",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "tm1",
+      "scope": "Platform",
+      "scope_id": "teams",
+      "kind": "greeting",
+      "text": "Opens with 'Hi <first name>'",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "tm2",
+      "scope": "Platform",
+      "scope_id": "teams",
+      "kind": "emoji",
+      "text": "No emojis",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "tm3",
+      "scope": "Platform",
+      "scope_id": "teams",
+      "kind": "signoff",
+      "text": "No sign-off",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "em1",
+      "scope": "Platform",
+      "scope_id": "email",
+      "kind": "greeting",
+      "text": "Opens with 'Hi <first name>'",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "em2",
+      "scope": "Platform",
+      "scope_id": "email",
+      "kind": "signoff",
+      "text": "Signs off 'Thanks, Maulik Ranadive'",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "em3",
+      "scope": "Platform",
+      "scope_id": "email",
+      "kind": "phrase_avoid",
+      "text": "Never says 'Bro'",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
+      "id": "em4",
+      "scope": "Platform",
+      "scope_id": "email",
+      "kind": "phrase_avoid",
+      "text": "Never says 'Broski'",
+      "created_at": 1792195200000,
+      "learned_from": []
+    },
+    {
       "id": "t1",
       "scope": "Topic",
       "scope_id": "ServiceNow",

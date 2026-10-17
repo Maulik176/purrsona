@@ -62,7 +62,7 @@ def test_new_person_inherits_from_circle(graph):
 
 def test_nothing_known_still_returns_my_global_habits(graph):
     # Nothing-found case: unknown person, no circle, a platform the graph doesn't know.
-    rules = rules_for_context(graph, "nobody", "reddit", [])
+    rules = rules_for_context(graph, "nobody", "mastodon", [])
     assert {r["id"] for r in rules} == {"u1", "u2"}
 
 

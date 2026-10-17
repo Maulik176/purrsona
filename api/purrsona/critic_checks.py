@@ -45,6 +45,6 @@ def banned_phrase_used(draft: str, rule_text: str) -> str | None:
     if first < 0 or last <= first:
         return None
     phrase = rule_text[first + 1 : last]
-    if phrase and phrase.lower() in draft.lower():
+    if phrase and re.search(rf"\b{re.escape(phrase)}\b", draft, re.IGNORECASE):
         return phrase
     return None

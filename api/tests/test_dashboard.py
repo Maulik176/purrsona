@@ -42,7 +42,7 @@ def test_dashboard_data_and_forgetting_a_rule_survives_unplugging():
     assert client.get("/dashboard/data").json() == {"plugged": False}
     client.post("/key/plug", json={"key_id": "demo-maulik"})
     data = client.get("/dashboard/data").json()
-    assert data["counts"]["rules"] == 20 and data["people"] and data["rules"]
+    assert data["counts"]["rules"] == 33 and data["people"] and data["rules"]
     assert client.get("/dashboard/graph").json()["nodes"]
 
     out = client.post("/rules/forget", json={"rule_id": "pa1"}).json()
