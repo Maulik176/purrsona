@@ -10,6 +10,11 @@ Purrsona maps how you write to each person, platform and topic, and shows which 
 **Demo video:** _link added on submission day_ · **Live demo:** _link added on submission day_ · **Try it locally in 10 minutes:** [Run it locally](#run-it-locally)
 
 <p align="center">
+  <img src="docs/media/cat-demo.gif" width="640" alt="The cat on the practice page: Option+M in Aarav's comment box, the cat checks the voice graph, the reply lands in the Friends voice, then the why panel shows the rules and every query the graph ran">
+  <br><sub>Option+M in a comment box: the cat checks your voice graph, the reply lands in the way you write to this person, and <b>why?</b> shows the rules and every query the graph ran.</sub>
+</p>
+
+<p align="center">
   <img src="docs/media/cat-draft-friends.png" width="49%" alt="Key plugged in: the cat drafts a reply to Aarav in your Friends voice: 'Yo bro, that last over was pure madness 🔥'">
   <img src="docs/media/cat-draft-unplugged.png" width="49%" alt="Key unplugged: the same post gets a generic reply">
   <br><sub><b>Same post, same shortcut.</b> Left: key plugged in, so Aarav (a Friend) gets "Yo bro… 🔥 … 😂". Right: key unplugged, the graph is gone, and the reply is generic.</sub>
@@ -239,6 +244,11 @@ ORDER BY score DESC LIMIT $limit
 - **Say what isn't in the graph.** Someone new: "Kabir is new to me. Who is Kabir to you?" Key unplugged: "No key plugged in, so this is a generic draft." A company page: no circle question, only the platform's and your own rules.
 - **Invalidate, don't delete.** A rule that's outranked or replaced keeps its history (`OVERRIDES`, `superseded_at`); forgetting a rule from the dashboard is itself a memory on the key.
 - **Show the path with the answer.** The why lists the rules, their owners, their evidence and dates, the agents' handoffs and every query the graph ran, with timings:
+
+<p align="center">
+  <img src="docs/media/cat-why-rules.png" width="45%" alt="The why panel: each rule with its owner, how many edits taught it and when">
+  <img src="docs/media/cat-why-graph-ran.png" width="45%" alt="The why panel: the agents' trail and the list of queries the graph ran with milliseconds and rows">
+</p>
 
 ```
 PERSON_CONTEXT · 4.1 ms · 1 row
