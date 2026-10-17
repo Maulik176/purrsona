@@ -201,9 +201,8 @@ def refine(req: RefineRequest):
 
 @app.post("/learn")
 def learn(req: LearnRequest):
-    """You sent something: learn your style from the edit, save it to the graph AND the key."""
-    """Every send leaves a memory: who you wrote to (and their circle, if they're new), and either the
-    lessons from your edit or the fact that the draft was right as it was."""
+    """You sent something, and every send leaves a memory in the graph AND on the key: who you wrote to
+    (and their circle, if they're new), plus either the lessons from your edit or "the draft was right"."""
     key_id = state["key_id"]
     if key_id is None:
         raise HTTPException(409, "Plug in a key first: there's nowhere to save what Purrsona learns")

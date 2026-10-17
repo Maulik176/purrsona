@@ -26,7 +26,7 @@
     return data;
   }
 
-  // ---- Text boxes --------------------------------------------------------------------------
+  //Text boxes: find the nearest editable element.
   const isEditable = (el) => !!el && (el.tagName === "TEXTAREA" || el.isContentEditable || el.getAttribute?.("role") === "textbox");
   function editableFrom(el) {
     while (el && el !== document.body) {
@@ -36,7 +36,7 @@
     return null;
   }
   const MENTION = '[data-type="mention"]';
-  // What you wrote in the box, without @mentions (LinkedIn starts a reply to a comment with one).
+  // Read the box, without @mentions (LinkedIn starts a reply to a comment with one).
   function readBox(box) {
     if (box.tagName === "TEXTAREA") return box.value;
     if (!box.querySelector(MENTION)) return box.innerText;
@@ -206,7 +206,7 @@
   const adapter = () => ADAPTERS.find((a) => a.match());
   const kindOf = (box) => (box && adapter()?.kind(box)) || null;
 
-  // ---- The cat comes and goes with your typing ---------------------------------------------
+  //The cat comes and goes with your typing 
   let current = null, last = null, busy = false, learning = false, circles = ["Friends", "Work", "Clients"];
   let hideTimer = null, lingerUntil = 0, lastLesson = null, hinted = false;
   const inCat = (e) => e.composedPath().some((n) => n.id === "purrsona-cat");
@@ -342,7 +342,7 @@
                         who.sent ? `you've written to ${first(ctx.person_name)} ${who.sent}× with me${when}` : ""].filter(Boolean);
           if (bits.length) remembered = `<div class="muted">${esc(bits.join(" · "))}</div>`;
         }
-        // Someone new: ask once who they are to you. A company page isn't a friend or a client, so no question.
+        // Someone new: ask once who they are to you.
         if (who.plugged && !who.known && !ctx.person_id.startsWith("company-")) {
           cat.mood(null);
           const choice = await askCircle(ctx);

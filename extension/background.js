@@ -1,5 +1,4 @@
-// Purrsona service worker: the only part of the extension that talks to the bridge.
-// Content scripts can't call localhost themselves (the page's CORS rules apply to them), so they ask here.
+// This is the only file of the extension that talks to the bridge.
 const DEFAULT_BRIDGE = "http://127.0.0.1:8765";
 
 async function bridgeUrl() {
