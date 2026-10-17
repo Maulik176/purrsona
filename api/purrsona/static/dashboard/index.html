@@ -261,7 +261,7 @@ function renderHome() {
         <div class="faint" style="margin-top:8px">The rules your drafts lean on most, ranked by FalkorDB's PageRank.</div></div>
     </div>
     <div class="grid g2" style="margin-top:18px">
-      <div class="card"><h2>Latest drafts <span>with the agents' handoffs</span></h2>${D.trails.length ? D.trails.slice(0, 5).map(trailRow).join("") : '<div class="empty">No drafts yet in this session.</div>'}</div>
+      <div class="card"><h2>Latest drafts <span>with the agents' handoffs</span></h2>${D.trails.length ? D.trails.slice(0, 5).map(trailRow).join("") : '<div class="empty">No drafts with handoffs yet: press ⌥M on the practice page.</div>'}</div>
       <div class="card"><h2>People you write to</h2>${D.people.slice(0, 7).map(personRow).join("")}</div>
     </div>`;
 }
