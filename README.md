@@ -11,6 +11,31 @@ Purrsona maps how you write to each person, platform and topic, and shows which 
 - Your voice lives in a **FalkorDB graph**: people → circles → style rules, platforms and topics, with every rule linked to the edits that taught it. Each draft shows *why* it sounds that way.
 - The graph is loaded from a **memory key** (an ESP32) that you plug in and approve with a button press. **Unplug it, and the graph is deleted**; the next draft is generic.
 
+## Privacy and the hackathon's data rule
+
+The rules ask for data that is "public, synthetic, or your own" and nothing private. Purrsona is built around that, with **two modes**:
+
+| Where | What the cat does | What it reads |
+|---|---|---|
+| **Public posts:** LinkedIn, X, Reddit | Option+M drafts a reply in your voice | only the public post you're replying to, at the moment you press the key |
+| **Private apps:** Slack web, Teams web, Gmail, LinkedIn and X messages | you type a rough message, Option+M rewrites it in your voice | **only what you typed.** It never reads the conversation; you tell it who the message is for |
+
+- **Nothing is read in the background.** The cat reads a page only when you press Option+M, click it, or press send.
+- **It never posts for you.** It fills the box; you press send.
+- **Claude sees one small brief per draft:** the post you're replying to (or your own note), plus the few rules the graph picked. Never the whole graph, and never a private conversation.
+- **Your memory lives on your key.** Unplugging deletes your graph from the laptop (`GRAPH.DELETE`). The demo key's memory log is a local file that is never committed.
+- **Demo data is made up or our own:** the people in `data/seed/` and on the practice page are invented; the video uses the practice page and our own accounts, with made-up test chats.
+
+### Where it works today
+
+| Site | Mode | Status |
+|---|---|---|
+| Practice page (`/practice/`) | both | tested |
+| LinkedIn: comments, replies under a comment, new posts | reply | tested on the real site |
+| X: replies and new posts | reply | page structure checked on the real site; full run pending |
+| Reddit: comments and replies | reply | built from Reddit's page structure; test pending |
+| Slack web, Teams web, Gmail, LinkedIn and X messages | your words | tested on the practice chat; real apps pending |
+
 ## Run it locally (about 10 minutes)
 
 You need: **Docker Desktop**, **[uv](https://docs.astral.sh/uv/getting-started/installation/)** (it installs Python 3.12 for you), **Chrome**, and **your own Anthropic API key** (each draft costs about 1–2 cents).
