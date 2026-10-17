@@ -627,8 +627,11 @@
   // "from 3 edits · last 16 Oct": when the graph last learned this rule (the newest edit or post behind it).
   const taught = (x) => (x.evidence ? `from ${x.evidence} ${x.evidence === 1 ? "edit" : "edits"}${x.last_seen ? ` · last ${day(x.last_seen)}` : ""}`
     : "no edits behind it yet");
+  const PLATFORM_LABEL = {
+    linkedin: "LinkedIn", x: "X", reddit: "Reddit", slack: "Slack", teams: "Teams", email: "Email",
+  };
   const ruleLabel = (x, ctx) => (x.scope === "User" ? "You" : x.scope === "Person" ? first(ctx.person_name)
-    : x.scope === "Platform" ? (x.scope_name === "x" ? "X" : "LinkedIn") : x.scope_name);
+    : x.scope === "Platform" ? (PLATFORM_LABEL[x.scope_name] || x.scope_name) : x.scope_name);
 
   function toggleChat(box) {
     if (!kindOf(box)) return;
