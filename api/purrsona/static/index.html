@@ -335,23 +335,24 @@ function renderWhy(r) {
     const rules = r.rules.filter((x) => x.scope === scope);
     const head = `<div class="head"><span>${scope === "User" ? "You" : scope}${scopeNames[scope] && scope !== "User" ? ": " + esc(scopeNames[scope]) : ""}</span><span class="rank">#${rank}</span></div>`;
     const body = rules.length ? rules.map((x) => `<div class="rule"><div class="k">${KIND[x.kind] || x.kind}</div>${esc(x.text)}
-        <span class="ev">learned from ${x.evidence} ${x.evidence === 1 ? "edit/post" : "edits/posts"}</span>
+        <span class="ev">learned from ${x.evidence} ${x.evidence === 1 ? "edit/post" : "edits/posts"}${x.last_seen ? `, last ${new Date(x.last_seen).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : ""}</span>
         ${x.replaces.length ? `<span class="beats">beats <s>${x.replaces.map(esc).join(", ")}</s></span>` : ""}</div>`).join("")
       : `<div class="empty" style="font-size:12px">${scope === "Person" && !p.known ? "new person: no own rules yet" : "no rules here"}</div>`;
     return `<div class="lane ${scope} ${rules.length ? "" : "none"}">${head}${body}</div>`;
   }).join("");
-  renderTrail(r.trail || []);
+  renderTrail(r.trail || [], r.queries || []);
   const claudeMs = Math.max(r.ms - r.graph_ms, 1);
   $("timing").innerHTML = `<span>Graph ${r.graph_ms} ms</span><div class="bar"><div class="g" style="width:${Math.max(r.graph_ms / r.ms * 100, 1.5)}%"></div><div class="c" style="width:${claudeMs / r.ms * 100}%"></div></div><span>Claude ${(claudeMs / 1000).toFixed(1)} s</span>`;
 }
 
 // The agents' handoffs for this draft, as saved in the graph: Drafter -> Critic -> (one redo) -> Learner.
-function renderTrail(steps) {
+function renderTrail(steps, ran = []) {
   const cls = { redo: "redo", "still breaks": "still", pass: "pass", learned: "learn", "sent as-is": "learn", "nothing new": "learn" };
   $("trail").innerHTML = steps.length ? '<span class="lbl">How the agents made it</span>' + steps.map((st) =>
     `<span class="st ${cls[st.action] || ""}" title="${esc(st.detail || "")}"><b>${esc(st.agent)}</b> ${esc(st.action)}${
       st.action === "redo" || st.action === "still breaks" ? ": " + esc(st.detail) : ""}${st.ms ? ` · ${(st.ms / 1000).toFixed(1)} s` : ""}</span>`
-  ).join('<span class="arrow">→</span>') : "";
+  ).join('<span class="arrow">→</span>') + (ran.length ? `<div style="flex-basis:100%;font-size:12px;color:var(--muted);margin-top:4px">graph ran: ${ran.map((c) =>
+    `<code>${esc(c.query)}</code> ${c.ms} ms${c.write ? ", saved" : `, ${c.rows} ${c.rows === 1 ? "row" : "rows"}`}`).join(" → ")}</div>` : "") : "";
 }
 
 async function teach() {
@@ -363,7 +364,7 @@ async function teach() {
   screen("thinking", "AI is learning your voice", `from your edit to ${esc(S.person.name.split(" ")[0])}…`);
   try {
     const out = await api("/learn", body);
-    api(`/trail/${r.draft_id}`).then((t) => renderTrail(t.steps)).catch(() => {});
+    api(`/trail/${r.draft_id}`).then((t) => renderTrail(t.steps, r.queries || [])).catch(() => {});
     if (!out.learned.length) {
       $("learned").innerHTML = `<div class="empty">${esc(out.note || "Nothing new to learn from this one.")}</div>`;
     } else {

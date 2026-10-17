@@ -99,6 +99,7 @@
 .panel .me { align-self: flex-end; max-width: 85%; padding: 4px 9px; border-radius: 10px 10px 2px 10px; background: #ff9f43; color: #1a1205; font-size: 12px; }
 .panel .it { align-self: flex-start; max-width: 94%; padding: 5px 9px; border-radius: 10px 10px 10px 2px; background: #11131a; font-size: 12px; }
 .panel .it .rule { margin-top: 4px; }
+.panel .it code { font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: #8fd3ff; }
 .panel .it b { color: #ffc078; font-weight: 600; }
 .panel .chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
 .panel .chip { all: unset; cursor: pointer; padding: 3px 9px; border-radius: 999px; background: #2a2f3e; color: #eef0f6; font-size: 12px; }

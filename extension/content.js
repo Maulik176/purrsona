@@ -623,6 +623,10 @@
   // ---- The chat: change the draft ("make it shorter"), ask why, see what the cat learned ------
   const CHIPS = [["shorter", "make it shorter"], ["add my emojis", "add my usual emojis"],
                  ["more formal", "make it more formal"], ["more casual", "make it more casual"]];
+  const day = (ms) => new Date(ms).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  // "from 3 edits · last 16 Oct": when the graph last learned this rule (the newest edit or post behind it).
+  const taught = (x) => (x.evidence ? `from ${x.evidence} ${x.evidence === 1 ? "edit" : "edits"}${x.last_seen ? ` · last ${day(x.last_seen)}` : ""}`
+    : "no edits behind it yet");
   const ruleLabel = (x, ctx) => (x.scope === "User" ? "You" : x.scope === "Person" ? first(ctx.person_name)
     : x.scope === "Platform" ? (x.scope_name === "x" ? "X" : "LinkedIn") : x.scope_name);
 
@@ -661,12 +665,17 @@
     function showWhy() {
       const top = [...last.r.rules].sort((a, z) => a.rank - z.rank).slice(0, 5);
       line("it", `<b>Why it sounds like you</b>${top.map((x) => `<div class="rule"><b>${esc(ruleLabel(x, last.ctx))}</b> · ${esc(x.text)}
-        <span class="muted">· from ${x.evidence} ${x.evidence === 1 ? "edit" : "edits"}</span></div>`).join("")}
+        <span class="muted">· ${esc(taught(x))}</span></div>`).join("")}
         <div class="muted">the narrowest rule of each kind wins</div>`);
       // The agents' handoffs for this draft: Drafter -> Critic -> (one redo) -> Critic.
       const trail = last.r.trail || [];
       if (trail.length) line("it", `<b>How the agents made it</b><div class="rule">${trail.map((st) =>
         `${esc(st.agent)} ${esc(st.action)}${st.action === "redo" || st.action === "still breaks" ? `: ${esc(st.detail)}` : ""}`).join(" → ")}</div>`);
+      // Every query the graph ran for this draft (named as in queries.py), so anyone can check it.
+      const ran = last.r.queries || [];
+      if (ran.length) line("it", `<b>What the graph ran</b>${ran.map((c) => `<div class="rule"><code>${esc(c.query)}</code>
+        <span class="muted">· ${c.ms} ms · ${c.write ? "saved" : `${c.rows} ${c.rows === 1 ? "row" : "rows"}`}</span></div>`).join("")}
+        <div class="muted">graph ${last.r.graph_ms} ms before Claude · ${last.r.ms} ms in all</div>`);
     }
     async function ask(text) {
       if (busy) return;

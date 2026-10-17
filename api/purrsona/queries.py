@@ -1,5 +1,6 @@
 """The Cypher queries Purrsona depends on (listed in the README for the judges)."""
 import re
+import time
 
 from .db import rows
 
@@ -151,7 +152,8 @@ def why_this_draft(graph, draft_id: str) -> list[dict]:
 SAVE_STEP = """
 MATCH (d:Draft {id: $draft_id})
 MERGE (d)-[:HAS_STEP]->(s:Step {n: $n})
-  ON CREATE SET s.agent = $agent, s.action = $action, s.detail = $detail, s.at = $at, s.ms = $ms
+  ON CREATE SET s.agent = $agent, s.action = $action, s.detail = $detail, s.at = $at, s.ms = $ms,
+                s.queries = $queries
 WITH d, s
 OPTIONAL MATCH (d)-[:HAS_STEP]->(prev:Step {n: $prev})
 FOREACH (_ IN CASE WHEN prev IS NULL THEN [] ELSE [1] END | MERGE (prev)-[:NEXT]->(s))
@@ -174,7 +176,7 @@ MATCH (:Draft {id: $draft_id})-[:HAS_STEP]->(s:Step)
 OPTIONAL MATCH (s)-[:FLAGGED]->(f:StyleRule)
 OPTIONAL MATCH (s)-[:TAUGHT]->(t:StyleRule)
 RETURN s.n AS n, s.agent AS agent, s.action AS action, s.detail AS detail, s.at AS at, s.ms AS ms,
-       collect(DISTINCT f.id) AS flagged, collect(DISTINCT t.id) AS taught
+       s.queries AS queries, collect(DISTINCT f.id) AS flagged, collect(DISTINCT t.id) AS taught
 ORDER BY n
 """
 
@@ -183,7 +185,8 @@ def save_trail(graph, draft_id: str, steps: list[dict]) -> None:
     for st in steps:
         graph.query(SAVE_STEP, {"draft_id": draft_id, "n": st["n"], "prev": st["n"] - 1,
                                 "agent": st["agent"], "action": st["action"],
-                                "detail": st.get("detail", ""), "at": st["at"], "ms": st.get("ms", 0)})
+                                "detail": st.get("detail", ""), "at": st["at"], "ms": st.get("ms", 0),
+                                "queries": st.get("queries") or None})
         if st.get("flagged"):
             graph.query(STEP_FLAGGED, {"draft_id": draft_id, "n": st["n"], "rule_ids": st["flagged"]})
         if st.get("taught"):
@@ -352,7 +355,7 @@ MATCH (d:Draft)-[:HAS_STEP]->(s:Step)
 OPTIONAL MATCH (d)-[:TO]->(p:Person)
 WITH d, p, s ORDER BY s.n
 RETURN d.id AS id, d.text AS text, d.at AS at, d.sent_at AS sent_at, p.name AS person,
-       collect({agent: s.agent, action: s.action, detail: s.detail}) AS steps
+       collect({agent: s.agent, action: s.action, detail: s.detail, queries: s.queries}) AS steps
 ORDER BY at DESC LIMIT $limit
 """
 
@@ -371,3 +374,39 @@ def graph_view(graph) -> dict:
     ids = {n["id"] for n in nodes}
     links = [l for l in rows(graph.ro_query(GRAPH_LINKS)) if l["source"] in ids and l["target"] in ids]
     return {"nodes": nodes, "links": links}
+
+
+# ---- What the graph ran (shown under a draft's why, so anyone can check it) -----------------------
+class Traced:
+    """A voice graph that notes every query run on it: its name in this file, how long it took (round
+    trip, milliseconds) and how many rows came back. The Drafter's step keeps the list."""
+
+    def __init__(self, graph):
+        self.graph, self.calls = graph, []
+
+    def __getattr__(self, name):
+        return getattr(self.graph, name)
+
+    def ro_query(self, q, params=None, **kw):
+        return self._run(self.graph.ro_query, q, params, kw, write=False)
+
+    def query(self, q, params=None, **kw):
+        return self._run(self.graph.query, q, params, kw, write=True)
+
+    def _run(self, run, q, params, kw, write):
+        started = time.perf_counter()
+        result = run(q, params, **kw)
+        self.calls.append({"query": query_name(q), "ms": round((time.perf_counter() - started) * 1000, 1),
+                           "rows": len(result.result_set or []), "write": write})
+        return result
+
+    def lines(self) -> list[str]:
+        """'RULES_FOR_CONTEXT · 6.2 ms · 7 rows' for each query so far."""
+        return [f"{c['query']} · {c['ms']} ms · " + ("saved" if c["write"] else f"{c['rows']} row{'' if c['rows'] == 1 else 's'}")
+                for c in self.calls]
+
+
+def query_name(q: str) -> str:
+    """The name a query has in this file (RULES_FOR_CONTEXT), or 'inline query'."""
+    return next((k for k, v in globals().items() if k.isupper() and v is q), None) \
+        or next((k for k, v in globals().items() if k.isupper() and v == q), "inline query")

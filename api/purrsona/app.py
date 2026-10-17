@@ -19,7 +19,7 @@ from . import critic, keys, learning, relationships  # noqa: E402
 from .db import connect, graph_name, rows  # noqa: E402
 from .drafter import refine_draft, write_draft  # noqa: E402
 from .queries import (ALL_RULES, COUNTS, DRAFT_HISTORY, DRAFT_RULES, PEOPLE_STATS, RECENT_TRAILS,  # noqa: E402
-                      graph_summary, graph_view, people, person_context, record_draft, rules_for_context,
+                      Traced, graph_summary, graph_view, people, person_context, record_draft, rules_for_context,
                       save_trail, signature_style, topics_in, trail_steps, why_this_draft)
 
 app = FastAPI(title="Purrsona bridge")
@@ -148,7 +148,7 @@ def draft(req: DraftRequest):
         return {"mode": "generic", "draft": text, "rules": [], "person": None,
                 "ms": round((time.perf_counter() - started) * 1000)}
 
-    graph = db.select_graph(graph_name(key_id))
+    graph = Traced(db.select_graph(graph_name(key_id)))  # notes each query: name, ms, rows
     # A new post has nobody to reply to: only the topic, platform and your own rules apply.
     person = person_context(graph, req.person_id)
     circle = person["circle"] or req.circle_hint  # the hint only matters for someone new
@@ -157,6 +157,7 @@ def draft(req: DraftRequest):
     rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle,
                               mode="post" if req.mode == "post" else "reply")
     graph_ms = round((time.perf_counter() - started) * 1000)
+    looked_up = graph.lines()  # what the graph ran before Claude wrote a word
 
     # The Drafter writes, the Critic checks the rules it used, and sends it back once if it broke one.
     steps: list[dict] = []
@@ -168,7 +169,7 @@ def draft(req: DraftRequest):
 
     t = time.perf_counter()
     text = write_draft(claude(), req.post_text, to, req.platform, rules, note=req.user_note, mode=req.mode)
-    step("Drafter", "wrote", f"from {len(rules)} rules in your graph", t)
+    step("Drafter", "wrote", f"from {len(rules)} rules in your graph", t, queries=looked_up)
     first = critic.review(text, rules, req.person_name, note=req.user_note)
     last = first
     if first["problems"]:
@@ -192,7 +193,7 @@ def draft(req: DraftRequest):
             "person": {**person, "circle": circle}, "topics": topics, "trail": steps,
             "critic": {"checked": last["checked"], "still": last["problems"],
                        "fixed": [p for p in first["problems"] if p["id"] not in still]},
-            "graph_ms": graph_ms, "ms": round((time.perf_counter() - started) * 1000)}
+            "queries": graph.calls, "graph_ms": graph_ms, "ms": round((time.perf_counter() - started) * 1000)}
 
 
 @app.get("/trail/{draft_id}")

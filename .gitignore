@@ -10,8 +10,11 @@ Shares.csv
 Comments.csv
 
 # Python
-.venv/
+.venv
+.venv.nosync/
+.venv-icloud-old/
 __pycache__/
+__pycache__.icloud-old/
 *.pyc
 .pytest_cache/
 

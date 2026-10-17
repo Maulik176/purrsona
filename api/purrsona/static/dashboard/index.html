@@ -371,8 +371,11 @@ function renderMemories() {
 // ---- Agents -----------------------------------------------------------------------------------
 function renderAgents() {
   if (!D.plugged) { $("agentsBody").innerHTML = '<div class="empty">Plug in the key to see the handoffs.</div>'; return; }
+  // Under each draft: the Critic's redo reasons, and the queries the graph ran before the Drafter wrote.
+  const ran = (t) => t.steps.filter((s) => s.queries?.length).map((s) => `<div class="faint" style="margin:4px 0 0;font-size:12px">
+    graph ran: ${s.queries.map((q) => `<code style="color:#8fd3ff">${esc(q.split(" · ")[0])}</code> ${esc(q.split(" · ").slice(1).join(", "))}`).join(" → ")}</div>`).join("");
   $("agentsBody").innerHTML = D.trails.length ? D.trails.map((t) => trailRow(t) + (t.steps.filter((s) => s.action === "redo" || s.action === "still breaks")
-    .map((s) => `<div class="faint" style="margin:4px 0 0">↺ ${esc(s.detail)}</div>`).join(""))).join("")
+    .map((s) => `<div class="faint" style="margin:4px 0 0">↺ ${esc(s.detail)}</div>`).join("")) + ran(t)).join("")
     : '<div class="empty">Draft something with the cat (⌥M) and its handoffs appear here.</div>';
 }
 
