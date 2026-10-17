@@ -151,9 +151,9 @@ The hackathon asks for data that is "public, synthetic, or your own". Purrsona h
 | Where | What the cat does | What it reads |
 |---|---|---|
 | **Public posts:** LinkedIn, X, Reddit | Option+M drafts a reply in your voice | only the post you're replying to, at the moment you press the key |
-| **Private apps:** Slack, Teams, Gmail, LinkedIn and X messages | you type a rough message; Option+M rewrites it in your voice | only what you typed. Who it's for comes from the message box's own name ("Message Neha Kulkarni") when that names one person you know; in a channel or group it asks |
+| **Private apps:** Slack, Teams, Gmail | you type a rough message; Option+M rewrites it in your voice | only what you typed. Who it's for comes from the message box's own name ("Message Neha Kulkarni") when that names one person you know; in a channel or group it asks |
 
-It reads nothing in the background, and it never presses send for you. Claude gets one small brief per draft: the post or your note, plus the handful of rules the graph chose, never the whole graph. The people in the demo and on the practice page are made up.
+LinkedIn and X direct messages are left out on purpose: the cat doesn't appear there. It reads nothing in the background, and it never presses send for you. Claude gets one small brief per draft: the post or your note, plus the handful of rules the graph chose, never the whole graph. The people in the demo and on the practice page are made up.
 
 | | Status |
 |---|---|

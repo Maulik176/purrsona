@@ -80,3 +80,13 @@ def test_sent_as_is_still_remembers_a_new_person(tmp_path, monkeypatch):
     assert (who["known"], who["circle"], who["relationship"], who["sent"]) == (True, "Work", "mentor", 1)
     assert {r["id"] for r in rows(g.ro_query(DRAFT_RULES, {"draft_id": "d-sent1"}))} == set(used)
     keys.unplug(db, "test-sent")
+
+
+def test_a_habit_about_how_a_message_opens_is_a_greeting():
+    # Found Oct 17: "Addresses Kunal by his X handle instead of his first name" came back as phrase_use,
+    # so Work's "Hi <first name>" still applied and the Critic sent the habit back.
+    from purrsona.learning import kind_for
+    assert kind_for("phrase_use", "Addresses Kunal by his X handle '@kunalstwt' instead of his first name") == "greeting"
+    assert kind_for("phrase_use", "Opens with 'Bhaila'") == "greeting"
+    assert kind_for("phrase_use", "Calls Aarav 'bro'") == "phrase_use"   # a nickname inside the message stacks
+    assert kind_for("tone", "Opens with a joke") == "tone"                # only the stacking kinds are re-sorted

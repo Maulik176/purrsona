@@ -49,7 +49,9 @@
   }
   const deepActive = () => { let a = document.activeElement; while (a?.shadowRoot?.activeElement) a = a.shadowRoot.activeElement; return a; };
   const realTarget = (e) => e.composedPath?.()[0] || e.target;
-  const MENTION = '[data-type="mention"]';
+  // @mentions the site turned into chips: LinkedIn's (a reply under a comment) and Slack's. The draft goes
+  // after them: retyping "@Name" made Slack wipe the box a moment later (checked Oct 17).
+  const MENTION = '[data-type="mention"], ts-mention';
   // Read the box, without @mentions (LinkedIn starts a reply to a comment with one).
   function readBox(box) {
     if (box.tagName === "TEXTAREA") return box.value;
@@ -125,16 +127,18 @@
     };
     const type = () => document.execCommand("insertText", false, text);
     const before = readBox(box);
-    const want = norm(text).slice(0, 40);
+    // Compare letters and digits only: X, Gmail and Slack draw emoji as images, which innerText leaves out.
+    const sig = (t) => norm(t).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    const want = sig(text).slice(0, 40);
     for (const put of TYPE_FIRST.test(location.hostname) ? [type, paste] : [paste, type]) {
       select();
       await wait(60);  // let the editor see the selection, or it pastes after your note instead of over it
       put();
       await settle(box, before);
-      const now = norm(readBox(box));
+      const now = sig(readBox(box)), was = sig(before);
       // In, and not tacked on after your note (an editor that ignored the selection keeps both).
-      if (now.includes(want)) return !norm(before) || !now.startsWith(norm(before)) || norm(text).startsWith(norm(before)) ? true : "check";
-      if (put === paste && !norm(readBox(box))) continue;  // the paste only emptied the box: type it instead
+      if (now.includes(want)) return !was || !now.startsWith(was) || sig(text).startsWith(was) ? true : "check";
+      if (!norm(readBox(box))) continue;  // that only emptied the box: try the other way
       if (readBox(box) !== before) break;  // the editor took something: never put the text in twice
     }
     navigator.clipboard?.writeText(text.trim()).catch(() => {});
@@ -311,6 +315,7 @@
     const name = norm(m?.[1]?.replace(/\((you|me)\)/i, ""));
     // A channel (#team-launch; Slack's page title says "(Channel)"), a group ("Neha, Rohan and 2 others")
     // or no name at all: nobody in particular.
+    if (/^(body|text|here|reply|comment|a message|message|your message)$/i.test(name || "")) return null;  // Gmail: "Message Body"
     if (!name || /\((private )?channel\)/i.test(document.title) || /^#/.test(name) || /,|\band\b|\bothers?\b/i.test(name) || /^(a message|here|everyone)$/i.test(name)) return null;
     return name.replace(/^@/, "");
   }
@@ -323,10 +328,16 @@
     });
     return hits.length === 1 ? hits[0] : null;
   }
+  // LinkedIn and X direct messages are left out on purpose: one-to-one private chats aren't what the cat is for.
+  const isDirectMessage = (box) =>
+    (/linkedin\.com$/.test(location.hostname) && (location.pathname.startsWith("/messaging") || !!closestDeep(box, ".msg-form, [class*='msg-overlay']")))
+    || (/(^|\.)(x|twitter)\.com$/.test(location.hostname) && (location.pathname.startsWith("/messages") || location.pathname.startsWith("/i/chat")
+        || !!closestDeep(box, '[data-testid^="dmComposer"], [data-testid="DmActivityContainer"]')));
   const WORDS = {
     name: "words",
     kind(box) {
       if (closestDeep(box, 'header, nav, [role="search"], [role="combobox"]')) return null;
+      if (isDirectMessage(box)) return null;
       const r = box.getBoundingClientRect();
       return r.width >= 120 && r.height >= 16 ? "note" : null;  // a message box, not a tiny field
     },
@@ -355,7 +366,7 @@
     const box = editableFrom(realTarget(e));
     if (kindOf(box)) {
       clearTimeout(hideTimer);
-      if (box !== current) { cat.closePanel(); cancelAsk?.(); }
+      if (box !== current) { cat.closePanel(); cancelAsk?.(); cat.badge(null); }  // the 🐾 belongs to the box you sent from
       current = box;
       cat.attach(box);
     } else {  // focus went somewhere else (another field, the address bar…): close the chat too
@@ -364,9 +375,9 @@
     }
   }, true);
   document.addEventListener("focusout", () => hideSoon(), true);
-  // A click anywhere but the box or the cat closes the chat.
+  // A click anywhere but the cat closes the chat, including a click back in the box (TEST-PLAN 1.4, 1.7).
   window.addEventListener("pointerdown", (e) => {
-    if (cat.panelOpen() && !inCat(e) && !(current && current.contains(e.target))) { cat.closePanel(); hideSoon(); }
+    if (cat.panelOpen() && !inCat(e)) { cat.closePanel(); hideSoon(); }
   }, true);
   // Hide the cat once you've left the box, unless it's working for you or its chat is open.
   function hideSoon(ms = 250) {
@@ -379,7 +390,7 @@
       cat.detach();
     }, ms);
   }
-  const linger = (ms) => { lingerUntil = Date.now() + ms; hideSoon(ms); };
+  const linger = (ms) => { lingerUntil = Math.max(lingerUntil, Date.now() + ms); hideSoon(lingerUntil - Date.now()); };  // only ever longer
 
   // ---- Keys: Option+M writes, tapping Option twice opens the chat ----------------------------
   // On a Mac, Option+M also types a character (µ, or ˛ on some keyboard layouts). We stop it, and read
@@ -393,6 +404,7 @@
       cat.closePanel();
       cat.quiet();
       current?.focus();
+      hideSoon();  // the box may be gone (after a send): then the cat leaves too
       return;
     }
     if (e.key === "Alt") {
@@ -633,7 +645,20 @@
   const ruleLabel = (x, ctx) => (x.scope === "User" ? "You" : x.scope === "Person" ? first(ctx.person_name)
     : x.scope === "Platform" ? (PLATFORM_LABEL[x.scope_name] || x.scope_name) : x.scope_name);
 
+  // After you send, X, Reddit and Gmail remove or hide the box: the cat stays where it was.
+  const usable = (box) => !!box?.isConnected && box.getBoundingClientRect().width > 0;
+  // What the last send taught, shown where the cat is (no box to attach the chat to).
+  function showLesson() {
+    if (!lastLesson) { cat.detach(); return; }
+    cat.openPanel(`<div class="status"><span>🐾 ${esc(lastLesson.summary)}</span></div>
+      <div class="log"><div class="it">${lastLesson.lines.map((l) => `🐾 ${esc(l)}`).join("<br>") || "nothing new about your style this time"}${
+        lastLesson.saved ? '<div class="muted">saved to your key</div>' : ""}</div></div>
+      <div class="hint">click anywhere or press Esc to close</div>`);
+    cat.badge(null);
+  }
+
   function toggleChat(box) {
+    if (!usable(box)) { if (cat.panelOpen()) cat.closePanel(); else showLesson(); return; }
     if (!kindOf(box)) return;
     if (cat.panelOpen()) { cat.closePanel(); box.focus(); return; }
     current = box;
@@ -755,6 +780,11 @@
         summary: n ? `your last send taught me ${n} new ${n === 1 ? "thing" : "things"}` : "your last send is saved to your key" };
       cat.mood("happy");
       cat.badge("🐾");
+      if (!usable(box)) {  // the site removed the box after sending: say it now, where the cat is
+        const b = cat.say(`🐾 ${esc(lastLesson.summary)}<div class="muted">click me to see it</div>`, { ms: 12000 });
+        b.onclick = () => { b.onclick = null; showLesson(); };
+        linger(12000);
+      }
     } catch (e) {
       cat.mood("error");
       cat.say(`🙀 couldn't learn: ${esc(e.message)}`, { ms: 4000 });

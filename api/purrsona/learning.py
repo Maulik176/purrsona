@@ -4,6 +4,7 @@ Each lesson becomes one event. The event is applied to the voice graph and appen
 log in the same step, and replayed on every plug-in, so the memory lives on the key.
 """
 import json
+import re
 import time
 import uuid
 
@@ -25,6 +26,8 @@ Choose the kind carefully. A tone, greeting, sign-off, emoji, length or format r
 recipient's circle rule of that kind, so use those kinds only for a full replacement (for example
 "Opens with 'Bhaila' instead of 'Yo'"). When a habit adds to what they already do, such as a nickname
 or one extra emoji for a topic, use phrase_use so the circle's rule still applies.
+How they open the message or address the person (a greeting, a name, a nickname at the start, an @handle) is
+kind greeting, written as "Opens with '...'", so it replaces the circle's greeting.
 If they cut the draft down a lot, that is a length habit: use kind length and give a number, for example
 "Keeps replies to Kabir to one short sentence". Describe what they do, not a list of what they removed;
 only when they removed one specific phrase, use phrase_avoid with that phrase in quotes.
@@ -80,6 +83,16 @@ def learn_rules(client: anthropic.Anthropic, draft: str, sent: str, person_name:
     return json.loads(text)["rules"][:3]
 
 
+# A habit about how the message opens is a greeting, whatever kind the model picked: otherwise the circle's
+# greeting ("Hi <first name>") still applies and the Critic sends the new habit back (found Oct 17 with
+# "Addresses Kunal by his X handle instead of his first name", saved as phrase_use).
+OPENING = re.compile(r"^(opens|starts) with\b|^(addresses|greets)\b.*\binstead of\b", re.IGNORECASE)
+
+
+def kind_for(kind: str, text: str) -> str:
+    return "greeting" if kind in queries.STACKING_KINDS and OPENING.search(text) else kind
+
+
 def build_event(person_id: str, person_name: str, circle: str | None, person_is_new: bool, platform: str,
                 draft_id: str, draft_text: str, sent_text: str, proposals: list[dict],
                 current_rules: list[dict], at: int | None = None, rule_ids: list[str] | None = None) -> dict:
@@ -88,6 +101,7 @@ def build_event(person_id: str, person_name: str, circle: str | None, person_is_
     winners = {r["kind"]: r for r in current_rules if r["kind"] not in queries.STACKING_KINDS}
     rules = []
     for p in proposals:
+        p = {**p, "kind": kind_for(p["kind"], p["text"])}
         old = winners.get(p["kind"])
         overrides = [old["id"]] if old else []
         supersedes = [old["id"]] if old and old["scope"] == "Person" else []

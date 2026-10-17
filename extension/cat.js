@@ -141,7 +141,8 @@
   const place = (pos) => { wrap.style.left = `${pos.left - origin.x}px`; wrap.style.top = `${pos.top - origin.y}px`; };
   const reposition = () => {
     if (wrap.classList.contains("moving")) return;
-    if (box && !box.isConnected) return;  // the page swapped the box out (e.g. after sending): stay put
+    // The page removed or hid the box (e.g. after sending): stay put, so the cat can still show what it learned.
+    if (box && (!box.isConnected || !box.getBoundingClientRect().width)) return;
     const h = home();
     wrap.classList.toggle("offscreen", !h);
     if (h) {
@@ -180,6 +181,7 @@
   function say(html, { ms = 0 } = {}) {
     clearTimeout(bubbleTimer);
     if (panel.classList.contains("show")) return bubble;  // the chat is open: it shows the news instead
+    bubble.onclick = null;  // a click handler belongs to the message it was set for
     bubble.innerHTML = html;
     bubble.classList.add("show");
     if (ms) bubbleTimer = setTimeout(() => bubble.classList.remove("show"), ms);
