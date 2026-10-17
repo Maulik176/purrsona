@@ -284,3 +284,90 @@ CREATE (r)-[:OVERRIDES]->(old)
 
 # A person's old rule replaced by a newer one for the same person stays as history.
 SUPERSEDE = "MATCH (old:StyleRule) WHERE old.id IN $old_ids SET old.superseded_at = $at"
+
+
+# ---- The dashboard ------------------------------------------------------------------------------
+# Q9: your signature style. PageRank over the USED links from drafts to rules: the rules your drafts
+# lean on most. (A FalkorDB algorithm, so the ranking comes from the graph's shape, not a counter.)
+SIGNATURE_STYLE = """
+CALL algo.pageRank(null, 'USED') YIELD node, score
+WITH node, score WHERE node:StyleRule AND node.superseded_at IS NULL
+RETURN node.id AS id, node.text AS text, score
+ORDER BY score DESC LIMIT $limit
+"""
+
+# The voice graph for the map: people, circles, platforms, topics, your words for people, active rules,
+# and the drafts you sent.
+GRAPH_NODES = """
+MATCH (n)
+WHERE n:User OR n:Person OR n:Circle OR n:Platform OR n:Topic OR n:Relationship
+   OR (n:StyleRule AND n.superseded_at IS NULL) OR (n:Draft AND n.sent_at IS NOT NULL)
+RETURN ID(n) AS id, labels(n)[0] AS label, coalesce(n.name, n.text, n.id) AS name, n.id AS key
+"""
+GRAPH_LINKS = """
+MATCH (a)-[r]->(b)
+WHERE type(r) IN ['KNOWS', 'IN_CIRCLE', 'HAS_RULE', 'IS', 'PART_OF', 'OVERRIDES', 'INTERESTED_IN', 'USED', 'TO']
+RETURN ID(a) AS source, ID(b) AS target, type(r) AS type
+"""
+
+# Every rule with its owner and evidence (the Writing rules page), including retired ones.
+ALL_RULES = """
+MATCH (s)-[:HAS_RULE]->(r:StyleRule)
+OPTIONAL MATCH (r)-[:LEARNED_FROM]->(ev)
+WITH s, r, count(ev) AS evidence
+OPTIONAL MATCH (r)-[:OVERRIDES]->(old:StyleRule)
+RETURN r.id AS id, r.kind AS kind, r.text AS text, labels(s)[0] AS scope, coalesce(s.name, s.id) AS owner,
+       evidence, r.superseded_at IS NOT NULL AS retired, r.id STARTS WITH 'r-' AS learned, collect(old.text) AS replaces
+ORDER BY scope, owner, kind
+"""
+
+# The people you write to, most written-to first.
+PEOPLE_STATS = """
+MATCH (:User)-[:KNOWS]->(p:Person)
+OPTIONAL MATCH (p)-[:IN_CIRCLE]->(c:Circle)
+OPTIONAL MATCH (p)-[:IS]->(rel:Relationship)
+OPTIONAL MATCH (d:Draft)-[:TO]->(p) WHERE d.sent_at IS NOT NULL
+WITH p, c, rel, count(DISTINCT d) AS sent, max(d.sent_at) AS last_sent
+OPTIONAL MATCH (p)-[:HAS_RULE]->(r:StyleRule) WHERE r.superseded_at IS NULL
+RETURN p.id AS id, p.name AS name, p.kind AS kind, c.name AS circle, rel.name AS relationship,
+       sent, last_sent, count(r) AS own_rules
+ORDER BY sent DESC, name
+"""
+
+# "It learns": every draft you sent (and the seed's history), whether you changed it, and Critic redos.
+DRAFT_HISTORY = """
+MATCH (d:Draft)
+OPTIONAL MATCH (e:Edit)-[:OF]->(d)
+OPTIONAL MATCH (d)-[:HAS_STEP]->(s:Step {action: 'redo'})
+WITH d, count(DISTINCT e) AS edits, count(DISTINCT s) AS redos, min(e.at) AS edited_at
+WHERE d.sent_at IS NOT NULL OR edits > 0
+RETURN d.id AS id, coalesce(d.sent_at, edited_at, d.at) AS at, coalesce(d.edited, edits > 0) AS edited,
+       redos, d.sent_at IS NULL AS seeded
+ORDER BY at
+"""
+
+# The latest drafts with the agents' handoffs.
+RECENT_TRAILS = """
+MATCH (d:Draft)-[:HAS_STEP]->(s:Step)
+OPTIONAL MATCH (d)-[:TO]->(p:Person)
+WITH d, p, s ORDER BY s.n
+RETURN d.id AS id, d.text AS text, d.at AS at, d.sent_at AS sent_at, p.name AS person,
+       collect({agent: s.agent, action: s.action, detail: s.detail}) AS steps
+ORDER BY at DESC LIMIT $limit
+"""
+
+COUNTS = """
+MATCH (n) WITH count(n) AS nodes
+OPTIONAL MATCH ()-[r]->() RETURN nodes, count(r) AS edges
+"""
+
+
+def signature_style(graph, limit: int = 5) -> list[dict]:
+    return rows(graph.ro_query(SIGNATURE_STYLE, {"limit": limit}))
+
+
+def graph_view(graph) -> dict:
+    nodes = rows(graph.ro_query(GRAPH_NODES))
+    ids = {n["id"] for n in nodes}
+    links = [l for l in rows(graph.ro_query(GRAPH_LINKS)) if l["source"] in ids and l["target"] in ids]
+    return {"nodes": nodes, "links": links}

@@ -18,8 +18,9 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 from . import critic, keys, learning, relationships  # noqa: E402
 from .db import connect, graph_name, rows  # noqa: E402
 from .drafter import refine_draft, write_draft  # noqa: E402
-from .queries import (DRAFT_RULES, graph_summary, people, person_context, record_draft,  # noqa: E402
-                      rules_for_context, save_trail, topics_in, trail_steps, why_this_draft)
+from .queries import (ALL_RULES, COUNTS, DRAFT_HISTORY, DRAFT_RULES, PEOPLE_STATS, RECENT_TRAILS,  # noqa: E402
+                      graph_summary, graph_view, people, person_context, record_draft, rules_for_context,
+                      save_trail, signature_style, topics_in, trail_steps, why_this_draft)
 
 app = FastAPI(title="Purrsona bridge")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -78,6 +79,10 @@ class RefineRequest(BaseModel):
 
 class RelationshipRequest(BaseModel):
     text: str
+
+
+class ForgetRequest(BaseModel):
+    rule_id: str
 
 
 def addressee(name: str, relationship: str | None) -> str:
@@ -292,6 +297,64 @@ def learner_step(graph, draft_id: str, action: str, detail: str, taught: list[st
     trail = trail_steps(graph, draft_id)
     return [*trail, {"n": len(trail) + 1, "agent": "Learner", "action": action, "detail": detail,
                      "taught": taught or [], "at": int(time.time() * 1000), "ms": ms}]
+
+
+# ---- The dashboard ------------------------------------------------------------------------------
+def memory_summary(event: dict) -> dict:
+    """One line per memory on the key: what kind, when, who, and what was learned."""
+    if event["type"] == "forgot":
+        return {"type": "forgot", "at": event["at"], "person": None, "rules": [event.get("rule_text", event["rule_id"])]}
+    person = event["person"]
+    return {"type": event["type"], "at": event["at"], "person": person["name"], "new": person["new"],
+            "circle": person.get("circle"), "relationship": person.get("relationship"),
+            "rules": [r["text"] for r in event.get("rules", [])]}
+
+
+@app.get("/dashboard/data")
+def dashboard_data():
+    """Everything the dashboard's pages show, from the plugged-in voice graph and the key's memory log."""
+    key_id = state["key_id"]
+    if key_id is None:
+        return {"plugged": False}
+    graph = db.select_graph(graph_name(key_id))
+    events = keys.load_events(key_id)
+    rules = rows(graph.ro_query(ALL_RULES))
+    history = rows(graph.ro_query(DRAFT_HISTORY))
+    live = [h for h in history if not h["seeded"]]
+    return {"plugged": True, "key_id": key_id, **rows(graph.ro_query(COUNTS))[0],
+            "counts": {"people": len(rows(graph.ro_query(PEOPLE_STATS))),
+                       "rules": sum(not r["retired"] for r in rules),
+                       "learned": sum(r["learned"] and not r["retired"] for r in rules),
+                       "memories": len(events), "sent": len(live),
+                       "as_is": sum(not h["edited"] for h in live), "redos": sum(h["redos"] for h in live)},
+            "history": history, "people": rows(graph.ro_query(PEOPLE_STATS)), "rules": rules,
+            "trails": rows(graph.ro_query(RECENT_TRAILS, {"limit": 8})),
+            "signature": signature_style(graph, 5),
+            "memories": [memory_summary(e) for e in reversed(events)]}
+
+
+@app.get("/dashboard/graph")
+def dashboard_graph():
+    """The voice graph for the map, with PageRank scores for the rules (your signature style)."""
+    if state["key_id"] is None:
+        raise HTTPException(409, "Plug in a key first")
+    graph = db.select_graph(graph_name(state["key_id"]))
+    return {**graph_view(graph), "pagerank": {r["id"]: r["score"] for r in signature_style(graph, 200)}}
+
+
+@app.post("/rules/forget")
+def forget_rule(req: ForgetRequest):
+    """Forget one rule: it's retired in the graph (kept as history) and the key remembers that you said so."""
+    key_id = state["key_id"]
+    if key_id is None:
+        raise HTTPException(409, "Plug in a key first")
+    graph = db.select_graph(graph_name(key_id))
+    found = rows(graph.ro_query("MATCH (r:StyleRule {id: $id}) RETURN r.text AS text", {"id": req.rule_id}))
+    if not found:
+        raise HTTPException(404, "No rule with that id")
+    event = {"type": "forgot", "at": int(time.time() * 1000), "rule_id": req.rule_id, "rule_text": found[0]["text"]}
+    learning.apply_event(graph, event)
+    return {"forgot": found[0]["text"], "memories": keys.append_event(key_id, event)}
 
 
 @app.post("/key/reset")

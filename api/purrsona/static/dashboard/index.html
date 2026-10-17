@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purrsona · your voice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #121318; --side: #17181e; --card: #1d1f27; --card2: #23262f; --line: #2c303b; --text: #eceef3; --muted: #9196a5; --faint: #646a79;
+  --amber: #ff9f43; --amber2: #ffc078; --teal: #2dd4bf; --blue: #60a5fa; --violet: #a78bfa; --pink: #f472b6; --slate: #94a3b8;
+  --good: #3ddc97; --bad: #ff6b6b; --radius: 16px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 14px/1.5 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; cursor: pointer; }
+.side { width: 248px; flex: none; background: var(--side); border-right: 1px solid var(--line); padding: 22px 14px; display: flex; flex-direction: column; gap: 6px; height: 100vh; position: sticky; top: 0; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 14px; }
+.brand b { font: 600 22px/1 Fraunces, Georgia, serif; letter-spacing: .2px; }
+.brand small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 4px; }
+.keychip { margin: 4px 6px 12px; padding: 8px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); font-size: 12.5px; display: flex; align-items: center; gap: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+.dot.on { background: var(--good); box-shadow: 0 0 0 3px rgba(61,220,151,.15); }
+.grp { color: var(--faint); font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; padding: 14px 10px 4px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; color: #c9ccd6; }
+.nav a:hover { background: var(--card); }
+.nav a.on { background: var(--card2); color: var(--text); }
+.nav svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.7; flex: none; }
+.side .foot { margin-top: auto; color: var(--faint); font-size: 11.5px; padding: 0 10px; }
+main { flex: 1; min-width: 0; padding: 34px 42px 60px; }
+.page { display: none; max-width: 1180px; margin: 0 auto; }
+.page.on { display: block; }
+h1 { font: 600 34px/1.15 Fraunces, Georgia, serif; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 26px; }
+.grid { display: grid; gap: 18px; }
+.g2 { grid-template-columns: 1.6fr 1fr; }
+.g2b { grid-template-columns: 1fr 1fr; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+.card h2 { margin: 0 0 14px; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--amber); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.card h2 span { color: var(--faint); letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 12px; }
+.stats { display: grid; grid-template-columns: repeat(6, 1fr); background: var(--card2); border-radius: 14px; overflow: hidden; margin-bottom: 18px; }
+.stat { padding: 16px 12px; text-align: center; border-right: 1px solid var(--line); }
+.stat:last-child { border-right: 0; }
+.stat b { display: block; font: 600 26px/1.1 Fraunces, Georgia, serif; }
+.stat span { color: var(--muted); font-size: 12px; }
+.row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.row:first-of-type { border-top: 0; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); font-size: 12px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; background: var(--card2); border: 1px solid var(--line); font-size: 12px; color: #c9ccd6; white-space: nowrap; }
+.av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; font-size: 12px; color: #1a1205; flex: none; }
+.bar { height: 6px; border-radius: 6px; background: var(--card2); overflow: hidden; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--amber), var(--amber2)); border-radius: 6px; }
+.steps { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 6px; }
+.st { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card2); color: #c9ccd6; }
+.st.redo, .st.still { border-color: var(--amber); color: var(--amber2); }
+.st.pass { border-color: rgba(61,220,151,.6); color: var(--good); }
+.st.learn { border-color: rgba(167,139,250,.6); color: var(--violet); }
+.arrow { color: var(--faint); font-size: 11px; }
+.empty { color: var(--faint); padding: 18px 0; text-align: center; }
+.chart { width: 100%; height: 210px; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+/* Voice graph */
+.mapbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: #d5d8e0; font-size: 13px; user-select: none; cursor: pointer; }
+.chip i { width: 9px; height: 9px; border-radius: 50%; }
+.chip.off { opacity: .4; }
+.chip b { color: var(--faint); font-weight: 500; }
+.search { margin-left: auto; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; color: var(--text); width: 220px; font: inherit; }
+.toggle { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: #d5d8e0; }
+.toggle.on { background: rgba(255,159,67,.14); border-color: var(--amber); color: var(--amber2); }
+.mapwrap { position: relative; height: calc(100vh - 250px); min-height: 480px; border-radius: 20px; overflow: hidden; border: 1px solid var(--line);
+           background: radial-gradient(circle at 30% 35%, rgba(244,114,182,.10) 0, transparent 32%),
+                       radial-gradient(circle at 70% 60%, rgba(45,212,191,.09) 0, transparent 34%),
+                       radial-gradient(circle at 55% 25%, rgba(167,139,250,.10) 0, transparent 30%),
+                       radial-gradient(ellipse at 50% 50%, #1a1826 0%, #0f1015 75%); }
+canvas#map { width: 100%; height: 100%; display: block; cursor: grab; }
+.detail { position: absolute; left: 16px; right: 16px; bottom: 16px; background: rgba(23,24,30,.94); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; display: none; backdrop-filter: blur(6px); }
+.detail.on { display: block; }
+.detail h3 { margin: 0 0 4px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.detail .x { position: absolute; right: 14px; top: 10px; background: none; border: 0; color: var(--muted); font-size: 18px; }
+.detail .links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.detail .links .pill { cursor: pointer; }
+.hint { position: absolute; left: 16px; top: 14px; color: var(--faint); font-size: 12px; }
+/* Rules */
+.rgroup { margin-bottom: 16px; }
+.rgroup h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--amber); font-weight: 600; }
+.rule { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--line); }
+.rule:first-of-type { border-top: 0; }
+.rule .k { font-size: 11px; color: var(--muted); width: 84px; flex: none; padding-top: 2px; }
+.rule .t { flex: 1; }
+.rule .t s { color: var(--faint); }
+.rule.retired .t { color: var(--faint); text-decoration: line-through; }
+.forget { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 2px 9px; }
+.forget:hover { border-color: var(--bad); color: var(--bad); }
+.tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; margin-left: 6px; }
+.tag.learned { background: rgba(167,139,250,.15); color: var(--violet); }
+.tag.seed { background: var(--card2); color: var(--faint); }
+/* Memories */
+.mem { display: flex; gap: 14px; padding: 14px 0; border-top: 1px solid var(--line); }
+.mem:first-child { border-top: 0; }
+.mem .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--card2); flex: none; font-size: 16px; }
+.mem ul { margin: 6px 0 0; padding-left: 18px; color: #c9ccd6; }
+/* Key */
+.bigkey { display: flex; align-items: center; gap: 18px; }
+.btn { padding: 9px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--card2); color: var(--text); font-weight: 500; }
+.btn.primary { background: var(--amber); border-color: var(--amber); color: #1a1205; }
+.btn.danger { border-color: rgba(255,107,107,.5); color: var(--bad); background: none; }
+table.modes { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.modes th, table.modes td { text-align: left; padding: 10px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+table.modes th { color: var(--muted); font-weight: 500; border-top: 0; }
+.plugwall { text-align: center; padding: 80px 20px; }
+.plugwall h2 { font: 600 26px Fraunces, Georgia, serif; margin: 14px 0 6px; }
+@media (max-width: 1000px) { .g2, .g2b { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(3, 1fr); } .side { display: none; } main { padding: 22px 16px; } }
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="brand">
+    <svg width="38" height="38" viewBox="0 0 64 64" aria-hidden="true"><path d="M44 50 C58 50 60 36 54 30" fill="none" stroke="#2f3340" stroke-width="5" stroke-linecap="round"/><ellipse cx="31" cy="45" rx="16" ry="12.5" fill="#3b4050"/><polygon points="18,19 21,5 28,14" fill="#3b4050"/><polygon points="34,14 41,5 44,19" fill="#3b4050"/><circle cx="31" cy="24" r="13" fill="#3b4050"/><ellipse cx="26" cy="23" rx="2.6" ry="3.3" fill="#ffc44d"/><ellipse cx="36" cy="23" rx="2.6" ry="3.3" fill="#ffc44d"/><ellipse cx="26.6" cy="23.4" rx="1" ry="2.1" fill="#1b1d24"/><ellipse cx="36.6" cy="23.4" rx="1" ry="2.1" fill="#1b1d24"/><polygon points="29.5,28 32.5,28 31,29.8" fill="#f4a3b4"/></svg>
+    <div><b>Purrsona</b><small>your voice, on a key you own</small></div>
+  </div>
+  <div class="keychip"><span class="dot" id="keyDot"></span><span id="keyText">checking the key…</span></div>
+  <nav class="nav">
+    <div class="grp">Overview</div>
+    <a href="#home" data-page="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+    <div class="grp">Memory</div>
+    <a href="#graph" data-page="graph"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="7" r="2.5"/><circle cx="12" cy="17" r="2.5"/><path d="M8 7l7.5 0.5M7.5 8l3.5 7M16.8 9.2L13.3 15"/></svg>Voice graph</a>
+    <a href="#rules" data-page="rules"><svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg>Writing rules</a>
+    <a href="#memories" data-page="memories"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h6M9 14h6"/></svg>What the key learned</a>
+    <div class="grp">Agents</div>
+    <a href="#agents" data-page="agents"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.5"/><circle cx="12" cy="12" r="2.5"/><circle cx="19" cy="12" r="2.5"/><path d="M7.5 12h2M14.5 12h2"/></svg>Handoffs</a>
+    <div class="grp">You</div>
+    <a href="#key" data-page="key"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="12" rx="2"/><path d="M10 15v5h4v-5M10 7h4"/></svg>Key &amp; privacy</a>
+    <a href="/practice/"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>Practice page</a>
+    <a href="/"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>Demo console</a>
+  </nav>
+  <div class="foot">Everything here comes from the voice graph in FalkorDB, built from your key.</div>
+</aside>
+
+<main>
+  <!-- Home -->
+  <section class="page" id="page-home">
+    <h1>Hello, <span id="hello">Maulik</span>.</h1>
+    <p class="sub">Your voice at a glance: who you write to, what Purrsona has learned, and how the agents work together.</p>
+    <div id="homeBody"></div>
+  </section>
+
+  <!-- Voice graph -->
+  <section class="page" id="page-graph">
+    <h1>Voice graph</h1>
+    <p class="sub">Your live FalkorDB graph: the people you write to, their circles, your platforms and topics, and the rules that make each reply sound like you.</p>
+    <div class="mapbar" id="chips"></div>
+    <div class="mapwrap">
+      <canvas id="map"></canvas>
+      <div class="hint">drag to move · scroll to zoom · click a node</div>
+      <div class="detail" id="detail"><button class="x" id="detailX" aria-label="Close">×</button><div id="detailBody"></div></div>
+    </div>
+  </section>
+
+  <!-- Writing rules -->
+  <section class="page" id="page-rules">
+    <h1>Writing rules</h1>
+    <p class="sub">How you write, by who it's for. The narrowest rule of each kind wins: a person beats their circle, a circle beats a topic, a topic beats a platform, and those beat your everywhere habits. Forget any rule with ✕: it's retired (kept as history) and the key remembers that you said so.</p>
+    <div class="mapbar"><input class="search" id="ruleSearch" placeholder="Search rules…" style="margin-left:0"></div>
+    <div class="card" id="rulesBody"></div>
+  </section>
+
+  <!-- Memories -->
+  <section class="page" id="page-memories">
+    <h1>What the key learned</h1>
+    <p class="sub">Every memory on your key, newest first. Each one is replayed into the graph when you plug in, so unplugging never loses it.</p>
+    <div class="card" id="memBody"></div>
+  </section>
+
+  <!-- Agents -->
+  <section class="page" id="page-agents">
+    <h1>Handoffs</h1>
+    <p class="sub">Three agents, one shared memory. They never call each other: the Drafter writes from the graph's rules, the Critic checks the draft against them and hands it back once if it broke one, and the Learner turns what you sent into new rules. Every step is a node in the graph.</p>
+    <div class="card" id="agentsBody"></div>
+  </section>
+
+  <!-- Key & privacy -->
+  <section class="page" id="page-key">
+    <h1>Key &amp; privacy</h1>
+    <p class="sub">Your voice lives on your key. Plug it in and the laptop builds your graph; unplug it and the graph is deleted.</p>
+    <div class="grid g2b">
+      <div class="card"><h2>Your key</h2><div id="keyBody"></div></div>
+      <div class="card"><h2>What leaves your laptop</h2>
+        <p class="muted" style="margin-top:0">For each draft, Claude gets one small brief: the post you're replying to (or your own note) and the few rules the graph picked. Never the whole graph, and never a private conversation.</p>
+        <p class="muted">Nothing is read in the background: the cat reads a page only when you press ⌥M, click it, or send. It never posts for you.</p></div>
+    </div>
+    <div class="card" style="margin-top:18px"><h2>Two modes, and why</h2>
+      <table class="modes">
+        <tr><th>Where</th><th>What the cat does</th><th>What it reads</th></tr>
+        <tr><td>Public posts: LinkedIn, X, Reddit</td><td>⌥M drafts a reply in your voice</td><td>only the post you're replying to, when you press the key</td></tr>
+        <tr><td>Private apps: Slack, Teams, Gmail, messages</td><td>type a rough message, ⌥M rewrites it in your voice</td><td>only what you typed, never the conversation; you say who it's for</td></tr>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const first = (n) => String(n || "").split(" ")[0];
+const day = (ms) => new Date(ms).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 60 ? `${Math.max(m, 1)} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : day(ms); };
+const COLORS = { User: "#ffc078", Person: "#ff9f43", Circle: "#2dd4bf", Platform: "#60a5fa", Topic: "#a78bfa", StyleRule: "#f472b6", Relationship: "#94a3b8", Draft: "#fde68a" };
+const NAMES = { User: "You", Person: "People", Circle: "Circles", Platform: "Platforms", Topic: "Topics", StyleRule: "Rules", Relationship: "Your words", Draft: "Drafts sent" };
+const PLATFORM = { linkedin: "LinkedIn", x: "X", reddit: "Reddit", slack: "Slack", teams: "Teams", email: "Email" };
+let D = null;
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || res.statusText);
+  return data;
+}
+
+// ---- Pages ------------------------------------------------------------------------------------
+function show(page) {
+  document.querySelectorAll(".page").forEach((p) => p.classList.toggle("on", p.id === `page-${page}`));
+  document.querySelectorAll(".nav a[data-page]").forEach((a) => a.classList.toggle("on", a.dataset.page === page));
+  if (page === "graph") drawGraph();
+}
+window.addEventListener("hashchange", () => show(location.hash.slice(1) || "home"));
+
+async function load() {
+  try { D = await api("/dashboard/data"); } catch (e) { D = { plugged: false, error: e.message }; }
+  $("keyDot").classList.toggle("on", !!D.plugged);
+  $("keyText").textContent = D.plugged ? `Key plugged in · ${D.key_id}` : D.error ? "Bridge not running" : "Key unplugged";
+  renderHome(); renderRules(); renderMemories(); renderAgents(); renderKey();
+  show(location.hash.slice(1) || "home");
+}
+
+const plugWall = (msg) => `<div class="card plugwall"><svg width="70" height="70" viewBox="0 0 64 64"><ellipse cx="31" cy="45" rx="16" ry="12.5" fill="#3b4050"/><polygon points="18,19 21,5 28,14" fill="#3b4050"/><polygon points="34,14 41,5 44,19" fill="#3b4050"/><circle cx="31" cy="24" r="13" fill="#3b4050"/><path d="M23 24h6M33 24h6" stroke="#ffc44d" stroke-width="2" stroke-linecap="round"/></svg>
+  <h2>${msg}</h2><p class="muted">The voice graph only exists while your key is plugged in.</p><button class="btn primary" onclick="plug()">Plug in the key</button></div>`;
+
+// ---- Home -------------------------------------------------------------------------------------
+function renderHome() {
+  if (!D.plugged) { $("homeBody").innerHTML = plugWall(D.error ? "Purrsona's bridge isn't running" : "The cat is asleep: no key plugged in"); return; }
+  const c = D.counts, asIs = c.sent ? Math.round(c.as_is / c.sent * 100) : 0;
+  const maxSig = Math.max(...D.signature.map((s) => s.score), 1e-9);
+  $("homeBody").innerHTML = `
+    <div class="stats">
+      ${[[c.people, "people"], [c.rules, `rules · ${c.learned} learned`], [c.memories, "memories on the key"], [c.sent, "drafts sent"], [`${asIs}%`, "sent as-is"], [c.redos, "Critic redos"]]
+        .map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("")}
+    </div>
+    <div class="grid g2">
+      <div class="card"><h2>It learns <span>fewer changes per draft = it knows your voice</span></h2>${learnChart()}</div>
+      <div class="card"><h2>Signature style <span>PageRank over your drafts</span></h2>
+        ${D.signature.length ? D.signature.map((s, i) => `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px"><span>${i + 1}. ${esc(s.text)}</span></div>
+          <div class="bar" style="margin-top:6px"><i style="width:${Math.max(8, s.score / maxSig * 100)}%"></i></div></div>`).join("")
+          : '<div class="empty">Draft a few replies and your signature rules appear here.</div>'}
+        <div class="faint" style="margin-top:8px">The rules your drafts lean on most, ranked by FalkorDB's PageRank.</div></div>
+    </div>
+    <div class="grid g2" style="margin-top:18px">
+      <div class="card"><h2>Latest drafts <span>with the agents' handoffs</span></h2>${D.trails.length ? D.trails.slice(0, 5).map(trailRow).join("") : '<div class="empty">No drafts yet in this session.</div>'}</div>
+      <div class="card"><h2>People you write to</h2>${D.people.slice(0, 7).map(personRow).join("")}</div>
+    </div>`;
+}
+
+function learnChart() {
+  const days = {};
+  D.history.forEach((h) => {
+    const k = new Date(h.at).toDateString();
+    const d = days[k] ||= { at: h.at, seed: 0, changed: 0, asis: 0, redos: 0 };
+    if (h.seeded) d.seed++; else if (h.edited) d.changed++; else d.asis++;
+    d.redos += h.redos || 0;
+  });
+  const list = Object.values(days).sort((a, b) => a.at - b.at).slice(-14);
+  if (!list.length) return '<div class="empty">Send a few drafts to see this chart.</div>';
+  const W = 640, H = 190, pad = 26, bw = Math.min(34, (W - pad * 2) / list.length - 10);
+  const max = Math.max(...list.map((d) => d.seed + d.changed + d.asis), 1);
+  const x = (i) => pad + i * ((W - pad * 2) / list.length) + 5;
+  const y = (v) => H - pad - v / max * (H - pad * 2);
+  let bars = "";
+  list.forEach((d, i) => {
+    let base = 0;
+    for (const [v, col] of [[d.seed, "#3a3f4c"], [d.changed, "#ff9f43"], [d.asis, "#3ddc97"]]) {
+      if (!v) continue;
+      bars += `<rect x="${x(i)}" y="${y(base + v)}" width="${bw}" height="${y(base) - y(base + v)}" rx="4" fill="${col}"><title>${day(d.at)}: ${v}</title></rect>`;
+      base += v;
+    }
+    if (d.redos) bars += `<text x="${x(i) + bw / 2}" y="${y(base) - 6}" text-anchor="middle" fill="#ffc078" font-size="11">↺${d.redos}</text>`;
+    bars += `<text x="${x(i) + bw / 2}" y="${H - 8}" text-anchor="middle" fill="#646a79" font-size="11">${day(d.at)}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}</svg>
+    <div class="legend"><span><i style="background:#3a3f4c"></i>made-up history (seed)</span><span><i style="background:#ff9f43"></i>you changed the draft</span><span><i style="background:#3ddc97"></i>sent as-is</span><span style="color:#ffc078">↺ Critic redos</span></div>`;
+}
+
+const STEP = { redo: "redo", "still breaks": "still", pass: "pass", learned: "learn", "sent as-is": "learn", "nothing new": "learn" };
+const steps = (list) => `<div class="steps">${list.map((s) => `<span class="st ${STEP[s.action] || ""}" title="${esc(s.detail || "")}">${esc(s.agent)} ${esc(s.action)}</span>`).join('<span class="arrow">→</span>')}</div>`;
+const trailRow = (t) => `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px">
+  <b>${esc(t.person || "your own post")}</b><span class="faint">${ago(t.at)}${t.sent_at ? " · sent" : ""}</span></div>
+  <div class="muted" style="font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.text)}</div>${steps(t.steps)}</div>`;
+const AVCOL = ["#ff9f43", "#2dd4bf", "#a78bfa", "#60a5fa", "#f472b6", "#fde68a"];
+const personRow = (p, i) => `<div class="row"><div class="av" style="background:${AVCOL[i % AVCOL.length]}">${esc(first(p.name)[0] || "?")}</div>
+  <div style="flex:1;min-width:0"><b>${esc(p.name)}</b><div class="faint">${[p.relationship && `your ${p.relationship}`, p.circle || (p.kind === "company" ? "company page" : "no circle"), p.own_rules ? `${p.own_rules} own rule${p.own_rules > 1 ? "s" : ""}` : ""].filter(Boolean).map(esc).join(" · ")}</div></div>
+  <span class="pill">${p.sent} sent</span></div>`;
+
+// ---- Writing rules ----------------------------------------------------------------------------
+function ownerLabel(r) {
+  if (r.scope === "User") return "You, everywhere";
+  if (r.scope === "Platform") return PLATFORM[r.owner] || r.owner;
+  if (r.scope === "Circle") return `${r.owner} circle`;
+  if (r.scope === "Topic") return `Topic: ${r.owner}`;
+  return r.owner;
+}
+function renderRules() {
+  if (!D.plugged) { $("rulesBody").innerHTML = '<div class="empty">Plug in the key to see your rules.</div>'; return; }
+  const q = ($("ruleSearch").value || "").toLowerCase();
+  const order = { User: 0, Platform: 1, Topic: 2, Circle: 3, Person: 4 };
+  const groups = {};
+  D.rules.filter((r) => !q || `${r.text} ${r.owner} ${r.kind}`.toLowerCase().includes(q))
+    .forEach((r) => (groups[`${order[r.scope]}|${ownerLabel(r)}`] ||= []).push(r));
+  const keys = Object.keys(groups).sort();
+  $("rulesBody").innerHTML = keys.length ? keys.map((k) => `<div class="rgroup"><h3>${esc(k.split("|")[1])}</h3>${groups[k].map((r) => `
+    <div class="rule ${r.retired ? "retired" : ""}"><div class="k">${esc(r.kind.replace("_", " "))}</div>
+      <div class="t">${esc(r.text)}<span class="tag ${r.learned ? "learned" : "seed"}">${r.learned ? "learned from your sends" : "from the key"}</span>
+        <div class="faint">${r.retired ? "retired: replaced or forgotten" : `from ${r.evidence} ${r.evidence === 1 ? "edit or post" : "edits and posts"}`}${r.replaces.length ? ` · beats <s>${r.replaces.map(esc).join(", ")}</s>` : ""}</div></div>
+      ${r.retired ? "" : `<button class="forget" title="Forget this rule" data-forget="${esc(r.id)}">✕</button>`}</div>`).join("")}</div>`).join("")
+    : '<div class="empty">No rules match.</div>';
+  $("rulesBody").querySelectorAll("[data-forget]").forEach((b) => b.addEventListener("click", async () => {
+    const rule = D.rules.find((r) => r.id === b.dataset.forget);
+    if (!confirm(`Forget this rule?\n\n"${rule.text}"\n\nIt stays as history but won't shape drafts any more, and the key remembers that you forgot it.`)) return;
+    try { await api("/rules/forget", { rule_id: rule.id }); await load(); location.hash = "#rules"; }
+    catch (e) { alert(e.message); }
+  }));
+}
+$("ruleSearch").addEventListener("input", renderRules);
+
+// ---- Memories ---------------------------------------------------------------------------------
+function renderMemories() {
+  if (!D.plugged) { $("memBody").innerHTML = '<div class="empty">Plug in the key to see its memories.</div>'; return; }
+  if (!D.memories.length) { $("memBody").innerHTML = '<div class="empty">Nothing learned yet: send a reply with the cat and it lands here.</div>'; return; }
+  $("memBody").innerHTML = D.memories.map((m) => {
+    const icon = m.type === "forgot" ? "🧹" : m.type === "sent" ? "✉️" : "🐾";
+    const who = m.person ? `<b>${esc(m.person)}</b> <span class="faint">${[m.new && "new", m.relationship && `your ${m.relationship}`, m.circle].filter(Boolean).map(esc).join(" · ")}</span>` : "<b>You</b>";
+    const what = m.type === "forgot" ? "forgot a rule" : m.type === "sent" ? "sent a draft as it was" : m.rules.length ? `learned ${m.rules.length}` : "sent with changes, nothing new";
+    return `<div class="mem"><div class="ic">${icon}</div><div style="flex:1">${who} · <span class="muted">${what}</span> <span class="faint">· ${day(m.at)}</span>
+      ${m.rules.length ? `<ul>${m.rules.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}</div></div>`;
+  }).join("");
+}
+
+// ---- Agents -----------------------------------------------------------------------------------
+function renderAgents() {
+  if (!D.plugged) { $("agentsBody").innerHTML = '<div class="empty">Plug in the key to see the handoffs.</div>'; return; }
+  $("agentsBody").innerHTML = D.trails.length ? D.trails.map((t) => trailRow(t) + (t.steps.filter((s) => s.action === "redo" || s.action === "still breaks")
+    .map((s) => `<div class="faint" style="margin:4px 0 0">↺ ${esc(s.detail)}</div>`).join(""))).join("")
+    : '<div class="empty">Draft something with the cat (⌥M) and its handoffs appear here.</div>';
+}
+
+// ---- Key --------------------------------------------------------------------------------------
+function renderKey() {
+  $("keyBody").innerHTML = D.plugged ? `<div class="bigkey"><span class="dot on" style="width:12px;height:12px"></span><div><b>${esc(D.key_id)}</b>
+      <div class="faint">${D.nodes} nodes · ${D.edges} links in FalkorDB · ${D.counts.memories} memories on the key</div></div></div>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn danger" onclick="unplug()">Unplug: forget everything on this laptop</button>
+      <button class="btn" onclick="resetKey()">Reset what the key learned</button></div>`
+    : `<div class="bigkey"><span class="dot" style="width:12px;height:12px"></span><div><b>No key plugged in</b><div class="faint">The laptop holds none of your voice right now.</div></div></div>
+      <div style="margin-top:16px"><button class="btn primary" onclick="plug()">Plug in the key</button></div>`;
+}
+async function plug() { try { await api("/key/plug", { key_id: "demo-maulik" }); await load(); } catch (e) { alert(e.message); } }
+async function unplug() { await api("/key/unplug", {}); graphCache = null; await load(); }
+async function resetKey() {
+  if (!confirm("Forget everything the key learned and go back to its starting voice?")) return;
+  await api("/key/reset", { key_id: D.key_id || "demo-maulik" }); graphCache = null; await load();
+}
+
+// ---- The voice graph map ----------------------------------------------------------------------
+let graphCache = null, hidden = new Set(["Relationship", "Draft"]), bySignature = true, sim = null;
+async function drawGraph() {
+  const canvas = $("map");
+  if (!D.plugged) { $("chips").innerHTML = ""; canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height); $("detail").classList.add("on"); $("detailBody").innerHTML = "Plug in the key to see your voice graph."; return; }
+  if (!graphCache) graphCache = await api("/dashboard/graph");
+  const G = graphCache;
+  const counts = {}; G.nodes.forEach((n) => counts[n.label] = (counts[n.label] || 0) + 1);
+  $("chips").innerHTML = Object.keys(NAMES).filter((l) => counts[l]).map((l) => `<span class="chip ${hidden.has(l) ? "off" : ""}" data-l="${l}"><i style="background:${COLORS[l]}"></i>${NAMES[l]} <b>${counts[l]}</b></span>`).join("")
+    + `<button class="toggle ${bySignature ? "on" : ""}" id="sigBtn" title="Size rules by PageRank over your drafts">Signature style</button><input class="search" id="mapSearch" placeholder="search the graph…">`;
+  $("chips").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { hidden.has(c.dataset.l) ? hidden.delete(c.dataset.l) : hidden.add(c.dataset.l); drawGraph(); }));
+  $("sigBtn").addEventListener("click", () => { bySignature = !bySignature; drawGraph(); });
+
+  let nodes = G.nodes.filter((n) => !hidden.has(n.label)).map((n) => ({ ...n }));
+  let ids = new Set(nodes.map((n) => n.id));
+  const links = G.links.filter((l) => ids.has(l.source) && ids.has(l.target)).map((l) => ({ ...l }));
+  const linked = new Set(links.flatMap((l) => [l.source, l.target]));
+  nodes = nodes.filter((n) => n.label === "User" || linked.has(n.id));  // nothing to show for a node with no links yet
+  const maxPR = Math.max(...Object.values(G.pagerank), 1e-9);
+  const deg = {}; links.forEach((l) => { deg[l.source] = (deg[l.source] || 0) + 1; deg[l.target] = (deg[l.target] || 0) + 1; });
+  nodes.forEach((n) => {
+    n.r = { User: 15, Circle: 11, Platform: 9, Topic: 8, Person: 7, Relationship: 3.5, Draft: 3.5 }[n.label]
+      || (bySignature ? 3 + 9 * Math.sqrt((G.pagerank[n.key] || 0) / maxPR) : 4.5);
+    if (n.label === "Person") n.r += Math.min(5, (deg[n.id] || 0) * 0.5);
+  });
+  const neighbors = {}; links.forEach((l) => { (neighbors[l.source] ||= new Set()).add(l.target); (neighbors[l.target] ||= new Set()).add(l.source); });
+
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext("2d");
+  let transform = d3.zoomIdentity, hover = null, selected = null, query = "";
+  if (sim) sim.stop();
+  sim = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id((d) => d.id).distance((l) => ({ HAS_RULE: 46, IN_CIRCLE: 70, KNOWS: 90, PART_OF: 34, IS: 34, USED: 60, TO: 40 }[l.type] || 60)).strength(0.5))
+    .force("charge", d3.forceManyBody().strength((d) => d.label === "User" ? -600 : -160))
+    .force("center", d3.forceCenter(W / 2, H / 2))
+    .force("x", d3.forceX(W / 2).strength(0.025))
+    .force("y", d3.forceY(H / 2).strength(0.04))
+    .force("collide", d3.forceCollide().radius((d) => d.r + 4))
+    .stop();
+  for (let i = 0; i < 300; i++) sim.tick();  // lay it out up front: no waiting on animation timers
+  const zoom = d3.zoom().scaleExtent([0.3, 5]).on("zoom", (ev) => { transform = ev.transform; paint(); });
+  function fit() {  // zoom so the whole graph fills the view
+    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const k = Math.min(2.2, 0.86 * Math.min(W / (x1 - x0 + 80), H / (y1 - y0 + 80)));
+    d3.select(canvas).call(zoom.transform, d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k));
+  }
+
+  function lit(n) {
+    if (query) return n.name.toLowerCase().includes(query);
+    const focus = selected || hover;
+    return !focus || focus === n || neighbors[focus.id]?.has(n.id);
+  }
+  function paint() {
+    ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    ctx.translate(transform.x, transform.y); ctx.scale(transform.k, transform.k);
+    const focus = selected || hover;
+    for (const l of links) {
+      const on = focus && (l.source === focus || l.target === focus);
+      ctx.strokeStyle = l.type === "OVERRIDES" ? "rgba(255,107,107,.6)" : on ? "rgba(255,192,120,.8)" : "rgba(170,178,205,.2)";
+      ctx.lineWidth = on ? 1.4 : 0.7;
+      ctx.setLineDash(l.type === "OVERRIDES" ? [4, 3] : []);
+      ctx.beginPath(); ctx.moveTo(l.source.x, l.source.y); ctx.lineTo(l.target.x, l.target.y); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    for (const n of nodes) {
+      const on = lit(n);
+      ctx.globalAlpha = on ? 1 : 0.15;
+      const col = COLORS[n.label];
+      const halo = ctx.createRadialGradient(n.x, n.y, n.r * 0.6, n.x, n.y, n.r * 3.2);  // the soft glow
+      halo.addColorStop(0, col + "66"); halo.addColorStop(1, col + "00");
+      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(n.x, n.y, n.r * 3.2, 0, Math.PI * 2); ctx.fill();
+      const body = ctx.createRadialGradient(n.x - n.r * 0.35, n.y - n.r * 0.35, n.r * 0.1, n.x, n.y, n.r);  // a bright core
+      body.addColorStop(0, "#ffffff"); body.addColorStop(0.35, col); body.addColorStop(1, col + "cc");
+      ctx.fillStyle = body; ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
+      if (n === selected) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke(); }
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "center"; ctx.font = "500 11px Inter, sans-serif";
+    for (const n of nodes) {
+      const show = ["User", "Circle", "Platform", "Topic", "Person"].includes(n.label) || n === focus || (focus && neighbors[focus.id]?.has(n.id)) || (query && lit(n)) || transform.k > 1.8;
+      if (!show || !lit(n)) continue;
+      const label = n.label === "User" ? "You" : n.label === "Platform" ? (PLATFORM[n.name] || n.name) : n.name;
+      ctx.fillStyle = "rgba(236,238,243,.9)";
+      ctx.fillText(label.length > 34 ? label.slice(0, 33) + "…" : label, n.x, n.y + n.r + 13);
+    }
+    ctx.restore();
+  }
+  const pick = (ev) => {
+    const [mx, my] = transform.invert(d3.pointer(ev, canvas));
+    return nodes.find((n) => (n.x - mx) ** 2 + (n.y - my) ** 2 <= (n.r + 4) ** 2) || null;
+  };
+  d3.select(canvas).call(zoom)
+    .on("mousemove", (ev) => { const n = pick(ev); if (n !== hover) { hover = n; canvas.style.cursor = n ? "pointer" : "grab"; paint(); } })
+    .on("click", (ev) => { const n = pick(ev); selected = n; detail(n); paint(); });
+  $("mapSearch").addEventListener("input", (e) => { query = e.target.value.trim().toLowerCase(); paint(); });
+  $("detailX").onclick = () => { selected = null; detail(null); paint(); };
+  fit();
+
+  function detail(n) {
+    if (!n) { $("detail").classList.remove("on"); return; }
+    const linked = [...(neighbors[n.id] || [])].map((id) => nodes.find((x) => x.id === id)).filter(Boolean);
+    let extra = "";
+    if (n.label === "Person") {
+      const p = D.people.find((x) => x.id === n.key) || {};
+      extra = [p.relationship && `your ${p.relationship}`, p.circle, `${p.sent || 0} ${p.sent === 1 ? "draft" : "drafts"} sent`, `${p.own_rules || 0} own rules`].filter(Boolean).map(esc).join(" · ");
+    } else if (n.label === "StyleRule") {
+      const r = D.rules.find((x) => x.id === n.key) || {};
+      extra = `${esc(ownerLabel(r))} · ${esc((r.kind || "").replace("_", " "))} · from ${r.evidence ?? 0} edits/posts${G.pagerank[n.key] ? ` · PageRank ${(G.pagerank[n.key] / maxPR * 100).toFixed(0)}%` : ""}`;
+    } else extra = `${linked.length} links`;
+    $("detailBody").innerHTML = `<h3><i class="dot" style="background:${COLORS[n.label]};width:10px;height:10px"></i>${esc(n.label === "User" ? "You" : n.label === "Platform" ? (PLATFORM[n.name] || n.name) : n.name)}
+      <span class="faint" style="font-weight:400">${esc(NAMES[n.label] || n.label)}</span></h3><div class="muted">${extra}</div>
+      <div class="links">${linked.slice(0, 18).map((x) => `<span class="pill" data-id="${x.id}"><i class="dot" style="background:${COLORS[x.label]}"></i>${esc((x.name || "").slice(0, 40))}</span>`).join("")}</div>`;
+    $("detail").classList.add("on");
+    $("detailBody").querySelectorAll("[data-id]").forEach((el) => el.addEventListener("click", () => { selected = nodes.find((x) => x.id === +el.dataset.id); detail(selected); paint(); }));
+  }
+  detail(null);
+}
+
+load();
+setInterval(async () => {  // notice plug / unplug from the practice page or the console
+  const st = await api("/key").catch(() => ({ plugged: false }));
+  if (!!st.plugged !== !!D?.plugged) { graphCache = null; load(); }
+}, 5000);
+</script>
+</body>
+</html>

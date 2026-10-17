@@ -109,6 +109,9 @@ def build_sent_event(person_id: str, person_name: str, circle: str | None, perso
 
 def apply_event(graph, event: dict) -> None:
     """Write one memory into the voice graph (used live and when replaying the key's log)."""
+    if event["type"] == "forgot":  # you asked to forget a rule: retire it (kept as history, never applied)
+        graph.query(queries.SUPERSEDE, {"old_ids": [event["rule_id"]], "at": event["at"]})
+        return
     person, at = event["person"], event["at"]
     if person["new"]:
         graph.query(queries.SAVE_PERSON, {"person_id": person["id"], "name": person["name"], "circle": person["circle"],

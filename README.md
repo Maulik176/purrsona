@@ -53,8 +53,9 @@ uv run uvicorn purrsona.app:app --port 8765 --reload
 Then try it in this order:
 1. **Console**, http://localhost:8765/: plug in the virtual key → pick a person → draft → read the *why* → teach it an edit → unplug (the graph is deleted, the next draft is generic) → plug back in (what it learned comes back).
 2. **Practice page**, http://localhost:8765/practice/: a made-up feed. Click into a reply box and the cat sits by it. Press **Option+M** (Alt+M on Windows/Linux) or click the cat. Kabir is new: the cat asks who he is to you. Change the draft and press Reply: the cat learns from what you sent. Send it unchanged and it still remembers who you wrote to.
-3. **Chrome extension** (LinkedIn): `chrome://extensions` → turn on Developer mode → **Load unpacked** → pick the `extension/` folder. Refresh LinkedIn, click a comment box, press Option+M. Purrsona never posts for you. After changing extension code, press the ↻ on its card and refresh the page.
-4. **Tests**: `cd api && uv run pytest`. They plug and unplug the same demo graph, so don't run them during a demo, and plug the key in again afterwards.
+3. **Dashboard**, http://localhost:8765/dashboard/: your live voice graph from FalkorDB (click any person or rule), your writing rules (forget any with ✕), what the key learned, the agents' handoffs, and your signature style (PageRank over your drafts).
+4. **Chrome extension** (LinkedIn): `chrome://extensions` → turn on Developer mode → **Load unpacked** → pick the `extension/` folder. Refresh LinkedIn, click a comment box, press Option+M. Purrsona never posts for you. After changing extension code, press the ↻ on its card and refresh the page.
+5. **Tests**: `cd api && uv run pytest`. They plug and unplug the same demo graph, so don't run them during a demo, and plug the key in again afterwards.
 
 The key's memory (what it learned) is a local file in `private/keys/` (gitignored). The bridge forgets the plugged key whenever it restarts: plug in again from the console or the practice page.
 
