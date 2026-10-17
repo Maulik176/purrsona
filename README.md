@@ -1,80 +1,199 @@
-# 🐱 Purrsona
-
-**Purrsona carries your voice on a key: plug in anywhere; unplug, and the AI forgets.**
-
-Purrsona maps how you write to each person, platform and topic, and shows which edits taught it.
-
-**Graph Hacks: Context for AI Agents** (WeMakeDevs × FalkorDB) · **Track 02: Agent Memory and Coordination**
-
-<!-- Links filled in on submission day -->
-**Demo video:** _link added on submission day_ · **Live demo:** _link added on submission day_ · **Try it locally in 10 minutes:** [Run it locally](#run-it-locally)
-
 <p align="center">
-  <img src="docs/media/cat-demo.gif" width="640" alt="The cat on the practice page: Option+M in Aarav's comment box, the cat checks the voice graph, the reply lands in the Friends voice, then the why panel shows the rules and every query the graph ran">
-  <br><sub>Option+M in a comment box: the cat checks your voice graph, the reply lands in the way you write to this person, and <b>why?</b> shows the rules and every query the graph ran.</sub>
+  <img src="docs/media/banner.svg" width="100%" alt="Purrsona: your writing voice, portable. Plug the key into any laptop and it writes the way you write to each person. Pull it out, and that laptop forgets you.">
 </p>
 
 <p align="center">
-  <img src="docs/media/cat-draft-friends.png" width="49%" alt="Key plugged in: the cat drafts a reply to Aarav in your Friends voice: 'Yo bro, that last over was pure madness 🔥'">
+  <img alt="Graph Hacks · Track 02" src="https://img.shields.io/badge/Graph%20Hacks-Track%2002%3A%20Agent%20Memory%20%26%20Coordination-ff9f43">
+  <img alt="FalkorDB" src="https://img.shields.io/badge/memory-FalkorDB%20v4.22-2dd4bf">
+  <img alt="Chrome extension" src="https://img.shields.io/badge/Chrome-extension%20(MV3)-60a5fa">
+  <img alt="Hardware key" src="https://img.shields.io/badge/key-ESP32--S3%20T--Display-f472b6">
+  <img alt="MIT" src="https://img.shields.io/badge/license-MIT-9aa1b3">
+</p>
+
+<p align="center">
+  <!-- TODO(Sunday): real links -->
+  <b>Demo video</b> (link on submission day) · <b>Live demo</b> (link on submission day) · <a href="#try-it">Run it locally</a> · <b>Blog</b> (link on submission day)
+</p>
+
+<p align="center">
+  <img src="docs/media/cat-demo.gif" width="620" alt="On a practice feed, Option+M in Aarav's comment box: the cat checks the voice graph, the reply lands in a casual Friends voice, and the why panel lists the rules and every query the graph ran">
+</p>
+
+## The problem
+
+You don't write to your manager the way you write to your college friend, and neither of them gets what a client gets. AI writing tools give everyone one voice. So you paste the message into a chatbot, again and again, and ask "can you make it sound like me?" It never tells you why a draft sounds the way it does. And whatever it learns about you lives on someone else's server.
+
+Purrsona keeps your voice in a graph: who you write to, which circle they're in, which platform you're on, what you're talking about, and the rules that make each reply sound like you, each one linked to the edits that taught it. The graph lives on a key you carry. Plug it into any laptop and the cat writes like you. Pull it out and that laptop forgets you.
+
+## Purrsona in 30 seconds
+
+1. **Plug in your key and press its button.** That press is your consent. The key hands the laptop your voice, and the laptop builds your graph in FalkorDB.
+2. **Press Option+M in any reply box.** A small cat sits on the box. The graph picks the rules for this person, this platform and this topic, and Claude writes the words.
+3. **Edit it and send.** The Learner compares what it wrote with what you sent and saves the difference as a rule, on the graph and on the key.
+4. **Pull the key out.** The laptop deletes your graph (`GRAPH.DELETE`). The next draft is generic. Plug the key into another laptop, and your voice is back, with everything it learned.
+
+<p align="center">
+  <img src="docs/media/cat-draft-friends.png" width="49%" alt="Key plugged in: the cat drafts a reply to Aarav in a casual Friends voice">
   <img src="docs/media/cat-draft-unplugged.png" width="49%" alt="Key unplugged: the same post gets a generic reply">
-  <br><sub><b>Same post, same shortcut.</b> Left: key plugged in, so Aarav (a Friend) gets "Yo bro… 🔥 … 😂". Right: key unplugged, the graph is gone, and the reply is generic.</sub>
+  <br><sub>Same post, same shortcut. Left: the key is plugged in, so Aarav, a friend, gets "Yo bro… 🔥". Right: the key is out, the graph is gone, and the reply is generic.</sub>
 </p>
 
----
+## FalkorDB is the heart
 
-## In one minute
+Take FalkorDB out and Purrsona is a chatbot with a cat. Every part of it is a graph question:
 
-You're on LinkedIn. Priya, your manager, posts that the go-live finally happened. You click the comment box, a small cat sits on its edge, you press **Option+M**, and a reply lands in the box *the way you write to Priya*: "Hi Nair", no emoji, one paragraph. That isn't how you write to your college friend Aarav ("Yo", 🔥, no sign-off), and it isn't how you write to a client.
-
-Purrsona knows the difference because your voice is a **FalkorDB graph**: people → circles → style rules, plus platforms and topics, and every rule points to the edits that taught it. Edit a draft and send it, and the **Learner** turns what you changed into a new rule. Ask the cat **why?** and it shows the rules, who owns each one, how many edits taught it and when, the agents' handoffs, and every query the graph ran.
-
-The graph lives on a **memory key** you plug in. Unplug it and the bridge runs `GRAPH.DELETE`: the next draft is generic. Plug it back in and everything it learned comes back.
-
-| | Key plugged in | Key unplugged |
-|---|---|---|
-| Reply to Priya's go-live post | "Hi Nair, congratulations to you and the whole team on the go-live. Getting the CMDB clean and the Flow Designer workflows production-ready is no small feat…" | a generic, polite congratulations |
-| Why it sounds that way | 7 rules: Priya's own (surname greeting, no emoji, one paragraph) beat Work's; ServiceNow terms from the topic | nothing: no graph, no voice |
+| Question | How the graph answers |
+|---|---|
+| Who is this person to me? | person → circle → relationship ("my new manager" is part of Work) |
+| Which rules apply right now? | rules from five scopes (the person, their circle, the topic, the platform, you) in one pattern; the narrowest one wins |
+| Someone new? | no person node yet, so they inherit their circle's, the platform's and the topic's rules |
+| Why does this draft sound like that? | walk back from the draft to each rule, its owner, and the edits that taught it |
+| A new habit clashes with an old rule? | the new, narrower rule `OVERRIDES` the old one; the old one is kept as history |
+| What's my signature style? | PageRank over the links from drafts to the rules they used |
+| Forget me | each key has its own graph; delete it, and the memory is gone from this laptop |
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/media/cat-new-person.png" alt="The cat asks: Kabir is new to me. Who is Kabir to you? Friends, Work, Clients, or in your own words"><br><sub><b>Someone new.</b> Kabir isn't in the graph, so the cat says so and asks once. Your answer (a circle, or your own words like "my new manager") decides which rules he inherits.</sub></td>
-    <td width="50%"><img src="docs/media/cat-why-critic.png" alt="The cat's why panel: the rules behind the draft and the agents' trail: Drafter wrote, Critic redo, Drafter rewrote, Critic pass"><br><sub><b>Why?</b> The rules behind the draft, who owns each one and how many edits taught it, and the agents' handoffs: here the Critic sent the draft back for breaking "one to three sentences".</sub></td>
+    <td width="50%"><img src="docs/media/cat-new-person.png" alt="The cat asks: Kabir is new to me. Who is Kabir to you?"><br><sub><b>Someone new.</b> Kabir isn't in the graph, so the cat says so and asks once. A circle, or your own words like "my new manager", decides which rules he inherits.</sub></td>
+    <td width="50%"><img src="docs/media/dashboard-graph.png" alt="The live voice graph on the dashboard, with Priya selected and the Cypher that fetches her links"><br><sub><b>Your live voice graph</b>, straight from FalkorDB: click Priya to see her circle, her topic, her own rule and the Cypher that fetches them.</sub></td>
   </tr>
 </table>
 
-## Why it needs a graph
+## Three agents, one graph
 
-**Take FalkorDB out and Purrsona is just a chatbot with a cat.** Every part of the product is a graph question:
+Purrsona has three agents, and they never call each other. The bridge hands each one its input, and every step it takes lands in the graph as a `Step` node, linked to the rule it broke or learned. The Learner runs later, when you press send, and picks up only from what the graph recorded. The graph is their shared memory, and every handoff is a node you can query.
 
-| The question | Why it's a graph question | Query |
+- **The Drafter** writes a reply, your own post, or a polished version of your rough note, from the rules the graph picked.
+- **The Critic** checks the draft against those same rules in code: emoji limit, sentence limit, length, greeting, sign-off, banned phrases, hashtags. It takes milliseconds and no AI call. If the draft broke a rule, the Critic sends it back once, with the reason: "broke 'one to three sentences' (it has 4)".
+- **The Learner** runs when you press send. It compares the draft with what you sent, plus anything you asked the cat to change, and saves up to three rules, each linked to the edit that taught it. Even an unchanged send is a memory: who you wrote to, where, and with which rules.
+
+```mermaid
+sequenceDiagram
+  participant G as FalkorDB (your graph)
+  participant D as Drafter
+  participant C as Critic
+  participant L as Learner
+  G-->>D: who this is, and the rules that apply
+  D-->>C: handoff: the draft and its rules
+  C-->>D: handoff: redo, it broke "one to three sentences"
+  D-->>C: handoff: the rewrite
+  C->>G: Draft, USED rules, Steps 1-4 (wrote, redo + FLAGGED, rewrote, pass)
+  Note over G,L: later, you edit and press send
+  G-->>L: the draft, its rules and its trail
+  L->>G: Edit, StyleRule, LEARNED_FROM, OVERRIDES, Step 5 + TAUGHT
+```
+
+<p align="center"><img src="docs/media/dashboard-handoffs.png" width="92%" alt="The dashboard's Handoffs page: each draft with its agent steps and the queries the graph ran"></p>
+<p align="center"><sub>Every draft's steps are <code>Step</code> nodes in the graph: Drafter wrote → Critic redo → Drafter rewrote → Critic pass → Learner learned.</sub></p>
+
+## Your voice, portable
+
+A writing style is personal data. Purrsona keeps it on something you hold.
+
+**The key** is a LilyGO T-Display-S3: an ESP32-S3 with a 1.9-inch screen and two buttons, on USB-C. Mustafa is building its firmware. It stores only two things: a snapshot of your voice graph and an append-only log of everything it has learned since. All the work happens on the laptop; the key holds the memory, asks for consent and shows what's happening.
+
+- **Consent is a button press.** Nothing loads until you press it.
+- **Memory travels with you.** Plug the key into any laptop running the bridge: it sends the snapshot and the memory log, and the bridge rebuilds your graph and replays every memory in order.
+- **Every send is written back** to the key as one more line in its log, the moment you send.
+- **Forgetting is physical.** Pull the key out and the bridge deletes your graph from that laptop. Press its eject button first, and the screen confirms "Forgotten" before you unplug.
+
+| Moment | Laptop to key | What happens |
 |---|---|---|
-| Who is this person to me? | person → circle → relationship ("my manager" is part of Work) | `PERSON_CONTEXT` |
-| Which rules apply right now? | gather rules from five scopes (person, circle, topic, platform, you) in one pattern; the narrowest scope wins | `RULES_FOR_CONTEXT` |
-| Someone new? | no Person node, so they inherit their circle's, the platform's and the topic's rules | `RULES_FOR_CONTEXT` with `circle_hint` |
-| Why does this draft sound like that? | walk back from the draft to each rule, its owner and the edits that taught it | `WHY_THIS_DRAFT` |
-| An edit clashes with a rule? | a narrower rule `OVERRIDES` a broader one; the old one is kept, never deleted | `LINK_OVERRIDES`, `SUPERSEDE` |
-| What's my signature style? | PageRank over the drafts → rules they used | `SIGNATURE_STYLE` (`algo.pageRank`) |
-| Forget me | one graph per key: delete the graph and the memory is gone from the laptop | `GRAPH.DELETE voice:<key_id>` |
+| Plug in | `HELLO` → `UNLOCK` (button) → `PULL` | the key sends the snapshot and the memory log; the bridge builds `voice:<key_id>` and replays it |
+| Learn | `APPEND` | one new memory on the key; it replies with the new count |
+| Unplug | `BYE`, or the cable is pulled | `GRAPH.DELETE voice:<key_id>`; the laptop forgets |
+
+**Status, honestly:** the hardware key is in progress. Every flow above runs today on the **virtual key**, which makes exactly the same calls (`keys.py`), so the demo, the tests and anyone without hardware use it. <!-- TODO(Sunday): photo of the T-Display-S3 + hardware status -->
+
+## One database, many voices
+
+Every key gets its own graph, `voice:<key_id>`, on one FalkorDB instance. A user is a graph, not a filter someone can forget to apply: a query in one person's graph can't see another's. Forgetting one person is one `GRAPH.DELETE`, and nobody else is touched.
+
+<!-- TODO(after #11): load test results: N users, each with their own graph; p50 / p95 for the graph lookups with K drafts at once; isolation check -->
+A load test with many keys at once is being run now; its numbers land here.
+
+## Every draft explains itself
+
+Click the cat and ask **why?** You get the rules behind the draft, who owns each one, how many edits taught it and when, the agents' handoffs, and every query the graph ran, with its time and row count. Nothing is reconstructed after the fact: it's what the graph returned while the draft was being written.
+
+<p align="center">
+  <img src="docs/media/cat-why-rules.png" width="45%" alt="The why panel: each rule with its owner, how many edits taught it and when">
+  <img src="docs/media/cat-why-graph-ran.png" width="45%" alt="The why panel: the agents' trail and the queries the graph ran, with milliseconds and rows">
+</p>
+
+The core of it is a short query, written step by step in FalkorDB Browser:
+
+```cypher
+MATCH (d:Draft {id: $draft})-[:USED]->(r:StyleRule)<-[:HAS_RULE]-(s)
+OPTIONAL MATCH (r)-[:LEARNED_FROM]->(ev)
+RETURN r.text AS rule, labels(s)[0] AS scope, coalesce(s.name, s.id) AS owner, count(ev) AS evidence
+ORDER BY CASE scope WHEN 'Person' THEN 1 WHEN 'Circle' THEN 2 WHEN 'Topic' THEN 3 WHEN 'Platform' THEN 4
+                    WHEN 'User' THEN 5 ELSE 6 END, evidence DESC
+```
+
+`OPTIONAL MATCH` keeps a rule that nothing has taught yet, and `count(ev)` then says 0 instead of 1.
 
 ## Track 02 checklist
 
-| The track asks for | How Purrsona does it | Where |
+| The track asks for | In Purrsona |
+|---|---|
+| Memory across sessions | the key's append-only memory log, replayed into the graph at every plug-in |
+| Episodic memory | `Draft`, `Edit` and `Step` nodes: what was written, what you changed, which agent did what, and when |
+| Semantic memory | `StyleRule` nodes with a scope and their evidence (`LEARNED_FROM`); newer, narrower rules `OVERRIDES` older ones |
+| Handoffs between agents | Drafter → Critic → Learner; every handoff is a `Step` node (`FLAGGED`, `TAUGHT`), and the Learner picks up later from what the graph recorded |
+| Separate memory per user | one graph per key on one FalkorDB instance; forgetting is one `GRAPH.DELETE` |
+| Decisions traced back to the graph | every draft keeps the rules it `USED`; the why shows owners, evidence, dates, the trail and the queries |
+
+## Where it works, and what it reads
+
+The hackathon asks for data that is "public, synthetic, or your own". Purrsona has two modes so it never reads a private conversation:
+
+| Where | What the cat does | What it reads |
 |---|---|---|
-| **Memory across sessions** | every send is a memory on the key (an append-only event log); plugging in builds the graph from the key's snapshot and replays every memory | [`keys.py`](api/purrsona/keys.py), `apply_event` in [`learning.py`](api/purrsona/learning.py) |
-| **Episodic memory** (what happened) | `Draft`, `Edit` and `Step` nodes: what was written, what you changed, which agent did what, with timestamps | `SAVE_EDIT`, `SAVE_SENT`, `SAVE_STEP` |
-| **Semantic memory** (what it means) | `StyleRule` nodes with a scope, a kind and provenance (`LEARNED_FROM`); a newer, narrower rule `OVERRIDES` an older one, which is kept as history | `SAVE_LEARNED_RULE`, `LINK_OVERRIDES` |
-| **Handoffs between agents** | Drafter → Critic → (one redo) → Critic → Learner. The agents never call each other: each reads and writes the graph, and every handoff is a `Step` node you can query (`FLAGGED` the rule it broke, `TAUGHT` the rule it learned) | `SAVE_STEP`, `STEP_FLAGGED`, `STEP_TAUGHT`, `TRAIL_STEPS` |
-| **Separate memory per user** | one graph per key (`voice:<key_id>`) on one FalkorDB instance: a user is a graph, not a filter someone can forget | [`db.py`](api/purrsona/db.py) |
-| **Decisions traced back to the graph** | every draft keeps the rules it `USED`; the why shows each rule's owner, evidence and date, the agents' trail, and each query the graph ran (name, milliseconds, rows) | `WHY_THIS_DRAFT`, `queries.Traced` |
+| **Public posts:** LinkedIn, X, Reddit | Option+M drafts a reply in your voice | only the post you're replying to, at the moment you press the key |
+| **Private apps:** Slack, Teams, Gmail, LinkedIn and X messages | you type a rough message; Option+M rewrites it in your voice | only what you typed. Who it's for comes from the message box's own name ("Message Neha Kulkarni") when that names one person you know; in a channel or group it asks |
 
-<p align="center"><img src="docs/media/dashboard-handoffs.png" width="90%" alt="Dashboard Handoffs page: each draft with its steps (Drafter wrote, Critic redo, Drafter rewrote, Critic pass, Learner learned) and the queries the graph ran"></p>
-<p align="center"><sub><b>The handoffs, from the graph.</b> Each draft's steps are <code>Step</code> nodes, with the queries the graph ran before the Drafter wrote (name, milliseconds, rows).</sub></p>
+It reads nothing in the background, and it never presses send for you. Claude gets one small brief per draft: the post or your note, plus the handful of rules the graph chose, never the whole graph. The people in the demo and on the practice page are made up.
 
-## How it works
+| | Status |
+|---|---|
+| Practice page (no install needed) | works |
+| LinkedIn: comments, replies, new posts, company pages | tested on the real site |
+| X: replies and new posts | tested on the real site |
+| Gmail, Slack | tested on the real site |
+| Reddit | built from Reddit's page structure; real-site test in progress |
+| Teams | not tested yet |
+
+## Try it
+
+<!-- TODO(Sunday): hosted demo link -->
+**Live demo:** coming with the submission. Each visitor gets their own virtual key and graph.
+
+**Run it locally** (about 10 minutes). You need Docker Desktop, [uv](https://docs.astral.sh/uv/getting-started/installation/), Chrome, and your own Anthropic API key (a draft costs about 1–2 cents).
+
+```bash
+git clone https://github.com/Maulik176/purrsona.git
+cd purrsona
+docker compose up -d                 # FalkorDB on localhost:6380, FalkorDB Browser on http://localhost:3001
+cp .env.example .env                 # put your key after ANTHROPIC_API_KEY=
+cd api && uv sync
+uv run uvicorn purrsona.app:app --port 8765 --reload
+```
+
+Then open:
+1. **http://localhost:8765/practice/**: a made-up feed with the cat already running. Click a reply box, press Option+M (Alt+M on Windows and Linux), click the cat for "shorter" or "why?", edit and press Reply, then unplug the key from the header and try again.
+2. **http://localhost:8765/dashboard/**: your live voice graph, your writing rules (forget any of them), what the key has learned, and the agents' handoffs.
+3. **The Chrome extension**: `chrome://extensions` → Developer mode → Load unpacked → the `extension/` folder. Open LinkedIn or X, click a comment box, press Option+M.
+4. **http://localhost:3001**: FalkorDB Browser, with the graph `voice:demo-maulik` while the key is plugged in.
+
+## Under the hood
+
+<details>
+<summary><b>Architecture</b></summary>
 
 ```mermaid
 flowchart LR
-  key["Purrsona key<br/>your voice: snapshot + memory log<br/>(ESP32, or the virtual key)"]
+  key["Purrsona key<br/>snapshot + memory log"]
   subgraph laptop["Your laptop"]
     ext["Chrome extension<br/>the cat · Option+M"]
     bridge["Purrsona bridge<br/>Drafter · Critic · Learner"]
@@ -88,37 +207,11 @@ flowchart LR
   bridge -- "the post + the rules the graph picked" --> claude
 ```
 
-The key holds your voice, the laptop does the work, Claude only writes the words, and the graph decides what Claude sees.
+The extension only reads the box you're in and the post you're replying to, and only the service worker talks to the bridge. The bridge is the only part that talks to the key, to FalkorDB and to Claude.
+</details>
 
-```mermaid
-sequenceDiagram
-  participant K as Key
-  participant B as Bridge
-  participant G as FalkorDB
-  participant C as Claude
-  Note over K,C: 1. Plug in
-  K->>B: snapshot + memory log
-  B->>G: build the graph voice:key_id, replay every memory
-  Note over K,C: 2. Draft (Option+M)
-  B->>G: PERSON_CONTEXT, TOPIC_NAMES, RULES_FOR_CONTEXT
-  G-->>B: the rules that apply (narrowest scope wins)
-  B->>C: the post + those rules
-  C-->>B: a draft
-  B->>B: Critic checks it against the rules (at most one redo)
-  Note over K,C: 3. Learn (you press send)
-  B->>C: Learner: what did your edit change?
-  B->>G: SAVE_EDIT, SAVE_LEARNED_RULE, LINK_OVERRIDES, SAVE_STEP
-  B->>K: append the memory
-  Note over K,C: 4. Unplug
-  B->>G: GRAPH.DELETE voice:key_id
-```
-
-**The three agents**
-- **Drafter** ([`drafter.py`](api/purrsona/drafter.py)): writes a reply, your own post, or a polished version of your rough note, from the rules the graph picked.
-- **Critic** ([`critic.py`](api/purrsona/critic.py)): checks the draft against those same rules in code (emoji limit, sentence limit, length, greeting, sign-off, banned phrases, hashtags; milliseconds, no AI call). If the draft broke one, it sends it back once with the reason ("broke Work's 'No emojis'"), and the redo is a step in the graph.
-- **Learner** ([`learning.py`](api/purrsona/learning.py)): when you send, compares the draft with what you actually sent (and anything you asked the cat to change) and saves up to three rules, each linked to the edit that taught it. A send with no changes still becomes a memory: who you wrote to, on which platform, with which rules.
-
-## The graph model
+<details>
+<summary><b>The graph model</b></summary>
 
 ```mermaid
 flowchart LR
@@ -143,16 +236,15 @@ flowchart LR
   ST -->|FLAGGED or TAUGHT| S
 ```
 
-<p align="center"><img src="docs/media/dashboard-graph.png" width="90%" alt="The dashboard's live voice graph from FalkorDB, with Priya Nair selected: her links to Work, ServiceNow and her own rule, and the Cypher to fetch them"></p>
-<p align="center"><sub><b>The live voice graph</b> on the dashboard, straight from FalkorDB: click Priya and you see her circle, her topic, her own rule and the Cypher that fetches them. Drag nodes, search, or open the same graph in FalkorDB Browser.</sub></p>
+When two rules of the same kind compete, the narrowest scope wins: Person → Circle → Topic → Platform → You. Phrase rules stack instead. A retired rule keeps its history but is never applied. Every label and property: [`docs/GRAPH-MODEL.md`](docs/GRAPH-MODEL.md).
+</details>
 
-**Rule precedence:** when rules of the same kind compete, the narrowest scope wins: Person → Circle → Topic → Platform → You. Phrase rules (`phrase_use`, `phrase_avoid`) stack. A superseded rule keeps its history but is never applied. Every label, property and relationship: [`docs/GRAPH-MODEL.md`](docs/GRAPH-MODEL.md).
+<details>
+<summary><b>The Cypher it depends on</b></summary>
 
-## The Cypher it depends on
+Every query lives in [`api/purrsona/queries.py`](api/purrsona/queries.py), is fixed in the code and takes parameters, and the core ones have tests against a seeded graph. Reads go through FalkorDB's read-only `ro_query`. Claude never writes or sees a query.
 
-Every query lives in [`api/purrsona/queries.py`](api/purrsona/queries.py), is written by a person, takes parameters, and has a test against a seeded graph ("something found" and "nothing found"). Reads use FalkorDB's read-only `ro_query`. **Claude never writes or sees a query.**
-
-**Which rules apply** (the heart of it: five scopes in one pattern, the narrowest wins):
+**Which rules apply** (five scopes in one pattern; the narrowest wins):
 
 ```cypher
 OPTIONAL MATCH (p:Person {id: $person})
@@ -180,18 +272,6 @@ WITH r.kind AS kind,
 RETURN kind, CASE WHEN kind IN $stacking THEN candidates ELSE candidates[0..1] END AS chosen
 ```
 
-`OPTIONAL MATCH` is what makes someone new work: there's no Person node for them, so a plain `MATCH` would return nothing, but here their circle, the platform, the topic and your own habits still apply.
-
-**Why this draft sounds like that** (Q6, written by Maulik):
-
-```cypher
-MATCH (d:Draft {id: $draft})-[:USED]->(r:StyleRule)<-[:HAS_RULE]-(s)
-OPTIONAL MATCH (r)-[:LEARNED_FROM]->(ev)
-RETURN r.text AS rule, labels(s)[0] AS scope, coalesce(s.name, s.id) AS owner, count(ev) AS evidence
-ORDER BY CASE scope WHEN 'Person' THEN 1 WHEN 'Circle' THEN 2 WHEN 'Topic' THEN 3 WHEN 'Platform' THEN 4
-                    WHEN 'User' THEN 5 ELSE 6 END, evidence DESC
-```
-
 **Remember a rule and the edit that taught it**, then let it outrank the broader rule without deleting it:
 
 ```cypher
@@ -204,7 +284,7 @@ MATCH (old:StyleRule {id: oid})
 CREATE (r)-[:OVERRIDES]->(old)
 ```
 
-**Your signature style** (a FalkorDB algorithm: the ranking comes from the graph's shape, not a counter):
+**Your signature style** (a FalkorDB algorithm, so the ranking comes from the graph's shape):
 
 ```cypher
 CALL algo.pageRank(null, 'USED') YIELD node, score
@@ -213,161 +293,94 @@ RETURN node.id AS id, node.text AS text, score
 ORDER BY score DESC LIMIT $limit
 ```
 
-**Forget:** `GRAPH.DELETE voice:<key_id>` when the key is unplugged.
-
-<details>
-<summary>All queries and what each one answers</summary>
-
-| Query | Answers / does |
+| Query | What it answers or does |
 |---|---|
-| `PERSON_CONTEXT` | who this person is to me: circle, my word for them, how often I've written to them and when |
-| `RULES_FOR_CONTEXT` | which rules apply to this person, platform, topic and mode (above) |
-| `TOPIC_NAMES` | the topics and their keywords (whole-word match: "bhaila" isn't "AI") |
-| `RELATIONSHIP_WORDS`, `SAVE_RELATIONSHIP`, `LINK_RELATIONSHIP` | your own words for people ("manager" → Work); a new word is sorted once and saved, so next time the graph answers |
-| `RECORD_DRAFT` | a draft and the rules it used (`USED`), its person, platform and topics |
-| `WHY_THIS_DRAFT` | Q6, above |
-| `SAVE_PERSON` | someone new joins the graph, in a circle only if that circle exists (`OPTIONAL MATCH` + `FOREACH`) |
-| `SAVE_EDIT`, `SAVE_SENT` | what you sent: an edit of the draft, or the draft as it was |
-| `DRAFT_RULES`, `LINK_USED` | the rules behind a draft, saved with the memory so the links come back after a re-plug |
-| `SAVE_LEARNED_RULE`, `LINK_OVERRIDES`, `SUPERSEDE` | a learned rule, its evidence, and what it outranks or replaces |
-| `SAVE_STEP`, `STEP_FLAGGED`, `STEP_TAUGHT`, `TRAIL_STEPS` | the agents' handoff trail (idempotent `MERGE`, so a replayed memory never duplicates it) |
-| `SIGNATURE_STYLE` | PageRank over `USED` (above) |
-| `GRAPH_NODES`, `GRAPH_LINKS`, `ALL_RULES`, `PEOPLE_STATS`, `DRAFT_HISTORY`, `RECENT_TRAILS`, `COUNTS`, `PEOPLE`, `GRAPH_SUMMARY` | the dashboard: the live graph map, every rule with owner and evidence, people, the "it learns" chart, the handoffs |
-
+| `PERSON_CONTEXT` | who this person is to me, and how often I've written to them |
+| `RULES_FOR_CONTEXT` | which rules apply (above) |
+| `TOPIC_NAMES` | topics and their keywords, matched as whole words |
+| `RELATIONSHIP_WORDS`, `SAVE_RELATIONSHIP`, `LINK_RELATIONSHIP` | your own words for people ("manager" → Work); a new word is sorted once, then the graph knows it |
+| `RECORD_DRAFT` | a draft, the rules it used, its person, platform and topics |
+| `WHY_THIS_DRAFT` | the why (above) |
+| `SAVE_PERSON`, `SAVE_EDIT`, `SAVE_SENT`, `LINK_USED` | what you sent, and to whom |
+| `SAVE_LEARNED_RULE`, `LINK_OVERRIDES`, `SUPERSEDE` | a learned rule, its evidence, and what it outranks |
+| `SAVE_STEP`, `STEP_FLAGGED`, `STEP_TAUGHT`, `TRAIL_STEPS` | the agents' handoffs (`MERGE`, so a replayed memory never doubles them) |
+| `SIGNATURE_STYLE` | PageRank over `USED` |
+| `GRAPH_NODES`, `GRAPH_LINKS`, `ALL_RULES`, `PEOPLE_STATS`, `DRAFT_HISTORY`, `RECENT_TRAILS` | the dashboard |
 </details>
 
-## Design principles
+<details>
+<summary><b>Numbers</b></summary>
 
-- **The graph picks what Claude sees.** Claude gets one small brief per draft: the post you're replying to (or your own note) and the handful of rules the graph chose. Never the whole graph, never a private conversation.
-- **People write the queries; the agents pick them.** No generated Cypher, every value is a parameter, reads are read-only.
-- **Check the model against the graph.** The Critic measures Claude's draft against the same rules the graph handed it, in code, before you see it.
-- **Say what isn't in the graph.** Someone new: "Kabir is new to me. Who is Kabir to you?" Key unplugged: "No key plugged in, so this is a generic draft." A company page: no circle question, only the platform's and your own rules.
-- **Invalidate, don't delete.** A rule that's outranked or replaced keeps its history (`OVERRIDES`, `superseded_at`); forgetting a rule from the dashboard is itself a memory on the key.
-- **Show the path with the answer.** The why lists the rules, their owners, their evidence and dates, the agents' handoffs and every query the graph ran, with timings:
-
-<p align="center">
-  <img src="docs/media/cat-why-rules.png" width="45%" alt="The why panel: each rule with its owner, how many edits taught it and when">
-  <img src="docs/media/cat-why-graph-ran.png" width="45%" alt="The why panel: the agents' trail and the list of queries the graph ran with milliseconds and rows">
-</p>
-
-```
-PERSON_CONTEXT · 4.1 ms · 1 row
-TOPIC_NAMES · 2.2 ms · 4 rows
-RULES_FOR_CONTEXT · 10 ms · 7 rows
-graph 17 ms before Claude · 2.5 s in all
-```
-
-## Privacy and the hackathon's data rule
-
-The rules ask for data that is "public, synthetic, or your own" and nothing private. Purrsona is built around that, with **two modes**:
-
-| Where | What the cat does | What it reads |
-|---|---|---|
-| **Public posts:** LinkedIn, X, Reddit | Option+M drafts a reply in your voice | only the public post you're replying to, at the moment you press the key |
-| **Private apps:** Slack web, Teams web, Gmail, LinkedIn and X messages | you type a rough message, Option+M rewrites it in your voice | **only what you typed.** It never reads the conversation. Who it's for comes from the message box's own name ("Message Neha Kulkarni") when that names one person you already write to; in a channel or group, or for someone new, it asks |
-
-- **Nothing is read in the background.** The cat reads a page only when you press Option+M, click it, or press send.
-- **It never posts for you.** It fills the box; you press send.
-- **Your memory lives on your key.** Unplugging deletes your graph from the laptop. The demo key's memory log is a local file that is never committed.
-- **Demo data is made up or our own:** the people in `data/seed/` and on the practice page are invented; the video uses the practice page and our own accounts, with made-up test chats.
-
-### Where it works today
-
-| Where | Mode | Status |
-|---|---|---|
-| Practice page (`/practice/`), no install needed | both | tested |
-| LinkedIn: comments, replies under a comment, new posts, company posts | reply | tested on the real site |
-| X: replies and new posts | reply | tested on the real site (draft, edit, learn on send) |
-| Gmail | your words | tested on the real site |
-| Slack web | your words | tested on the real site; re-test of the latest insert fix pending |
-| Reddit | reply | built from Reddit's page structure; real-site test pending |
-| Teams web | your words | not tested (needs a Teams web sign-in) |
-| The hardware key (ESP32) | | in progress; the virtual key stands in, behind the same calls |
-
-## Numbers
-
-<p align="center"><img src="docs/media/dashboard-home.png" width="80%" alt="Dashboard home: people, rules, memories on the key, drafts sent, the 'It learns' chart and the signature style ranked by PageRank"></p>
-
-Measured on a MacBook Air with FalkorDB v4.22 in Docker:
+Measured on a MacBook Air with FalkorDB v4.22 in Docker, Oct 17:
 
 | | |
 |---|---|
-| Graph lookups before Claude writes (person, topics, rules) | **17 ms** (Oct 17) |
-| Plug in: build the graph from the snapshot | **25–65 ms** (the seed alone, Oct 17) |
-| Plug in with 9 memories replayed, query by query | **0.4–0.9 s** (Oct 17; batching the replay is a next step) |
-| A whole draft, Claude included | about **2.5 s** |
-| The Learner, after you send | about **3–4 s**, in the background |
-| Automated tests | **44**, every Cypher query against a seeded graph |
+| Graph lookups before Claude writes (person, topics, rules) | about 20–70 ms |
+| Plug in, the seed alone | 25–65 ms |
+| Plug in with 9 memories replayed one by one | 0.4–0.9 s |
+| A whole draft, Claude included | about 2.5–3 s |
+| The Learner, after you send | about 3–4 s, in the background |
+</details>
 
-## Run it locally
-
-You need **Docker Desktop**, **[uv](https://docs.astral.sh/uv/getting-started/installation/)** (it installs Python 3.12 for you), **Chrome**, and **your own Anthropic API key** (each draft costs about 1–2 cents).
-
-```bash
-git clone https://github.com/Maulik176/purrsona.git
-cd purrsona
-docker compose up -d                 # FalkorDB on localhost:6380 (graph browser on http://localhost:3001)
-cp .env.example .env                 # then put your key after ANTHROPIC_API_KEY= (.env is gitignored)
-cd api
-uv sync
-uv run uvicorn purrsona.app:app --port 8765 --reload
-```
-
-Then try it in this order:
-1. **Practice page**, http://localhost:8765/practice/: a made-up feed, with the cat already running (no install). Click a reply box and press **Option+M** (Alt+M on Windows/Linux). Kabir is new: the cat asks who he is to you. Click the cat for **shorter**, **why?** and more. Edit the draft and press Reply: the cat learns. Unplug the key from the header and draft again: generic. Plug it back in: it remembers.
-2. **Dashboard**, http://localhost:8765/dashboard/: your live voice graph from FalkorDB (drag it, search it, click any person or rule), your writing rules (forget any with ✕), what the key learned, the agents' handoffs with the queries behind them, and your signature style (PageRank).
-3. **Console**, http://localhost:8765/: the step-by-step demo: plug in → pick a person → draft → the why as five scope lanes → teach it an edit → unplug → plug back in.
-4. **Chrome extension**: `chrome://extensions` → Developer mode → **Load unpacked** → the `extension/` folder. Open LinkedIn or X, click a comment box, press Option+M. After changing extension code, press ↻ on its card and refresh the page.
-5. **FalkorDB Browser**, http://localhost:3001: the graph `voice:demo-maulik` while the key is plugged in.
-6. **Tests**: `cd api && uv run pytest`. They plug and unplug the same demo graph: plug the key in again afterwards, and don't run them during a demo.
-
-The bridge forgets the plugged key when it restarts: plug in again from the practice page header or the console.
-
-## Where things are
+<details>
+<summary><b>Project map</b></summary>
 
 | Path | What |
 |---|---|
-| [`api/purrsona/queries.py`](api/purrsona/queries.py) | every Cypher query, and `Traced` (the query list behind each draft) |
-| [`api/purrsona/keys.py`](api/purrsona/keys.py) | the virtual key: plug in = build the graph from the snapshot and replay the memory log; unplug = `GRAPH.DELETE`. The hardware key replaces this behind the same calls ([`CONTRIBUTING.md`](CONTRIBUTING.md#3-plugging-in-the-real-key-what-the-bridge-needs)) |
-| [`api/purrsona/drafter.py`](api/purrsona/drafter.py), [`critic.py`](api/purrsona/critic.py), [`critic_checks.py`](api/purrsona/critic_checks.py), [`learning.py`](api/purrsona/learning.py) | the three agents |
-| [`api/purrsona/relationships.py`](api/purrsona/relationships.py) | your own words for people → circles |
-| [`api/purrsona/app.py`](api/purrsona/app.py) | the bridge API (`/docs` lists every endpoint) |
-| [`extension/`](extension/) | `content.js` (boxes, Option+M, site adapters, learning on send), `cat.js` (the cat and its chat), `background.js` (the only part that calls the bridge) |
-| [`api/purrsona/static/`](api/purrsona/static/) | the practice page, the dashboard and the console |
-| [`data/seed/demo-maulik.json`](data/seed/demo-maulik.json) | the demo voice: made-up people, circles, platforms, topics, rules and the edits behind them |
-| [`docs/`](docs/) | the graph model, key authentication notes, the manual test plan |
+| `api/purrsona/queries.py` | every Cypher query, and the tracer behind "what the graph ran" |
+| `api/purrsona/keys.py` | the virtual key: plug in, replay the memory log, unplug |
+| `api/purrsona/drafter.py`, `critic.py`, `critic_checks.py`, `learning.py` | the three agents |
+| `api/purrsona/relationships.py` | your own words for people → circles |
+| `api/purrsona/app.py` | the bridge API (`/docs` lists every endpoint) |
+| `extension/` | `content.js` (boxes, Option+M, site adapters, learning on send), `cat.js` (the cat and its chat), `background.js` |
+| `api/purrsona/static/` | the practice page, the dashboard and the step-by-step console |
+| `data/seed/demo-maulik.json` | the demo voice: made-up people, circles, platforms, topics, rules and the edits behind them |
+| `docs/` | the graph model, key authentication notes |
+</details>
 
 ## How we built it
 
-**Team**
-- **Maulik Ranadive** (Ahmedabad): the product and every decision behind it, the graph model, the extension's UX, the demo voice, testing on the real sites, the blog and the video.
-- **Mustafa Africawala** (UK): the hardware key (ESP32 with a display: the USB protocol, authentication, storage and status screen), and a review of the agents.
+We started from the questions, not the data. Before writing code we wrote down the ten things the agent must answer ("who is this person to me?", "why does this draft sound like that?", "what happens when an edit clashes with a rule?") and modelled the graph from them. These are the decisions that shaped it:
 
-**AI assistance (disclosed, as the rules ask).** We built Purrsona with **Claude Code** (Anthropic, Claude Opus 5.5) as a pair programmer, and the product uses the **Claude API** (Opus 5.5) to write drafts, sort new relationship words and learn from your edits. Commits written with Claude Code end with a `Co-Authored-By: Claude` line; commits without it were written by hand, e.g. `a4b7318`, the Critic's three checks. The team designed the product, made the calls below, reviewed the code, and can explain every query.
+- **One graph per key, not one big graph with a user column.** Isolation comes for free, and forgetting someone is one `GRAPH.DELETE` that can't touch anyone else.
+- **The key is the source of truth; the laptop graph is a cache.** Memory is an append-only log on the key, replayed at every plug-in. So a laptop can always throw its copy away.
+- **Rules hang off five scopes, and the narrowest wins.** Someone you've never written to still gets a sensible first draft from their circle, the platform and the topic.
+- **Invalidate, don't delete.** A rule that's outranked or replaced keeps its history (`OVERRIDES`, `superseded_at`), so every draft can still be explained later.
+- **Agents coordinate through the graph, not through each other.** Each handoff is a node, so the whole process is queryable, and replaying a memory is safe.
+- **The graph picks what the model sees.** Claude gets a small brief, never the graph. Every query is fixed in the code and parameterised; the model never writes Cypher.
+- **Check in code before calling a model.** The Critic measures rules in milliseconds and allows at most one redo, so a draft is never stuck in a loop.
+- **Read only at the key press, and never a private conversation.** That's why there are two modes.
+- **The key only stores and consents.** All the work runs on the laptop, so the hardware stays simple and drafts stay fast.
+- **A virtual key with the same calls**, so the product works and can be judged without hardware.
 
-**What Maulik designed, wrote and decided**
-- The graph model: rules hang off five scopes so someone new still gets a sensible first draft; every rule points to the edits that taught it (`LEARNED_FROM`); a person's rule `OVERRIDES` the circle's instead of deleting it.
-- **Q6, `WHY_THIS_DRAFT`**: built step by step in FalkorDB Browser (including why `OPTIONAL MATCH` and `count(ev)` keep a rule nothing taught).
-- The learned-rule save as three small queries, one idea each: someone I know → what I changed → the rule and where it came from.
-- **The Critic's checks** in [`critic_checks.py`](api/purrsona/critic_checks.py) (emoji count, sentence count, banned phrases), by hand, and fixed the two real-world cases a review found.
-- The calls that shaped the product: unplug = forget as the main moment; two modes so private chats are never read; every send leaves a memory, even unchanged; a quiet cat that only explains when you ask; companies and "none of these" still remembered; your own words for people ("my new manager"); no tone check and at most one redo in the Critic.
-- A 67-case manual test plan run on the real sites; most of the fixes in this repo started as a failed case there.
+| Layer | Choice | Why |
+|---|---|---|
+| Memory | FalkorDB v4.22 in Docker | graph-per-tenant, in-memory traversals, Cypher, built-in PageRank |
+| Bridge | Python 3.12, FastAPI | one small process between the extension, the key, FalkorDB and Claude |
+| Writing | Claude (Anthropic API) | writes drafts, learns rules from edits, sorts new relationship words |
+| Extension | Chrome Manifest V3, plain JavaScript, shadow DOM | works on LinkedIn, X, Reddit, Slack, Teams and Gmail without touching their pages' styles |
+| Dashboard | plain JavaScript and d3 | the live graph, rules, memories and handoffs |
+| Key | LilyGO T-Display-S3 (ESP32-S3), USB-C | consent button, status screen, the memory log |
 
-## Known limits
+**Team.** Maulik Ranadive (Ahmedabad) designed the product, the graph model and the queries, wrote the "why" query and the Critic's checks, designed the extension's flows and the platform rules, and tested it on the real sites. Mustafa Africawala (UK) is building the hardware key and reviewing the agents.
 
-- **The hardware key is in progress.** The virtual key (a snapshot file plus an append-only memory log) runs the same plug, learn and unplug calls; its log isn't encrypted yet.
-- **The Critic doesn't judge tone**, only what code can measure. Its checks are simple patterns: a skin-toned 👍🏽 counts as two emojis, some symbols (⭐, flags) aren't counted, and "e.g." splits a sentence.
-- **Site layouts change.** The adapters use the most stable hooks we found (roles, labels, test ids), but a redesign can break one. Reddit isn't tested on the real site yet; Teams isn't tested.
-- **One graph algorithm so far** (PageRank). Community detection (people you write to the same way) is next.
-- **Learning comes from what you send** as replies and messages; your own new posts aren't learned from yet.
-- **One key at a time** per bridge.
+We used an AI coding assistant to help write the code. The product, the design and every decision above are ours. <!-- REVIEW: keep this line; the hackathon rules require disclosing AI help in the README -->
+
+## Honest limits
+
+- The hardware key is in progress; until it ships, the virtual key (a snapshot file plus a memory log) runs the same flow, unencrypted.
+- The Critic measures what code can measure. It doesn't judge tone, and its checks are simple patterns: a skin-toned emoji counts as two, and "e.g." splits a sentence.
+- Site layouts change. The adapters use the most stable hooks we found, but a redesign can break one.
+- Replaying memories is done one query at a time, so plug-in slows down as the key learns more. Batching it is next.
+- It learns from replies and messages you send, not yet from your own new posts.
+- PageRank is the only graph algorithm in use so far.
 
 ## What's next
 
-- The hardware key: a button press to unlock, the memory log on the key with a hash chain, and "Forgotten" on its screen when you pull it out.
-- Community detection, so the graph also picks two example replies for Claude from the people you write to the same way.
-- A hosted bridge where every visitor gets their own virtual key and graph.
-- An MCP server, so other agents can write in your voice from the same graph.
+- The hardware key: button unlock, the memory log on the key with a hash chain, and "Forgotten" on its screen.
+- Batched replay, so plug-in stays fast however much the key has learned.
+- Community detection, so the graph also picks example replies from people you write to the same way.
+- A hosted bridge where every visitor gets their own key and graph.
 
 ## License
 
