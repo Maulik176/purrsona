@@ -241,6 +241,8 @@ def validate_request(message: dict) -> None:
                 "Unknown screen state")
         if message["state"] == "ready":
             require(integer(message.get("memories")), "Invalid memory count")
+        if "rules" in message:
+            require(integer(message["rules"]), "Invalid rule count")
         require(text_bytes(message.get("message", ""), 160), "Invalid status message")
     elif kind == "GRAPH_VIEW":
         validate_graph(message)

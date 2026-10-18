@@ -56,6 +56,8 @@ public:
     Document graph{128 * 1024};
     uint32_t loadingAt = 0, graphChanged = 0;
     bool graphReceived = false;
+    uint64_t ruleCount = 0;
+    bool rulesKnown = false;
     KeyDevice(DeviceStorage &storage, std::function<void(const std::string &)> output);
     void feed(const char *bytes, size_t size, uint32_t now);
     void tick(uint32_t now);

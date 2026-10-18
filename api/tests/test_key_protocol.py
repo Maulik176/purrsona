@@ -428,6 +428,16 @@ def test_rejected_status_does_not_keep_session_alive(key):
     assert key.device.session is None
 
 
+@pytest.mark.parametrize("invalid", [-1, True, 1.5, "33", None, 2**53])
+def test_status_rule_count_is_validated_before_changing_screen(key, invalid):
+    key.unlock()
+    assert key.send("STATUS", state="drafting", rules=33)[0]["type"] == "ACK"
+    assert key.send("STATUS", state="learning", rules=invalid)[0]["code"] == "BAD_REQUEST"
+    assert key.device.status == {"state": "drafting", "rules": 33}
+    assert key.send("STATUS", state="loading")[0]["type"] == "ACK"
+    assert key.device.status == {"state": "loading", "rules": 33}
+
+
 def test_protocol_demo_runs_twice_with_persistent_state(tmp_path):
     command = [sys.executable, "-m", "purrsona.protocol_demo", "--state-dir", str(tmp_path)]
     for _ in range(2):

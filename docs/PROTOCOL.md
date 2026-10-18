@@ -6,8 +6,8 @@ and FastAPI USB bridge are implemented. Compilation and interoperability tests
 pass. Physical pairing, display, signed unlock, save/restore after USB reconnect,
 and laptop graph deletion have also passed with mocked AI. Remaining manual
 checks are listed in [hardware setup](../firmware/README.md).
-Maulik still needs to agree to the message names, and the document needs to reach
-`main` before issue #1 is complete.
+The document reached `main` in PR #13. Maulik still needs to agree to the message
+names before issue #1 is complete.
 
 ## Run the protocol now (no board required)
 
@@ -269,6 +269,14 @@ effect without a 3D rendering engine.
 event count, and requires a completed `PULL` in this session and the current
 stored count. The board replies `ACK`. Display errors use a short `message`
 (maximum 160 UTF-8 bytes); do not send stack traces or secrets.
+
+The bridge also sends optional `rules`: the active rule count in the complete
+loaded graph, an integer from 0 to 2^53 − 1. It is independent of the capped
+`GRAPH_VIEW` node count. The LCD shows it during the connected animation and in
+the graph footer, including while drafting, saving, or navigating details.
+After a saved change the bridge updates the count. Omitting it preserves the
+last count in this session; an older bridge can omit it entirely and the count
+stays hidden. Disconnect clears it with the graph.
 
 `GRAPH_VIEW` is a protected bridge request with an increasing integer `revision`,
 `nodes`, `edges`, and `truncated`. Each node has a unique string `id`, `kind`,

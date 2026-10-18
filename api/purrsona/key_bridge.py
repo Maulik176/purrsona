@@ -281,8 +281,9 @@ class MemoryBridge:
             for record in records:
                 apply_event(graph, record["event"])
             packet = display_graph(graph_view(graph), 1)
+            rule_count = graph_summary(graph)["rules"]
             client.ack("GRAPH_VIEW", **packet)
-            client.ack("STATUS", state="ready", memories=len(records))
+            client.ack("STATUS", state="ready", memories=len(records), rules=rule_count)
             with self.lock:
                 self.ensure_current(graph)
                 self.records = records
@@ -292,7 +293,7 @@ class MemoryBridge:
                 self.screen = "ready"
                 self.usb_status = "connected"
                 self.dirty = False
-                self.rule_count = graph_summary(self.graph())["rules"]
+                self.rule_count = rule_count
                 self.memory_count = len(records)
                 self._publish()
             log.info("memory_key_connected memories=%s", len(records))
@@ -306,7 +307,7 @@ class MemoryBridge:
         with self.lock:
             if self.client is not client or not client.authenticated:
                 return
-            screen, count = self.screen, len(self.records)
+            screen, count, rule_count = self.screen, len(self.records), self.rule_count
             graph = self.graph() if self.state["key_id"] and self.dirty else None
             if graph:
                 self.dirty = False
@@ -315,7 +316,8 @@ class MemoryBridge:
         if graph:
             packet = display_graph(graph_view(graph), revision)
             client.ack("GRAPH_VIEW", **packet)
-        client.ack("STATUS", state=screen, **({"memories": count} if screen == "ready" else {}))
+        client.ack("STATUS", state=screen, rules=rule_count,
+                   **({"memories": count} if screen == "ready" else {}))
 
     def _discover(self):
         while not self.stop_event.is_set():
