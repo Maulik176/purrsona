@@ -58,6 +58,20 @@ h1 { font: 600 34px/1.15 Fraunces, Georgia, serif; margin: 0 0 4px; }
 .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--amber), var(--amber2)); border-radius: 6px; }
 .steps { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 6px; }
 .st { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card2); color: #c9ccd6; }
+.crew { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: start; gap: 6px 10px; margin-bottom: 18px; padding: 22px 22px 16px; }
+.agent { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.agent svg { width: 104px; height: 104px; margin-bottom: 4px; }
+.agent b { font: 600 17px/1.2 Fraunces, Georgia, serif; }
+.agent span { color: var(--muted); font-size: 13px; max-width: 250px; }
+.agent .disc { stroke-width: 1.5; }
+.drafter .disc { fill: rgba(96,165,250,.13); stroke: rgba(96,165,250,.55); } .drafter b { color: var(--blue); }
+.critic .disc { fill: rgba(61,220,151,.12); stroke: rgba(61,220,151,.55); } .critic b { color: var(--good); }
+.learner .disc { fill: rgba(167,139,250,.13); stroke: rgba(167,139,250,.55); } .learner b { color: var(--violet); }
+.hop { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 36px; color: var(--faint); font-size: 11.5px; white-space: nowrap; }
+.hop i { font-style: normal; font-size: 22px; color: var(--amber); line-height: 1; }
+.hop .back { color: var(--amber2); }
+.crewnote { grid-column: 1 / -1; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; text-align: center; }
+.crewnote code { color: var(--amber2); }
 .st.redo, .st.still { border-color: var(--amber); color: var(--amber2); }
 .st.pass { border-color: rgba(61,220,151,.6); color: var(--good); }
 .st.learn { border-color: rgba(167,139,250,.6); color: var(--violet); }
@@ -137,7 +151,7 @@ table.modes th, table.modes td { text-align: left; padding: 10px 8px; border-top
 table.modes th { color: var(--muted); font-weight: 500; border-top: 0; }
 .plugwall { text-align: center; padding: 80px 20px; }
 .plugwall h2 { font: 600 26px Fraunces, Georgia, serif; margin: 14px 0 6px; }
-@media (max-width: 1000px) { .g2, .g2b, .g2p { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(3, 1fr); } .side { display: none; } main { padding: 22px 16px; } }
+@media (max-width: 1000px) { .crew { grid-template-columns: 1fr; } .hop { margin-top: 0; } .hop i { transform: rotate(90deg); } .g2, .g2b, .g2p { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(3, 1fr); } .side { display: none; } main { padding: 22px 16px; } }
 </style>
 </head>
 <body>
@@ -213,6 +227,29 @@ RETURN p</pre>
   <section class="page" id="page-agents">
     <h1>Handoffs</h1>
     <p class="sub">Three agents, one shared memory. They never call each other: the Drafter writes from the graph's rules, the Critic checks the draft against them and hands it back once if it broke one, and the Learner turns what you sent into new rules. Every step is a node in the graph.</p>
+    <div class="card crew" aria-label="The three agents and how a draft moves between them">
+      <div class="agent drafter"><svg viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="41" class="disc"/><ellipse cx="42" cy="67" rx="20" ry="13" fill="#4b5266"/><polygon points="27,31 30,14 38,25" fill="#4b5266"/><polygon points="46,25 54,14 57,31" fill="#4b5266"/>
+      <polygon points="29.5,27 31,19 35,24" fill="#e8909a" opacity=".45"/><polygon points="49,24 53,19 54.5,27" fill="#e8909a" opacity=".45"/><circle cx="42" cy="39" r="15" fill="#4b5266"/>
+      <path d="M40.4 43.5h3.2l-1.6 1.9z" fill="#f4a7b9"/><circle cx="36" cy="38" r="2.6" fill="#ffc44d"/><circle cx="48" cy="38" r="2.6" fill="#ffc44d"/>
+      <rect x="22" y="58" width="30" height="20" rx="2.5" fill="#eceef3"/><path d="M26 64h20M26 68h16M26 72h12" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round"/>
+      <g transform="rotate(-38 58 66)"><rect x="47" y="63.5" width="22" height="5" rx="1.2" fill="#ffc44d"/><rect x="45" y="63.5" width="3" height="5" rx="1" fill="#f472b6"/><polygon points="69,63.5 74,66 69,68.5" fill="#f3d9b1"/><polygon points="72.4,65.2 74,66 72.4,66.8" fill="#4b5266"/></g></svg><b>Drafter</b><span>Writes the reply in your voice, from the rules the graph picks for this person.</span></div>
+      <div class="hop"><span>the draft</span><i>→</i><span class="back">↩ back once if it broke a rule</span></div>
+      <div class="agent critic"><svg viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="41" class="disc"/><ellipse cx="42" cy="67" rx="20" ry="13" fill="#4b5266"/><polygon points="27,31 30,14 38,25" fill="#4b5266"/><polygon points="46,25 54,14 57,31" fill="#4b5266"/>
+      <polygon points="29.5,27 31,19 35,24" fill="#e8909a" opacity=".45"/><polygon points="49,24 53,19 54.5,27" fill="#e8909a" opacity=".45"/><circle cx="42" cy="39" r="15" fill="#4b5266"/>
+      <path d="M40.4 43.5h3.2l-1.6 1.9z" fill="#f4a7b9"/>
+      <path d="M33.6 38.4h4.8M45.6 38.4h4.8" stroke="#ffc44d" stroke-width="2.6" stroke-linecap="round"/>
+      <circle cx="36" cy="38" r="5.4" fill="none" stroke="#eceef3" stroke-width="1.7"/><circle cx="48" cy="38" r="5.4" fill="none" stroke="#eceef3" stroke-width="1.7"/><path d="M41.4 37.6q.6-1 1.2 0" stroke="#eceef3" stroke-width="1.5" fill="none"/>
+      <rect x="49" y="52" width="22" height="27" rx="2.5" fill="#b9895c"/><rect x="52" y="56" width="16" height="20" rx="1" fill="#eceef3"/><rect x="55.5" y="50" width="9" height="5" rx="1.5" fill="#94a3b8"/>
+      <path d="M55 61h10M55 65h10M55 69h6" stroke="#94a3b8" stroke-width="1.4" stroke-linecap="round"/><path d="M62.5 68.5l3.5 3.5m0-3.5l-3.5 3.5" stroke="#ff6b6b" stroke-width="1.8" stroke-linecap="round"/></svg><b>Critic</b><span>Checks the draft against those rules, always looking for one it broke.</span></div>
+      <div class="hop"><span>you edit and send</span><i>→</i></div>
+      <div class="agent learner"><svg viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="41" class="disc"/><g transform="translate(-6 3)"><ellipse cx="42" cy="67" rx="20" ry="13" fill="#4b5266"/><polygon points="27,31 30,14 38,25" fill="#4b5266"/><polygon points="46,25 54,14 57,31" fill="#4b5266"/>
+      <polygon points="29.5,27 31,19 35,24" fill="#e8909a" opacity=".45"/><polygon points="49,24 53,19 54.5,27" fill="#e8909a" opacity=".45"/><circle cx="42" cy="39" r="15" fill="#4b5266"/>
+      <path d="M40.4 43.5h3.2l-1.6 1.9z" fill="#f4a7b9"/><circle cx="36" cy="38" r="2.6" fill="#ffc44d"/><circle cx="48" cy="38" r="2.6" fill="#ffc44d"/></g>
+      <circle cx="51.5" cy="27" r="1.8" fill="#eceef3"/><circle cx="56" cy="21.5" r="2.6" fill="#eceef3"/>
+      <ellipse cx="66" cy="13.5" rx="12.5" ry="9.5" fill="#eceef3"/><circle cx="66" cy="12" r="4.2" fill="#ffc44d"/><rect x="64.3" y="15.6" width="3.4" height="3" rx=".6" fill="#94a3b8"/>
+      <path d="M66 4.8v-1.6M59 8l-1.2-1.1M73 8l1.2-1.1" stroke="#ffc44d" stroke-width="1.3" stroke-linecap="round"/></svg><b>Learner</b><span>Compares the draft with what you sent and saves new habits to your key.</span></div>
+      <div class="crewnote">All three read and write one graph, <code>voice:&lt;your key&gt;</code>. Each chip below is a <code>Step</code> node: <code>(:Draft)-[:HAS_STEP]-&gt;(:Step)-[:NEXT]-&gt;(:Step)</code></div>
+    </div>
     <div class="card" id="agentsBody"></div>
   </section>
 
