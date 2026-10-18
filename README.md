@@ -54,28 +54,7 @@ Take FalkorDB out and Purrsona is a chatbot with a cat. Every part of it is a gr
 
 ### The voice graph
 
-```mermaid
-flowchart LR
-  U((User)) -->|KNOWS| P((Person))
-  P -->|IN_CIRCLE| C((Circle))
-  P -->|IS| R((Relationship))
-  R -->|PART_OF| C
-  P -->|HAS_RULE| S[StyleRule]
-  C -->|HAS_RULE| S
-  T((Topic)) -->|HAS_RULE| S
-  PL((Platform)) -->|HAS_RULE| S
-  U -->|HAS_RULE| S
-  S -->|LEARNED_FROM| E[Edit or Post]
-  S -->|OVERRIDES| S0[older StyleRule]
-  D[Draft] -->|USED| S
-  D -->|TO| P
-  D -->|ON| PL
-  D -->|ABOUT| T
-  E -->|OF| D
-  D -->|HAS_STEP| ST[Step]
-  ST -->|NEXT| ST2[Step]
-  ST -->|FLAGGED or TAUGHT| S
-```
+<p align="center"><img src="docs/media/diagram-voice-graph.svg" width="100%" alt="The voice graph: You, Person, Your words, Circle, Topic and Platform each HAS_RULE StyleRule. A newer rule OVERRIDES an older one, a rule is LEARNED_FROM an Edit or Post, a Draft USED rules, an Edit is OF a Draft, and a Draft HAS_STEP Steps linked by NEXT, which FLAGGED or TAUGHT rules."></p>
 
 When two rules of the same kind compete, the narrowest scope wins: Person → Circle → Topic → Platform → You. Phrase rules stack instead. A retired rule keeps its history but is never applied. Every label and property: [`docs/GRAPH-MODEL.md`](docs/GRAPH-MODEL.md).
 
@@ -96,21 +75,7 @@ Purrsona has three agents, and they never call each other. The bridge hands each
 - **The Critic** checks the draft against those same rules in code: emoji limit, sentence limit, length, greeting, sign-off, banned phrases, hashtags. It takes milliseconds and no AI call. If the draft broke a rule, the Critic sends it back once, with the reason: "broke 'one to three sentences' (it has 4)".
 - **The Learner** runs when you press send. It compares the draft with what you sent, plus anything you asked the cat to change, and saves up to three rules, each linked to the edit that taught it. Even an unchanged send is a memory: who you wrote to, where, and with which rules.
 
-```mermaid
-sequenceDiagram
-  participant G as FalkorDB (your graph)
-  participant D as Drafter
-  participant C as Critic
-  participant L as Learner
-  G-->>D: who this is, and the rules that apply
-  D-->>C: handoff: the draft and its rules
-  C-->>D: handoff: redo, it broke "one to three sentences"
-  D-->>C: handoff: the rewrite
-  C->>G: Draft, USED rules, Steps 1-4 (wrote, redo + FLAGGED, rewrote, pass)
-  Note over G,L: later, you edit and press send
-  G-->>L: the draft, its rules and its trail
-  L->>G: Edit, StyleRule, LEARNED_FROM, OVERRIDES, Step 5 + TAUGHT
-```
+<p align="center"><img src="docs/media/diagram-agents.svg" width="100%" alt="Three agents, one graph: the Drafter writes from the graph's rules, the Critic checks them and sends the draft back once naming the rule it broke, you edit and send, and the Learner turns your edit into a rule. The Drafter reads who, circle and rules; the Critic writes a Step and FLAGGED; the Learner writes a StyleRule and TAUGHT, all in the FalkorDB voice graph."></p>
 
 <p align="center"><img src="docs/media/dashboard-handoffs.png" width="92%" alt="The dashboard's Handoffs page: each draft with its agent steps and the queries the graph ran"></p>
 <p align="center"><sub>Every draft's steps are <code>Step</code> nodes in the graph: Drafter wrote → Critic redo → Drafter rewrote → Critic pass → Learner learned.</sub></p>
@@ -268,21 +233,7 @@ appears after graph deletion succeeds. If running Uvicorn directly, add
 <details>
 <summary><b>Architecture</b></summary>
 
-```mermaid
-flowchart LR
-  key["Purrsona key<br/>snapshot + memory log"]
-  subgraph laptop["Your laptop"]
-    ext["Chrome extension<br/>the cat · Option+M"]
-    bridge["Purrsona bridge<br/>Drafter · Critic · Learner"]
-    db[("FalkorDB<br/>one graph per key")]
-  end
-  claude["Claude<br/>writes the words"]
-  key -- "plug in: PULL" --> bridge
-  bridge -- "every send: APPEND" --> key
-  ext --> bridge
-  bridge <--> db
-  bridge -- "the post + the rules the graph picked" --> claude
-```
+<p align="center"><img src="docs/media/diagram-architecture.svg" width="100%" alt="Where everything runs: the Chrome extension (cat.js, content.js, background.js) calls the bridge (drafter.py, critic.py, learning.py, queries.py, key_bridge.py). The bridge sends Claude only the post and the rules the graph picked, queries FalkorDB with ro_query, and talks to the key with PULL, APPEND and BYE."></p>
 
 The extension only reads the box you're in and the post you're replying to, and only the service worker talks to the bridge. The bridge is the only part that talks to the key, to FalkorDB and to Claude.
 </details>
