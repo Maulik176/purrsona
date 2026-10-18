@@ -25,6 +25,10 @@ You don't write to your manager the way you write to your college friend, and ne
 
 Purrsona is your personal portable memory engine that makes an AI’s reply customised to you. It keeps your voice in a graph: who you write to, what you're talking about and which platform you're on. It also keeps tracks of the rules that make each reply sound like you, each one linked with evidence in the graph. The graph itself lives on a portable memory engine that you can carry and connect with any device to access your memory. Once its plugged in, Purrsona writes like you. Pull it out and you have dettached your memory with it, making **Purrsona the first portable memory.**
 
+<p align="center">
+  <img src="docs/media/memory-engine.jpg" width="760" alt="Purrsona's LilyGO T-Display-S3 memory engine held in front of a laptop, showing the brain graphic and Waiting for your laptop status">
+</p>
+
 ## Purrsona in 30 seconds
 
 1. **Plug in your memory engine and press to get connected.** That press is your consent. The memory engine hands the device your voice, and the device builds your graph in FalkorDB.
