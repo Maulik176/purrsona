@@ -190,6 +190,8 @@ LinkedIn and X direct messages are left out on purpose: the cat doesn't appear t
 
 **Live demo: https://purrsona-production.up.railway.app**. You get your own key and your own graph, and nobody else can see them. Start an empty key that learns how you write, or try the demo key (Maulik's voice with made-up people) to see everything at once. Draft on the practice page with nothing to install (click a reply box, press **right Option + M**), or point the extension at it: right-click the toolbar cat → **Options** → **The online demo**. Each visitor has an hourly limit on drafts, and a key nobody uses for 3 hours is forgotten. The hardware key is in the video.
 
+> **Using the extension with the live demo?** It starts set to **On this laptop** (a bridge running on your machine at 127.0.0.1:8765). If you aren't running Purrsona locally, the cat says "Purrsona's bridge isn't running" and the toolbar cat opens a localhost page. Switch it once: right-click the toolbar cat → **Options** → **The online demo**. Then click the toolbar cat to open your dashboard, press **Start your own key**, and go to any LinkedIn, X or Gmail box.
+
 **Run it locally** (about 10 minutes). You need Docker Desktop, [uv](https://docs.astral.sh/uv/getting-started/installation/), Chrome, and your own Anthropic API key (a draft costs about 1–2 cents).
 
 ```bash
