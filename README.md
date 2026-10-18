@@ -411,9 +411,12 @@ We started from the questions, not the data. Before writing code we wrote down t
 | Dashboard | plain JavaScript and d3 | the live graph, rules, memories and handoffs |
 | Key | LilyGO T-Display-S3 (ESP32-S3), USB-C | consent button, status screen, the memory log |
 
-**Team.** Maulik Ranadive (Ahmedabad) designed the product, the graph model and the queries, wrote the "why" query and the Critic's checks, designed the extension's flows and the platform rules, and tested it on the real sites. Mustafa Africawala (UK) built the hardware key: the firmware, the signed USB protocol, the bridge's USB side, live key status on every page, and a simulator so anyone can try the key without the board.
+**How we worked.** The way many teams build now: the two of us owned the design, the architecture and every decision above, and AI coding assistants (Claude Code and OpenAI Codex) did most of the implementation from our specs. Nothing went in unchecked. We reviewed what the assistants wrote, every change had to pass the automated tests written alongside it (188 today), and we tested the flows by hand on the real sites and on the physical board.
 
-We used AI coding assistants to help write the code. The product, the design and every decision above are ours. <!-- REVIEW: keep this line; the hackathon rules require disclosing AI help in the README -->
+- **Maulik Ranadive** (Ahmedabad): the product, the graph model, the agents and their handoffs, the queries' design, the extension's flows and the privacy rules. Wrote the "why" query, the Critic's checks and the platform rules himself, and tested the flows by hand on LinkedIn, X, Reddit, Slack and Gmail.
+- **Mustafa Africawala** (UK): the hardware key: the board, the signed USB protocol and its consent flow, the firmware, the bridge's USB side and the simulator. Tested it on the physical T-Display-S3: pairing, signed unlock, saving a memory, forgetting on unplug, restoring on reconnect.
+
+We can walk you through any line of it.
 
 ## Honest limits
 
