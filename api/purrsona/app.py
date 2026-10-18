@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
@@ -119,6 +119,12 @@ def key_status():
             **graph_summary(graph)}
 
 
+@app.get("/key/events")
+async def key_events():
+    return StreamingResponse(memory.live.stream(), media_type="text/event-stream",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+
 @app.get("/people")
 def list_people():
     if state["key_id"] is None:
@@ -206,7 +212,7 @@ def draft(req: DraftRequest):
     record_draft(graph, draft_id, text, int(time.time() * 1000), req.person_id, req.platform,
                  topics, [r["id"] for r in rules])
     save_trail(graph, draft_id, steps)
-    memory.ensure_current(graph)
+    memory.changed(graph)
     return {"mode": "voice", "draft": text, "draft_id": draft_id, "rules": rules,
             "person": {**person, "circle": circle}, "topics": topics, "trail": steps,
             "critic": {"checked": last["checked"], "still": last["problems"],

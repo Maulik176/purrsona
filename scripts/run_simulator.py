@@ -35,7 +35,8 @@ def main():
             import uvicorn
             print(f"Board simulator: http://127.0.0.1:{args.port}/sim/", flush=True)
             print("Actual C++ protocol and display; simulated USB, flash, button inputs and AI. No model calls.", flush=True)
-            uvicorn.run(create_demo(binary, args.state_dir), host="127.0.0.1", port=args.port, access_log=False)
+            uvicorn.run(create_demo(binary, args.state_dir), host="127.0.0.1", port=args.port,
+                        access_log=False, timeout_graceful_shutdown=2)
         finally:
             db.client.shutdown()
 

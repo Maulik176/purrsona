@@ -36,7 +36,7 @@ def main():
             print("Physical board + real FalkorDB; mocked AI, no model calls.", flush=True)
             print(f"Practice page: http://127.0.0.1:{args.port}/practice/", flush=True)
             print("Press B on the board to unlock. Pair first if the laptop does not trust it yet.", flush=True)
-            uvicorn.run(api.app, host="127.0.0.1", port=args.port, access_log=False)
+            uvicorn.run(api.app, host="127.0.0.1", port=args.port, access_log=False, timeout_graceful_shutdown=2)
         finally:
             db.client.shutdown()
 

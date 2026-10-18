@@ -211,6 +211,13 @@ tests against a temporary, isolated FalkorDB. The
 [protocol contract](docs/PROTOCOL.md) describes the messages shared by the board,
 USB client and simulator.
 
+The console, dashboard and practice page subscribe to `/key/events` for live
+connection, approval, drafting, saving and forgetting states. Each reconnect gets
+the current state; the stream contains counts and status, never draft or memory
+text. Personal graph views clear immediately on disconnect, and “Forgotten” only
+appears after graph deletion succeeds. If running Uvicorn directly, add
+`--timeout-graceful-shutdown 2` so open event streams cannot delay stopping it.
+
 ## Under the hood
 
 <details>
