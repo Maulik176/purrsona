@@ -94,7 +94,18 @@ code, .cy { font: 12px/1.5 "SF Mono", Menlo, Consolas, monospace; }
 .cypher.on { display: block; }
 .cypher pre { margin: 8px 0; padding: 10px 12px; background: #0f1015; border: 1px solid var(--line); border-radius: 10px; white-space: pre-wrap; color: #ffc078; }
 .cypher a { color: var(--amber2); }
-.move { display: block; margin-top: 6px; } .move select { margin-left: 6px; background: var(--card2); color: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 2px 6px; font: inherit; }
+.move { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
+.move select { margin-left: 8px; background: var(--card2); color: var(--text); border: 1px solid var(--amber); border-radius: 8px; padding: 4px 8px; font: inherit; cursor: pointer; }
+.move select:hover, .move select:focus { background: #2b2f3a; outline: none; box-shadow: 0 0 0 3px rgba(255,159,67,.18); }
+/* Our own dialog and toast, in the dashboard's colours (instead of the browser's confirm/alert boxes) */
+.modal { position: fixed; inset: 0; background: rgba(8,9,12,.62); backdrop-filter: blur(3px); display: none; place-items: center; z-index: 50; }
+.modal.on { display: grid; }
+.modal .box { width: min(440px, calc(100vw - 32px)); background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px 22px 18px; box-shadow: 0 24px 60px rgba(0,0,0,.45); }
+.modal h3 { margin: 0 0 8px; font: 600 20px/1.2 Fraunces, Georgia, serif; }
+.modal .quote { margin: 10px 0; padding: 10px 12px; background: var(--card2); border-left: 3px solid var(--amber); border-radius: 8px; }
+.modal .acts { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.toast { position: fixed; right: 20px; bottom: 20px; background: var(--card); border: 1px solid #5b2a2a; color: var(--text); padding: 10px 14px; border-radius: 12px; z-index: 60; opacity: 0; transform: translateY(8px); transition: .2s; pointer-events: none; }
+.toast.on { opacity: 1; transform: none; }
 .nodeq { display: inline-block; margin-top: 4px; color: #ffc078; }
 .copy { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 1px 8px; font-size: 11px; margin-left: 6px; }
 /* Rules */
@@ -225,6 +236,7 @@ RETURN p</pre>
   </section>
 </main>
 
+<div class="modal" id="modal"></div><div class="toast" id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="/key-events.js"></script>
 <script>
@@ -238,6 +250,29 @@ const NAMES = { User: "You", Person: "People", Circle: "Circles", Platform: "Pla
 const PLATFORM = { linkedin: "LinkedIn", x: "X", reddit: "Reddit", slack: "Slack", teams: "Teams", email: "Email" };
 let D = null;
 let keyState = null, loadVersion = 0, reselectKey = null;
+
+// ask("Forget this rule?", html, "Forget it") resolves true or false; toast("…") shows an error for a few seconds.
+function ask(title, html, okLabel) {
+  return new Promise((resolve) => {
+    const m = $("modal");
+    m.innerHTML = `<div class="box" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><h3 id="modalTitle">${esc(title)}</h3>
+      <div class="muted">${html}</div><div class="acts"><button class="btn" data-no>Cancel</button><button class="btn primary" data-yes>${esc(okLabel)}</button></div></div>`;
+    const done = (yes) => { m.classList.remove("on"); document.removeEventListener("keydown", key); resolve(yes); };
+    const key = (e) => { if (e.key === "Escape") done(false); if (e.key === "Enter" && !e.target.closest?.("button")) done(true); };
+    m.onclick = (e) => { if (e.target === m) done(false); };
+    m.querySelector("[data-no]").onclick = () => done(false);
+    m.querySelector("[data-yes]").onclick = () => done(true);
+    document.addEventListener("keydown", key);
+    m.classList.add("on");
+    m.querySelector("[data-yes]").focus();
+  });
+}
+let toastTimer = null;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 4000);
+}
 
 async function api(path, body) {
   const res = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -361,9 +396,9 @@ function renderRules() {
     : '<div class="empty">No rules match.</div>';
   $("rulesBody").querySelectorAll("[data-forget]").forEach((b) => b.addEventListener("click", async () => {
     const rule = D.rules.find((r) => r.id === b.dataset.forget);
-    if (!confirm(`Forget this rule?\n\n"${rule.text}"\n\nIt stays as history but won't shape drafts any more, and the key remembers that you forgot it.`)) return;
+    if (!await ask("Forget this rule?", `<div class="quote">${esc(rule.text)}</div>It stays as history but won't shape drafts any more, and the key remembers that you forgot it.`, "Forget it")) return;
     try { await api("/rules/forget", { rule_id: rule.id }); await load(); location.hash = "#rules"; }
-    catch (e) { alert(e.message); }
+    catch (e) { toast(e.message); }
   }));
 }
 $("ruleSearch").addEventListener("input", renderRules);
@@ -401,10 +436,10 @@ function renderKey() {
     : `<div class="bigkey"><span class="dot" style="width:12px;height:12px"></span><div><b>No key plugged in</b><div class="faint">The laptop holds none of your voice right now.</div></div></div>
       <div style="margin-top:16px">${keyState?.usb ? '<p class="muted">Connect USB and press B on the key.</p>' : '<button class="btn primary" onclick="plug()">Plug in the key</button>'}</div>`;
 }
-async function plug() { try { await api("/key/plug", { key_id: "demo-maulik" }); await load(); } catch (e) { alert(e.message); } }
+async function plug() { try { await api("/key/plug", { key_id: "demo-maulik" }); await load(); } catch (e) { toast(e.message); } }
 async function unplug() { await api("/key/unplug", {}); graphCache = null; await load(); }
 async function resetKey() {
-  if (!confirm("Forget everything the key learned and go back to its starting voice?")) return;
+  if (!await ask("Reset the key?", "Forget everything the key learned and go back to its starting voice. This can't be undone.", "Reset")) return;
   await api("/key/reset", { key_id: D.key_id || "demo-maulik" }); graphCache = null; await load();
 }
 
@@ -552,7 +587,7 @@ async function drawGraph() {
       const p = D.people.find((x) => x.id === n.key) || {};
       extra = [p.relationship && `your ${p.relationship}`, p.circle, `${p.sent || 0} ${p.sent === 1 ? "draft" : "drafts"} sent`, `${p.own_rules || 0} own rules`].filter(Boolean).map(esc).join(" · ");
       // Wrong circle? Move them: the next draft follows the new circle's rules, and the key remembers.
-      move = (D.circles || []).length ? `<label class="move faint">Circle <select id="moveCircle">${p.circle ? "" : "<option selected disabled>none</option>"}${D.circles.map((c) => `<option${c === p.circle ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></label>` : "";
+      move = (D.circles || []).length ? `<label class="move">Circle <select id="moveCircle">${p.circle ? "" : "<option selected disabled>none</option>"}${D.circles.map((c) => `<option${c === p.circle ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></label>` : "";
     } else if (n.label === "StyleRule") {
       const r = D.rules.find((x) => x.id === n.key) || {};
       extra = `${esc(ownerLabel(r))} · ${esc((r.kind || "").replace("_", " "))} · from ${r.evidence ?? 0} edits/posts${G.pagerank[n.key] ? ` · PageRank ${(G.pagerank[n.key] / maxPR * 100).toFixed(0)}%` : ""}`;
@@ -568,7 +603,7 @@ async function drawGraph() {
     $("nodeCopy").onclick = () => navigator.clipboard?.writeText(nodeQ);
     $("moveCircle")?.addEventListener("change", async (e) => {
       try { await api("/person/circle", { person_id: n.key, circle: e.target.value }); graphCache = null; reselectKey = n.key; await load(); }
-      catch (err) { alert(err.message); }
+      catch (err) { toast(err.message); }
     });
     $("detailBody").querySelectorAll("[data-id]").forEach((el) => el.addEventListener("click", () => { selected = nodes.find((x) => x.id === +el.dataset.id); detail(selected); paint(); glideTo(selected); }));
   }

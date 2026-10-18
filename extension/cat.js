@@ -173,7 +173,51 @@
   panel.addEventListener("keydown", (e) => e.stopPropagation());
   bubble.addEventListener("keydown", (e) => e.stopPropagation());
 
+  // A soft meow when the cat starts thinking (Maulik's idea, Oct 18). Made with the Web Audio API, so
+  // there's no sound file: a sawtooth "mee-ow" whose pitch rises then falls, shaped by two vowel-like
+  // filters. At most one every 2.5 s; it can be switched off in the chat (saved in the extension's storage).
+  let audio = null, lastMeow = 0, soundOn = true;
+  try { chrome.storage.local.get("sound", (v) => { if (v?.sound === false) soundOn = false; }); } catch {}
+  function meow() {
+    if (!soundOn || Date.now() - lastMeow < 2500) return;
+    lastMeow = Date.now();
+    try {
+      audio ||= new AudioContext();
+      if (audio.state === "suspended") audio.resume();
+      const t = audio.currentTime + 0.02, end = t + 0.55;
+      const voice = audio.createOscillator();
+      voice.type = "sawtooth";
+      voice.frequency.setValueAtTime(520, t);
+      voice.frequency.linearRampToValueAtTime(780, t + 0.14);
+      voice.frequency.exponentialRampToValueAtTime(420, end);
+      const wobble = audio.createOscillator(), depth = audio.createGain();
+      wobble.frequency.value = 7; depth.gain.value = 12;
+      wobble.connect(depth).connect(voice.frequency);
+      const level = audio.createGain();
+      level.gain.setValueAtTime(0.0001, t);
+      level.gain.exponentialRampToValueAtTime(0.5, t + 0.06);
+      level.gain.setValueAtTime(0.5, t + 0.3);
+      level.gain.exponentialRampToValueAtTime(0.0001, end);
+      for (const [from, peak, to, q, gain] of [[700, 1500, 800, 3, 1], [2200, 2800, 1900, 5, 0.45]]) {
+        const vowel = audio.createBiquadFilter(), mix = audio.createGain();
+        vowel.type = "bandpass"; vowel.Q.value = q; mix.gain.value = gain;
+        vowel.frequency.setValueAtTime(from, t);
+        vowel.frequency.linearRampToValueAtTime(peak, t + 0.15);
+        vowel.frequency.linearRampToValueAtTime(to, end);
+        voice.connect(vowel).connect(mix).connect(level);
+      }
+      level.connect(audio.destination);
+      voice.start(t); wobble.start(t);
+      voice.stop(end + 0.05); wobble.stop(end + 0.05);
+    } catch {}  // no audio (blocked or unsupported): the cat just thinks quietly
+  }
+  function setSound(on) {
+    soundOn = on;
+    try { chrome.storage.local.set({ sound: on }); } catch {}
+  }
+
   function setMood(mood) {
+    if (mood === "thinking" && !body.classList.contains("thinking")) meow();
     body.classList.remove("thinking", "happy", "error", "walking");
     if (mood) body.classList.add(mood);
   }
@@ -204,6 +248,8 @@
     badge(text) { if (text) badge.textContent = text; badge.classList.toggle("show", !!text); },
     onClick(fn) { onClick = fn; },
     mood: setMood,
+    sound: () => soundOn,
+    setSound,
     say, quiet,
     // Walk along the top of the reply box and back, while the draft lands in it.
     async walkAlong() {

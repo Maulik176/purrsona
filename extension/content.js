@@ -686,8 +686,9 @@
       ${lastLesson ? `<div class="lesson">🐾 ${esc(lastLesson.summary)} <button class="link" data-lesson>show</button></div>` : ""}
       <div class="log"></div><div class="chips">${chips}</div>
       <form><input maxlength="300" placeholder="${has ? "Change it… e.g. mention the go-live" : "Tell me what to say…"}"></form>
-      <div class="hint">Enter to send · Esc to close · tap Option twice to open me</div>`);
+      <div class="hint">Enter to send · Esc to close · tap Option twice to open me · <button class="link" data-sound>${cat.sound() ? "meow on" : "meow off"}</button></div>`);
     cat.badge(null);
+    p.querySelector("[data-sound]").onclick = (e) => { cat.setSound(!cat.sound()); e.target.textContent = cat.sound() ? "meow on" : "meow off"; };
     const input = p.querySelector("input"), log = p.querySelector(".log");
     const line = (cls, html) => {
       const d = document.createElement("div");
@@ -698,7 +699,7 @@
 
     function showWhy() {
       const top = [...last.r.rules].sort((a, z) => a.rank - z.rank).slice(0, 5);
-      line("it", `<b>Why it sounds like you</b>${top.map((x) => `<div class="rule"><b>${esc(ruleLabel(x, last.ctx))}</b> · ${esc(x.text)}
+      const start = line("it", `<b>Why it sounds like you</b>${top.map((x) => `<div class="rule"><b>${esc(ruleLabel(x, last.ctx))}</b> · ${esc(x.text)}
         <span class="muted">· ${esc(taught(x))}</span></div>`).join("")}
         <div class="muted">the narrowest rule of each kind wins</div>`);
       // The agents' handoffs for this draft: Drafter -> Critic -> (one redo) -> Critic.
@@ -710,6 +711,8 @@
       if (ran.length) line("it", `<b>What the graph ran</b>${ran.map((c) => `<div class="rule"><code>${esc(c.query)}</code>
         <span class="muted">· ${c.ms} ms · ${c.write ? "saved" : `${c.rows} ${c.rows === 1 ? "row" : "rows"}`}</span></div>`).join("")}
         <div class="muted">graph ${last.r.graph_ms} ms before Claude · ${last.r.ms} ms in all</div>`);
+      // Show the answer from its top ("Why it sounds like you"), not the end of the query list.
+      log.scrollTop += start.getBoundingClientRect().top - log.getBoundingClientRect().top - 4;
     }
     async function ask(text) {
       if (busy) return;
@@ -797,9 +800,9 @@
       // The site removed the box, or sending moved you away from it (Gmail's full-page compose, a Comment
       // button): the cat is about to hide, so say it now, where the cat is. In chat apps you stay in the box.
       if (!usable(box) || !(focused === box || box.contains(focused))) {
-        const b = cat.say(`🐾 ${esc(lastLesson.summary)}<div class="muted">click me to see it</div>`, { ms: 12000 });
+        const b = cat.say(`🐾 ${esc(lastLesson.summary)}<div class="muted">click me to see it</div>`, { ms: 8000 });
         b.onclick = () => { b.onclick = null; showLesson(); };
-        linger(12000);
+        linger(8000);
       }
     } catch (e) {
       cat.mood("error");
