@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="docs/media/banner.svg" width="100%" alt="Purrsona: your writing voice, portable. Plug the key into any laptop and it writes the way you write to each person. Pull it out, and that laptop forgets you.">
+  <img src="docs/media/banner.svg" width="100%" alt="Purrsona: World’s First Portable Memory. Carry around your voice and memory. Plug into any device and it writes the way you write to each person, pulling all the memories attached with them. Pull it out, and you get control of your memory back.">
 </p>
 
 <p align="center">
   <img alt="Graph Hacks · Track 02" src="https://img.shields.io/badge/Graph%20Hacks-Track%2002%3A%20Agent%20Memory%20%26%20Coordination-ff9f43">
   <img alt="FalkorDB" src="https://img.shields.io/badge/memory-FalkorDB%20v4.22-2dd4bf">
   <img alt="Chrome extension" src="https://img.shields.io/badge/Chrome-extension%20(MV3)-60a5fa">
-  <img alt="Hardware key" src="https://img.shields.io/badge/key-ESP32--S3%20T--Display-f472b6">
+  <img alt="Hardware Memory Engine" src="https://img.shields.io/badge/key-ESP32--S3%20T--Display-f472b6">
   <img alt="MIT" src="https://img.shields.io/badge/license-MIT-9aa1b3">
 </p>
 
@@ -21,21 +21,21 @@
 
 ## The problem
 
-You don't write to your manager the way you write to your college friend, and neither of them gets what a client gets. AI writing tools give everyone one voice. So you paste the message into a chatbot, again and again, and ask "can you make it sound like me?" It never tells you why a draft sounds the way it does. And whatever it learns about you lives on someone else's server.
+You don't write to your manager the way you write to your college friend, and neither of them gets what a client gets. AI writing tools give everyone one voice. It never tells you why a draft sounds the way it does. And whatever it learns about you lives on someone else's server.
 
-Purrsona keeps your voice in a graph: who you write to, which circle they're in, which platform you're on, what you're talking about, and the rules that make each reply sound like you, each one linked to the edits that taught it. The graph lives on a key you carry. Plug it into any laptop and the cat writes like you. Pull it out and that laptop forgets you.
+Purrsona is your personal portable memory engine that makes an AI’s reply customised to you. It keeps your voice in a graph: who you write to, what you're talking about and which platform you're on. It also keeps tracks of the rules that make each reply sound like you, each one linked with evidence in the graph. The graph itself lives on a portable memory engine that you can carry and connect with any device to access your memory. Once its plugged in, Purrsona writes like you. Pull it out and you have dettached your memory with it, making **Purrsona the first portable memory.**
 
 ## Purrsona in 30 seconds
 
-1. **Plug in your key and press its button.** That press is your consent. The key hands the laptop your voice, and the laptop builds your graph in FalkorDB.
-2. **Press the right Option key + M in any reply box** (the Option key next to M; Alt+M on Windows). A small cat sits on the box. The graph picks the rules for this person, this platform and this topic, and Claude writes the words.
-3. **Edit it and send.** The Learner compares what it wrote with what you sent and saves the difference as a rule, on the graph and on the key.
-4. **Pull the key out.** The laptop deletes your graph (`GRAPH.DELETE`). The next draft is generic. Plug the key into another laptop, and your voice is back, with everything it learned.
+1. **Plug in your memory engine and press to get connected.** That press is your consent. The memory engine hands the device your voice, and the device builds your graph in FalkorDB.
+2. **Press the right Option key + M in any reply box** (Alt+M on Win). Purrsona come to your help. The graph picks the rules for the person, the platform and the topic, and Claude(in future even just a local llm) writes the words with the context.
+3. **Edit it and send.** Purrsona’s Learner agent compares what it wrote with what you sent and saves the difference as a rule, on the graph and on the memory engine.
+4. **Pull the memory engine out.** The device deletes your graph (`GRAPH.DELETE`). The next draft is generic. Plug the memory engine into another device, and your voice is back, with everything it learned.
 
 <p align="center">
-  <img src="docs/media/cat-draft-friends.png" width="49%" alt="Key plugged in: the cat drafts a reply to Aarav in a casual Friends voice">
-  <img src="docs/media/cat-draft-unplugged.png" width="49%" alt="Key unplugged: the same post gets a generic reply">
-  <br><sub>Same post, same shortcut. Left: the key is plugged in, so Aarav, a friend, gets "Yo bro… 🔥". Right: the key is out, the graph is gone, and the reply is generic.</sub>
+  <img src="docs/media/cat-draft-friends.png" width="49%" alt="memory engine plugged in: the cat drafts a reply to Aarav in a casual Friends voice">
+  <img src="docs/media/cat-draft-unplugged.png" width="49%" alt="memory engine unplugged: the same post gets a generic reply">
+  <br><sub>Same post, same shortcut. Left: the memory engine is plugged in, so Aarav, a friend, gets "Yo bro… 🔥". Right: the memory engine is out, the graph is gone, and the reply is generic.</sub>
 </p>
 
 ## FalkorDB is the heart
@@ -50,7 +50,7 @@ Take FalkorDB out and Purrsona is a chatbot with a cat. Every part of it is a gr
 | Why does this draft sound like that? | walk back from the draft to each rule, its owner, and the edits that taught it |
 | A new habit clashes with an old rule? | the new, narrower rule `OVERRIDES` the old one; the old one is kept as history |
 | What's my signature style? | PageRank over the links from drafts to the rules they used |
-| Forget me | each key has its own graph; delete it, and the memory is gone from this laptop |
+| Forget me | each key has its own graph; delete it, and the memory is gone from this device |
 
 ### The voice graph
 
@@ -82,37 +82,33 @@ Purrsona has three agents, and they never call each other. The bridge hands each
 
 ## Your voice, portable
 
-A writing style is personal data. Purrsona keeps it on something you hold.
+Purrsona saves your writing style and realtionships in a memory engine.
 
-**The key** is a LilyGO T-Display-S3: an ESP32-S3 with a 1.9-inch screen and two buttons, on USB-C. Mustafa built its firmware. Its voice memory is a snapshot of your voice graph and an append-only log of everything it has learned since. The laptop handles graph queries and AI requests; the key holds the memory, asks for consent and shows what's happening.
+**The memory engine** is a LilyGO T-Display-S3: an ESP32-S3 with a 1.9-inch screen. Mustafa built its firmware. Its voice memory is a snapshot of your voice graph and an append-only log of everything it has learned since. The device handles graph queries and AI requests; the memory engine holds the memory, asks for consent and shows what's happening.
 
-- **Consent is a button press.** Nothing loads until you press it.
-- **Memory travels with you.** Plug the key into any laptop running the bridge: it sends the snapshot and the memory log, and the bridge rebuilds your graph and replays every memory in order.
-- **Every send is written back** to the key as one more line in its log, the moment you send.
-- **Forgetting is physical.** Pull the key out and the bridge deletes your graph from that laptop. Press its eject button first, and the screen confirms "Forgotten" before you unplug.
+- **Memory travels with you.** Plug the memory engine into any device running the bridge: it sends the snapshot and the memory log, and the bridge rebuilds your graph and replays every memory in order.
+- **Every send is written back** to the memory engine as one more line in its log, the moment you send.
+- **Forgetting is physical.** Pull the memory engine out and the bridge deletes your graph from that device. Press its eject button first, and the screen confirms "Forgotten" before you unplug.
 
-| Moment | Laptop to key | What happens |
+| Moment | device to key | What happens |
 |---|---|---|
-| Plug in | `HELLO` → `UNLOCK` (button) → `PULL` | the key sends the snapshot and the memory log; the bridge builds `voice:<key_id>` and replays it |
-| Learn | `APPEND` | one new memory on the key; it replies with the new count |
-| Unplug | `BYE`, or the cable is pulled | `GRAPH.DELETE voice:<key_id>`; the laptop forgets |
-
-**Status, honestly:** the T-Display-S3 passed a **real-Claude** practice draft, edited send, physical unplug, and reconnect: the laptop graph was deleted and the saved memory returned exactly once, restoring **35 rules and 6 events**. Physical circle moves also passed. The owner confirmed the restored graph and rule count on the LCD. See [physical key setup and remaining checks](firmware/README.md) and [recorded key evidence](video/README.md). <!-- TODO(Sunday): photo of the T-Display-S3 -->
+| Plug in | `HELLO` → `UNLOCK` (button) → `PULL` | the memory engine sends the snapshot and the memory log; the bridge builds `voice:<key_id>` and replays it |
+| Learn | `APPEND` | one new memory on the memory engine; it replies with the new count |
+| Unplug | `BYE`, or the cable is pulled | `GRAPH.DELETE voice:<key_id>`; the device forgets |
 
 ### Why an ESP32 instead of a USB drive?
 
 An ordinary USB flash drive could carry the same files. We chose the ESP32-S3 because it can run the firmware that controls access to them:
 
 - **A verifiable device identity.** The board signs a fresh challenge with its Ed25519 private key. The bridge checks it against the public key paired earlier and an increasing unlock counter, rejecting reused unlock responses. Copying the voice files alone does not copy that identity.
-- **Consent enforced on the device.** The firmware requires a fresh press of B before it allows memory reads or writes for a new connection. A disconnected or expired session locks again.
-- **Feedback you can see and control.** The LilyGO's screen shows the brain animation, connection state, rule count and graph. Its two buttons let you approve access and browse the graph on the board.
+- **Feedback you can see and control.** The LilyGO's screen shows the connection state, rule count and graph. Its two buttons let you approve access and browse the graph on the board.
 - **Controlled memory writes.** The firmware validates each event, rejects conflicting event IDs and confirms a new save only after flushing it to flash. Retrying an identical event does not add it twice.
 
 These are implemented in the [USB protocol and firmware](docs/PROTOCOL.md). This hackathon build still uses plaintext USB and flash storage, with secure boot and flash encryption disabled; see [what is stored where](firmware/README.md#what-is-stored-where).
 
 ## One database, many voices
 
-Every key gets its own graph, `voice:<key_id>`, on one FalkorDB instance. A user is a graph, not a filter someone can forget to apply: a query in one person's graph can't see another's. Forgetting one person is one `GRAPH.DELETE`, and nobody else is touched.
+Every memory engine gets its own graph, `voice:<key_id>`, on one FalkorDB instance. A user is a graph, not a filter someone can forget to apply: a query in one person's graph can't see another's. Forgetting one person is one `GRAPH.DELETE`, and nobody else is touched.
 
 **The load test** ([`scripts/load_test.py`](scripts/load_test.py), Oct 18, a MacBook Air with FalkorDB v4.22 in Docker): 1,000 made-up users, each plugged in as their own graph on one FalkorDB, then 5,000 draft lookups for random users, 32 at a time.
 
@@ -190,8 +186,6 @@ LinkedIn and X direct messages are left out on purpose: the cat doesn't appear t
 
 **Live demo: https://purrsona-production.up.railway.app**. You get your own key and your own graph, and nobody else can see them. Start an empty key that learns how you write, or try the demo key (Maulik's voice with made-up people) to see everything at once. Draft on the practice page with nothing to install (click a reply box, press **right Option + M**), or point the extension at it: right-click the toolbar cat → **Options** → **The online demo**. Each visitor has an hourly limit on drafts, and a key nobody uses for 3 hours is forgotten. The hardware key is in the video.
 
-> **Using the extension with the live demo?** It starts set to **On this laptop** (a bridge running on your machine at 127.0.0.1:8765). If you aren't running Purrsona locally, the cat says "Purrsona's bridge isn't running" and the toolbar cat opens a localhost page. Switch it once: right-click the toolbar cat → **Options** → **The online demo**. Then click the toolbar cat to open your dashboard, press **Start your own key**, and go to any LinkedIn, X or Gmail box.
-
 **Run it locally** (about 10 minutes). You need Docker Desktop, [uv](https://docs.astral.sh/uv/getting-started/installation/), Chrome, and your own Anthropic API key (a draft costs about 1–2 cents).
 
 ```bash
@@ -204,6 +198,7 @@ uv run uvicorn purrsona.app:app --port 8765 --reload
 ```
 
 Then open:
+
 1. **http://localhost:8765/practice/**: a made-up feed with the cat already running. Click a reply box, press **right Option + M** (the Option key right of the space bar, next to M; Alt+M on Windows and Linux), click the cat for "shorter" or "why?", edit and press Reply, then unplug the key from the header and try again.
 2. **http://localhost:8765/dashboard/**: your live voice graph, your writing rules (forget any of them), what the key has learned, and the agents' handoffs.
 3. **The Chrome extension**: `chrome://extensions` → Developer mode → Load unpacked → the `extension/` folder (or unzip [the release](https://github.com/Maulik176/purrsona/releases/latest) and pick that folder). Open LinkedIn or X, click a comment box, press **right Option + M**. The cat icon in Chrome's toolbar (or "dashboard ↗" in the cat's chat) opens your dashboard.
@@ -211,12 +206,8 @@ Then open:
 
 ### Use the LilyGO T-Display-S3
 
-The firmware and USB bridge are implemented. Follow the
-[physical key setup](firmware/README.md) to flash the board, pair its fingerprint,
-and start the API with `PURRSONA_USB=1`. The display includes an ASCII brain
-animation and a graph navigated with its two buttons. Physical pairing, graph
-display, saving a memory, laptop cleanup on unplug, and restoring that memory
-after reconnecting have passed on the T-Display-S3 with mocked AI.
+Follow the [physical key setup](firmware/README.md) to flash the board, pair its fingerprint,
+and start the API with `PURRSONA_USB=1`.
 
 After flashing and pairing, `bun run hardware-demo` runs the physical key with
 a temporary real FalkorDB and fixed mock AI replies, without Docker or an AI key.
@@ -233,13 +224,6 @@ Run `bun run allcheck --force` from the repo root to compile firmware and run al
 tests against a temporary, isolated FalkorDB. The
 [protocol contract](docs/PROTOCOL.md) describes the messages shared by the board,
 USB client and simulator.
-
-The console, dashboard and practice page subscribe to `/key/events` for live
-connection, approval, drafting, saving and forgetting states. Each reconnect gets
-the current state; the stream contains counts and status, never draft or memory
-text. Personal graph views clear immediately on disconnect, and “Forgotten” only
-appears after graph deletion succeeds. If running Uvicorn directly, add
-`--timeout-graceful-shutdown 2` so open event streams cannot delay stopping it.
 
 ## Under the hood
 
@@ -355,14 +339,14 @@ Measured on a MacBook Air with FalkorDB v4.22 in Docker, Oct 17:
 We started from the questions, not the data. Before writing code we wrote down the ten things the agent must answer ("who is this person to me?", "why does this draft sound like that?", "what happens when an edit clashes with a rule?") and modelled the graph from them. These are the decisions that shaped it:
 
 - **One graph per key, not one big graph with a user column.** Isolation comes for free, and forgetting someone is one `GRAPH.DELETE` that can't touch anyone else.
-- **The key is the source of truth; the laptop graph is a cache.** Memory is an append-only log on the key, replayed at every plug-in. So a laptop can always throw its copy away.
+- **The key is the source of truth; the device graph is a cache.** Memory is an append-only log on the key, replayed at every plug-in. So a device can always throw its copy away.
 - **Rules hang off five scopes, and the narrowest wins.** Someone you've never written to still gets a sensible first draft from their circle, the platform and the topic.
 - **Invalidate, don't delete.** A rule that's outranked or replaced keeps its history (`OVERRIDES`, `superseded_at`), so every draft can still be explained later.
 - **Agents coordinate through the graph, not through each other.** Each handoff is a node, so the whole process is queryable, and replaying a memory is safe.
 - **The graph picks what the model sees.** Claude gets a small brief, never the graph. Every query is fixed in the code and parameterised; the model never writes Cypher.
 - **Check in code before calling a model.** The Critic measures rules in milliseconds and allows at most one redo, so a draft is never stuck in a loop.
 - **Read only at the key press, and never a private conversation.** That's why there are two modes.
-- **The key only stores and consents.** All the work runs on the laptop, so the hardware stays simple and drafts stay fast.
+- **The key only stores and consents.** All the work runs on the device, so the hardware stays simple and drafts stay fast.
 - **A virtual key with the same calls**, so the product works and can be judged without hardware.
 
 | Layer | Choice | Why |
@@ -380,17 +364,6 @@ We started from the questions, not the data. Before writing code we wrote down t
 - **Mustafa Africawala** (UK): the hardware key: the board, the signed USB protocol and its consent flow, the firmware, the bridge's USB side and the simulator. Tested it on the physical T-Display-S3: pairing, signed unlock, saving a memory, forgetting on unplug, restoring on reconnect.
 
 We can walk you through any line of it.
-
-## Honest limits
-
-- The hardware key passed pairing, signed unlock, saving, forgetting on unplug and restoring on reconnect with **mocked AI**. A power cut in the middle of a write and an unplug on battery are still unchecked.
-- The key's USB messages and its flash are plaintext. We left flash encryption off on purpose so the board stays reusable; the virtual key (a snapshot file plus a memory log) is unencrypted too.
-- The Critic measures what code can measure. It doesn't judge tone, and its checks are simple patterns: a skin-toned emoji counts as two, and "e.g." splits a sentence.
-- Site layouts change. The adapters use the most stable hooks we found, but a redesign can break one.
-- Replaying memories is done one query at a time, so plug-in slows down as the key learns more. Batching it is next.
-- It learns from replies and messages you send, not yet from your own new posts.
-- PageRank is the only graph algorithm in use so far.
-- In a Chrome Incognito window the extension is switched off by Chrome, and its Option+M shortcut is too. There, tap Option twice and choose "write a reply", or allow Purrsona in Incognito (chrome://extensions → Details).
 
 ## What's next
 
