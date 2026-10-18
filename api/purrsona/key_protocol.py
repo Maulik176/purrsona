@@ -176,11 +176,16 @@ def string_list(value) -> bool:
 def validate_event(event: dict) -> None:
     fields(event, {"type": str, "at": int})
     require(integer(event["at"]), "Invalid event timestamp")
-    require(event["type"] in ("learned", "sent", "forgot"), "Unknown event type")
+    require(event["type"] in ("learned", "sent", "forgot", "moved"), "Unknown event type")
     if event["type"] == "forgot":
         fields(event, {"rule_id": str})
         if "rule_text" in event:
             fields(event, {"rule_text": str})
+        return
+    if event["type"] == "moved":
+        fields(event, {"person": dict, "circle": str})
+        fields(event["person"], {"id": str, "name": str})
+        require(event.get("from") is None or isinstance(event["from"], str), "Invalid from")
         return
     fields(event, {"platform": str, "person": dict, "draft": dict})
     fields(event["person"], {"id": str, "name": str, "new": bool})

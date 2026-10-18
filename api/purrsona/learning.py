@@ -129,6 +129,9 @@ def apply_event(graph, event: dict) -> None:
     if event["type"] == "forgot":  # you asked to forget a rule: retire it (kept as history, never applied)
         graph.query(queries.SUPERSEDE, {"old_ids": [event["rule_id"]], "at": event["at"]})
         return
+    if event["type"] == "moved":  # you moved someone to another circle on the dashboard
+        graph.query(queries.MOVE_TO_CIRCLE, {"person_id": event["person"]["id"], "circle": event["circle"]})
+        return
     person, at = event["person"], event["at"]
     if person["new"]:
         graph.query(queries.SAVE_PERSON, {"person_id": person["id"], "name": person["name"], "circle": person["circle"],

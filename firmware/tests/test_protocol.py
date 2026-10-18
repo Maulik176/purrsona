@@ -77,6 +77,15 @@ def test_firmware_signature_and_snapshot_match_python(link):
     assert events == []
 
 
+def test_firmware_stores_a_circle_move(link):
+    key, _, trust = link
+    key.hello(); key.unlock(trust); key.pull()
+    moved = {"type": "moved", "at": 124, "person": {"id": "neha-kulkarni", "name": "Neha Kulkarni"},
+             "from": "Work", "circle": "Community"}
+    assert key.append(moved, "event-move") == 1
+    assert key.pull()[1] == [{"event_id": "event-move", "event": moved}]
+
+
 def test_firmware_append_retry_and_graph_navigation(link):
     key, transport, trust = link
     key.hello(); key.unlock(trust); key.pull()

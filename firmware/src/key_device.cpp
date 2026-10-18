@@ -33,6 +33,8 @@ bool validEvent(JsonVariantConst event) {
     std::string kind = text(event["type"]);
     if (kind == "forgot") return hasStrings(event, {"rule_id"}) &&
         (!event.as<JsonObjectConst>().containsKey("rule_text") || event["rule_text"].is<const char *>());
+    if (kind == "moved") return hasStrings(event, {"circle"}) && hasStrings(event["person"], {"id", "name"}) &&
+        (event["from"].isNull() || event["from"].is<const char *>());
     if (kind != "sent" && kind != "learned") return false;
     if (!hasStrings(event, {"platform"}) || !hasStrings(event["person"], {"id", "name"}) ||
         !event["person"]["new"].is<bool>() || !event["person"].as<JsonObjectConst>().containsKey("circle") ||

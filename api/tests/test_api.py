@@ -147,3 +147,28 @@ def test_someone_new_in_your_own_words(monkeypatch):
     who = client.get("/person", params={"id": "avery-boss"}).json()
     assert (who["relationship"], who["circle"]) == ("skip-level", "Work")
     client.post("/key/unplug")
+
+
+def test_moving_someone_to_another_circle_changes_their_rules_and_survives_a_replug():
+    from purrsona import app as bridge
+    from purrsona.queries import rules_for_context
+
+    client.post("/key/plug", json={"key_id": "demo-maulik"})
+    scopes = lambda: {r["scope_name"] for r in rules_for_context(bridge.memory.graph(), "neha-kulkarni", "linkedin", [])}
+    assert "Work" in scopes()
+    assert client.post("/person/circle", json={"person_id": "neha-kulkarni", "circle": "Nowhere"}).status_code == 400
+    assert client.post("/person/circle", json={"person_id": "nobody-new", "circle": "Friends"}).status_code == 404
+
+    moved = client.post("/person/circle", json={"person_id": "neha-kulkarni", "circle": "Friends"}).json()
+    assert moved["moved"] is True and moved["from"] == "Work" and moved["memories"] == 1
+    assert client.get("/person", params={"id": "neha-kulkarni"}).json()["circle"] == "Friends"
+    assert "Friends" in scopes() and "Work" not in scopes()
+    again = client.post("/person/circle", json={"person_id": "neha-kulkarni", "circle": "Friends"}).json()
+    assert again["moved"] is False
+
+    client.post("/key/unplug")
+    client.post("/key/plug", json={"key_id": "demo-maulik"})  # the key remembers the move
+    assert client.get("/person", params={"id": "neha-kulkarni"}).json()["circle"] == "Friends"
+    memories = client.get("/dashboard/data").json()["memories"]
+    assert memories[0]["type"] == "moved" and memories[0]["from"] == "Work" and memories[0]["to"] == "Friends"
+    client.post("/key/unplug")

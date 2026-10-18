@@ -213,7 +213,7 @@ or a filename in place of the object. If it cannot fit in one line, return
 
 The bridge calls `snapshot.build_graph` with the snapshot, then calls
 `learning.apply_event` with each inner `event` in order. Event payloads keep the
-existing `learned`, `sent`, and `forgot` shapes documented in
+existing `learned`, `sent`, `forgot` and `moved` shapes documented in
 [CONTRIBUTING.md](../CONTRIBUTING.md#3-plugging-in-the-real-key-what-the-bridge-needs).
 Do not pass the USB envelope to `apply_event`.
 

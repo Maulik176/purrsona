@@ -222,7 +222,8 @@ def test_append_deduplicates_and_rejects_conflicting_event(key):
 
 @pytest.mark.parametrize("event", [
     {**EVENT, "at": True}, {**EVENT, "at": -1}, {**EVENT, "type": "unknown"},
-    {"type": "learned", "at": 1}, {"type": "sent", "at": 1}, None,
+    {"type": "learned", "at": 1}, {"type": "sent", "at": 1}, {"type": "moved", "at": 1, "person": {"id": "p"}},
+    None,
 ])
 def test_invalid_events_never_reach_storage(key, event):
     key.unlock()
@@ -234,7 +235,9 @@ def test_current_learning_events_round_trip_without_changing_payload(key):
     key.unlock()
     events = [EVENT, build_sent_event("p", "Person", "Work", False, "linkedin", "d1", "Hello", []),
               build_event("p", "Person", "Work", False, "linkedin", "d2", "Hello", "Hi",
-                          [{"kind": "greeting", "text": "Use Hi"}], [])]
+                          [{"kind": "greeting", "text": "Use Hi"}], []),
+              {"type": "moved", "at": 1792173000000, "person": {"id": "p", "name": "Person"},
+               "from": "Work", "circle": "Community"}]
     for index, event in enumerate(events):
         assert key.send("APPEND", event_id=f"event-{index}", event=event)[0]["type"] == "ACK"
     request = key.message("PULL")

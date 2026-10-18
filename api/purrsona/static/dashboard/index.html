@@ -92,6 +92,7 @@ code, .cy { font: 12px/1.5 "SF Mono", Menlo, Consolas, monospace; }
 .cypher.on { display: block; }
 .cypher pre { margin: 8px 0; padding: 10px 12px; background: #0f1015; border: 1px solid var(--line); border-radius: 10px; white-space: pre-wrap; color: #ffc078; }
 .cypher a { color: var(--amber2); }
+.move { display: block; margin-top: 6px; } .move select { margin-left: 6px; background: var(--card2); color: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 2px 6px; font: inherit; }
 .nodeq { display: inline-block; margin-top: 4px; color: #ffc078; }
 .copy { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 1px 8px; font-size: 11px; margin-left: 6px; }
 /* Rules */
@@ -234,7 +235,7 @@ const COLORS = { User: "#ffc078", Person: "#ff9f43", Circle: "#2dd4bf", Platform
 const NAMES = { User: "You", Person: "People", Circle: "Circles", Platform: "Platforms", Topic: "Topics", StyleRule: "Rules", Relationship: "Your words", Draft: "Drafts sent" };
 const PLATFORM = { linkedin: "LinkedIn", x: "X", reddit: "Reddit", slack: "Slack", teams: "Teams", email: "Email" };
 let D = null;
-let keyState = null, loadVersion = 0;
+let keyState = null, loadVersion = 0, reselectKey = null;
 
 async function api(path, body) {
   const res = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -370,9 +371,9 @@ function renderMemories() {
   if (!D.plugged) { $("memBody").innerHTML = '<div class="empty">Plug in the key to see its memories.</div>'; return; }
   if (!D.memories.length) { $("memBody").innerHTML = '<div class="empty">Nothing learned yet: send a reply with the cat and it lands here.</div>'; return; }
   $("memBody").innerHTML = D.memories.map((m) => {
-    const icon = m.type === "forgot" ? "🧹" : m.type === "sent" ? "✉️" : "🐾";
+    const icon = m.type === "forgot" ? "🧹" : m.type === "sent" ? "✉️" : m.type === "moved" ? "🔀" : "🐾";
     const who = m.person ? `<b>${esc(m.person)}</b> <span class="faint">${[m.new && "new", m.relationship && `your ${m.relationship}`, m.circle].filter(Boolean).map(esc).join(" · ")}</span>` : "<b>You</b>";
-    const what = m.type === "forgot" ? "forgot a rule" : m.type === "sent" ? "sent a draft as it was" : m.rules.length ? `learned ${m.rules.length}` : "sent with changes, nothing new";
+    const what = m.type === "forgot" ? "forgot a rule" : m.type === "moved" ? `moved from ${esc(m.from || "no circle")} to ${esc(m.to)}` : m.type === "sent" ? "sent a draft as it was" : m.rules.length ? `learned ${m.rules.length}` : "sent with changes, nothing new";
     return `<div class="mem"><div class="ic">${icon}</div><div style="flex:1">${who} · <span class="muted">${what}</span> <span class="faint">· ${day(m.at)}</span>
       ${m.rules.length ? `<ul>${m.rules.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}</div></div>`;
   }).join("");
@@ -544,10 +545,12 @@ async function drawGraph() {
   function detail(n) {
     if (!n) { $("detail").classList.remove("on"); return; }
     const linked = [...(neighbors[n.id] || [])].map((id) => nodes.find((x) => x.id === id)).filter(Boolean);
-    let extra = "";
+    let extra = "", move = "";
     if (n.label === "Person") {
       const p = D.people.find((x) => x.id === n.key) || {};
       extra = [p.relationship && `your ${p.relationship}`, p.circle, `${p.sent || 0} ${p.sent === 1 ? "draft" : "drafts"} sent`, `${p.own_rules || 0} own rules`].filter(Boolean).map(esc).join(" · ");
+      // Wrong circle? Move them: the next draft follows the new circle's rules, and the key remembers.
+      move = (D.circles || []).length ? `<label class="move faint">Circle <select id="moveCircle">${p.circle ? "" : "<option selected disabled>none</option>"}${D.circles.map((c) => `<option${c === p.circle ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></label>` : "";
     } else if (n.label === "StyleRule") {
       const r = D.rules.find((x) => x.id === n.key) || {};
       extra = `${esc(ownerLabel(r))} · ${esc((r.kind || "").replace("_", " "))} · from ${r.evidence ?? 0} edits/posts${G.pagerank[n.key] ? ` · PageRank ${(G.pagerank[n.key] / maxPR * 100).toFixed(0)}%` : ""}`;
@@ -556,14 +559,20 @@ async function drawGraph() {
     const nodeQ = `MATCH (n:${n.label} {${prop}: '${(prop === "name" ? n.name : n.key || n.name).replace(/'/g, "\\'")}'})-[r]-(m) RETURN n, r, m`;
     const rels = links.filter((l) => l.source === n || l.target === n).map((l) => ({ other: l.source === n ? l.target : l.source, type: l.type, out: l.source === n }));
     $("detailBody").innerHTML = `<h3><i class="dot" style="background:${COLORS[n.label]};width:10px;height:10px"></i>${esc(n.label === "User" ? "You" : n.label === "Platform" ? (PLATFORM[n.name] || n.name) : n.name)}
-      <code class="faint" style="font-weight:400">:${esc(n.label)}</code></h3><div class="muted">${extra}</div>
+      <code class="faint" style="font-weight:400">:${esc(n.label)}</code></h3><div class="muted">${extra}</div>${move}
       <code class="nodeq">${esc(nodeQ)}</code><button class="copy" id="nodeCopy">copy</button>
       <div class="links">${rels.slice(0, 18).map((x) => `<span class="pill" data-id="${x.other.id}"><code class="faint">${x.out ? "" : "←"}${esc(x.type)}${x.out ? "→" : ""}</code><i class="dot" style="background:${COLORS[x.other.label]}"></i>${esc((x.other.name || "").slice(0, 40))}</span>`).join("")}</div>`;
     $("detail").classList.add("on");
     $("nodeCopy").onclick = () => navigator.clipboard?.writeText(nodeQ);
+    $("moveCircle")?.addEventListener("change", async (e) => {
+      try { await api("/person/circle", { person_id: n.key, circle: e.target.value }); graphCache = null; reselectKey = n.key; await load(); }
+      catch (err) { alert(err.message); }
+    });
     $("detailBody").querySelectorAll("[data-id]").forEach((el) => el.addEventListener("click", () => { selected = nodes.find((x) => x.id === +el.dataset.id); detail(selected); paint(); glideTo(selected); }));
   }
-  detail(null);
+  const again = reselectKey && nodes.find((x) => x.label === "Person" && x.key === reselectKey);
+  reselectKey = null;
+  if (again) { selected = again; detail(again); paint(); } else detail(null);
 }
 
 let resizeTimer = null;  // redraw the map when the window changes size

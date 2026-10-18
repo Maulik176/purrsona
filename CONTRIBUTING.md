@@ -32,7 +32,7 @@ The virtual key in [`api/purrsona/keys.py`](api/purrsona/keys.py) is the stand-i
 
 A suggested seam (your call in #1 and #7): a small key store with `snapshot()`, `events()` and `append(event) -> count`, one for files (`VirtualKey`) and one for serial (`UsbKey`), so `app.py` doesn't change.
 
-**The memory log has three event types** (one JSON object per line; these examples use made-up people):
+**The memory log has four event types** (one JSON object per line; these examples use made-up people):
 
 ```json
 {"type": "learned", "at": 1792170000000, "platform": "linkedin",
@@ -45,9 +45,10 @@ A suggested seam (your call in #1 and #7): a small key store with `snapshot()`, 
  "person": {"id": "priya-nair", "name": "Priya Nair", "circle": "Work", "new": false, "relationship": null},
  "draft": {"id": "d-3b4c5d6e", "text": "Hi Priya, congratulations on the go-live.", "rule_ids": ["w1", "w3"]}, "trail": []}
 {"type": "forgot", "at": 1792172000000, "rule_id": "pa1", "rule_text": "Calls Aarav 'bro'"}
+{"type": "moved", "at": 1792173000000, "person": {"id": "neha-kulkarni", "name": "Neha Kulkarni"}, "from": "Work", "circle": "Community"}
 ```
 
-Events are only ever appended, never edited; forgetting is itself an event. That's what makes an append-only log on the key (plus a hash chain, if there's time) a good fit.
+Events are only ever appended, never edited; forgetting a rule and moving someone to another circle are events too. That's what makes an append-only log on the key (plus a hash chain, if there's time) a good fit.
 
 ## 4. Where things are
 

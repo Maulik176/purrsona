@@ -104,6 +104,11 @@ class ForgetRequest(BaseModel):
     rule_id: str
 
 
+class MoveRequest(BaseModel):
+    person_id: str
+    circle: str
+
+
 def addressee(name: str, relationship: str | None) -> str:
     """'Priya Nair (your manager)': the relationship tells Claude a lot about how to write."""
     return f"{name} (your {relationship})" if name and relationship else name
@@ -335,6 +340,9 @@ def memory_summary(event: dict) -> dict:
     """One line per memory on the key: what kind, when, who, and what was learned."""
     if event["type"] == "forgot":
         return {"type": "forgot", "at": event["at"], "person": None, "rules": [event.get("rule_text", event["rule_id"])]}
+    if event["type"] == "moved":
+        return {"type": "moved", "at": event["at"], "person": event["person"]["name"], "new": False,
+                "circle": None, "from": event.get("from"), "to": event["circle"], "rules": []}
     person = event["person"]
     return {"type": event["type"], "at": event["at"], "person": person["name"], "new": person["new"],
             "circle": person.get("circle"), "relationship": person.get("relationship"),
@@ -360,7 +368,7 @@ def dashboard_data():
                        "as_is": sum(not h["edited"] for h in live), "redos": sum(h["redos"] for h in live)},
             "history": history, "people": rows(graph.ro_query(PEOPLE_STATS)), "rules": rules,
             "trails": rows(graph.ro_query(RECENT_TRAILS, {"limit": 8})),
-            "signature": signature_style(graph, 5),
+            "signature": signature_style(graph, 5), "circles": graph_summary(graph)["circles"],
             "memories": [memory_summary(e) for e in reversed(events)]}
 
 
@@ -385,6 +393,26 @@ def forget_rule(req: ForgetRequest):
         raise HTTPException(404, "No rule with that id")
     event = {"type": "forgot", "at": int(time.time() * 1000), "rule_id": req.rule_id, "rule_text": found[0]["text"]}
     return {"forgot": found[0]["text"], "memories": memory.save_event(graph, event)}
+
+
+@app.post("/person/circle")
+def move_person(req: MoveRequest):
+    """Move someone you know to another circle: their next draft follows that circle's rules, and the key remembers."""
+    key_id = state["key_id"]
+    if key_id is None:
+        raise HTTPException(409, "Plug in a key first")
+    graph = memory.graph(key_id)
+    person = person_context(graph, req.person_id)
+    if not person["known"]:
+        raise HTTPException(404, "No one with that id in your graph")
+    if req.circle not in graph_summary(graph)["circles"]:
+        raise HTTPException(400, f"No circle called {req.circle}")
+    if person["circle"] == req.circle:
+        return {"person_id": req.person_id, "name": person["name"], "circle": req.circle, "moved": False}
+    event = {"type": "moved", "at": int(time.time() * 1000), "person": {"id": req.person_id, "name": person["name"]},
+             "from": person["circle"], "circle": req.circle}
+    return {"person_id": req.person_id, "name": person["name"], "from": person["circle"], "circle": req.circle,
+            "moved": True, "memories": memory.save_event(graph, event)}
 
 
 @app.post("/key/reset")
