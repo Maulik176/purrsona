@@ -90,7 +90,7 @@ sequenceDiagram
 
 A writing style is personal data. Purrsona keeps it on something you hold.
 
-**The key** is a LilyGO T-Display-S3: an ESP32-S3 with a 1.9-inch screen and two buttons, on USB-C. Mustafa is building its firmware. It stores only two things: a snapshot of your voice graph and an append-only log of everything it has learned since. All the work happens on the laptop; the key holds the memory, asks for consent and shows what's happening.
+**The key** is a LilyGO T-Display-S3: an ESP32-S3 with a 1.9-inch screen and two buttons, on USB-C. Mustafa built its firmware. It stores only two things: a snapshot of your voice graph and an append-only log of everything it has learned since. All the work happens on the laptop; the key holds the memory, asks for consent and shows what's happening.
 
 - **Consent is a button press.** Nothing loads until you press it.
 - **Memory travels with you.** Plug the key into any laptop running the bridge: it sends the snapshot and the memory log, and the bridge rebuilds your graph and replays every memory in order.
@@ -109,8 +109,25 @@ A writing style is personal data. Purrsona keeps it on something you hold.
 
 Every key gets its own graph, `voice:<key_id>`, on one FalkorDB instance. A user is a graph, not a filter someone can forget to apply: a query in one person's graph can't see another's. Forgetting one person is one `GRAPH.DELETE`, and nobody else is touched.
 
-<!-- TODO(after #11): load test results: N users, each with their own graph; p50 / p95 for the graph lookups with K drafts at once; isolation check -->
-A load test with many keys at once is being run now; its numbers land here.
+**The load test** ([`scripts/load_test.py`](scripts/load_test.py), Oct 18, a MacBook Air with FalkorDB v4.22 in Docker): 1,000 made-up users, each plugged in as their own graph on one FalkorDB, then 5,000 draft lookups for random users, 32 at a time.
+
+| Step | p50 | p95 | p99 |
+|---|---|---|---|
+| Plug in: build a user's graph from their snapshot | 10.6 ms | 13.9 ms | 15.9 ms |
+| Draft lookup: who the person is, the topics, which rules win (3 queries) | 20.4 ms | 41.3 ms | 57.0 ms |
+| Unplug: `GRAPH.DELETE` | 0.6 ms | 2.1 ms | 4.2 ms |
+
+- **1,424 draft lookups a second.** Claude takes seconds to write a draft; the graph's part is milliseconds.
+- **Isolation:** every user had one rule nobody else had. All 1,000 saw only their own, and none of the 5,000 lookups running at once saw anyone else's.
+- **Forgetting:** after unplugging everyone, no graph was left. Each user's graph took about 2 MB of memory.
+- Plug-in here is the snapshot alone. A key also replays what it has learned: about 0.1 s for the demo key's 23 memories.
+
+Run it on a database you can throw away (it never touches `voice:demo-maulik`):
+
+```bash
+docker run -d --rm --name purrsona-load-db -p 6390:6379 falkordb/falkordb:v4.22.0
+FALKORDB_PORT=6390 uv run --project api python scripts/load_test.py --users 1000 --workers 32 --lookups 5000
+```
 
 ## Every draft explains itself
 
@@ -141,7 +158,7 @@ ORDER BY CASE scope WHEN 'Person' THEN 1 WHEN 'Circle' THEN 2 WHEN 'Topic' THEN 
 | Episodic memory | `Draft`, `Edit` and `Step` nodes: what was written, what you changed, which agent did what, and when |
 | Semantic memory | `StyleRule` nodes with a scope and their evidence (`LEARNED_FROM`); newer, narrower rules `OVERRIDES` older ones |
 | Handoffs between agents | Drafter → Critic → Learner; every handoff is a `Step` node (`FLAGGED`, `TAUGHT`), and the Learner picks up later from what the graph recorded |
-| Separate memory per user | one graph per key on one FalkorDB instance; forgetting is one `GRAPH.DELETE` |
+| Separate memory per user, many at once | one graph per key on one FalkorDB instance; forgetting is one `GRAPH.DELETE`; load-tested with 1,000 users and 32 lookups at a time, no leaks |
 | Decisions traced back to the graph | every draft keeps the rules it `USED`; the why shows owners, evidence, dates, the trail and the queries |
 
 ## Where it works, and what it reads
@@ -394,13 +411,14 @@ We started from the questions, not the data. Before writing code we wrote down t
 | Dashboard | plain JavaScript and d3 | the live graph, rules, memories and handoffs |
 | Key | LilyGO T-Display-S3 (ESP32-S3), USB-C | consent button, status screen, the memory log |
 
-**Team.** Maulik Ranadive (Ahmedabad) designed the product, the graph model and the queries, wrote the "why" query and the Critic's checks, designed the extension's flows and the platform rules, and tested it on the real sites. Mustafa Africawala (UK) is building the hardware key and reviewing the agents.
+**Team.** Maulik Ranadive (Ahmedabad) designed the product, the graph model and the queries, wrote the "why" query and the Critic's checks, designed the extension's flows and the platform rules, and tested it on the real sites. Mustafa Africawala (UK) built the hardware key: the firmware, the signed USB protocol, the bridge's USB side, live key status on every page, and a simulator so anyone can try the key without the board.
 
-We used an AI coding assistant to help write the code. The product, the design and every decision above are ours. <!-- REVIEW: keep this line; the hackathon rules require disclosing AI help in the README -->
+We used AI coding assistants to help write the code. The product, the design and every decision above are ours. <!-- REVIEW: keep this line; the hackathon rules require disclosing AI help in the README -->
 
 ## Honest limits
 
-- The hardware key is in progress; until it ships, the virtual key (a snapshot file plus a memory log) runs the same flow, unencrypted.
+- The hardware key passed pairing, signed unlock, saving, forgetting on unplug and restoring on reconnect with **mocked AI**. A power cut in the middle of a write and an unplug on battery are still unchecked.
+- The key's USB messages and its flash are plaintext. We left flash encryption off on purpose so the board stays reusable; the virtual key (a snapshot file plus a memory log) is unencrypted too.
 - The Critic measures what code can measure. It doesn't judge tone, and its checks are simple patterns: a skin-toned emoji counts as two, and "e.g." splits a sentence.
 - Site layouts change. The adapters use the most stable hooks we found, but a redesign can break one.
 - Replaying memories is done one query at a time, so plug-in slows down as the key learns more. Batching it is next.
@@ -409,7 +427,7 @@ We used an AI coding assistant to help write the code. The product, the design a
 
 ## What's next
 
-- The hardware key: button unlock, the memory log on the key with a hash chain, and "Forgotten" on its screen.
+- The hardware key: a hash chain over its memory log, flash encryption, and an eject button that shows "Forgotten" on its screen before you pull it out.
 - Batched replay, so plug-in stays fast however much the key has learned.
 - Community detection, so the graph also picks example replies from people you write to the same way.
 - A hosted bridge where every visitor gets their own key and graph.
