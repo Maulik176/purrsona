@@ -419,6 +419,15 @@ def test_status_heartbeat_keeps_session_alive_and_ready_requires_pull(key):
     assert key.send("STATUS", state="ready", memories=0)[0]["type"] == "ACK"
 
 
+@pytest.mark.parametrize("counts", [{}, {"memories": None}, {"memories": True}, {"memories": -1},
+                                    {"memories": 1.5}, {"memories": "0"}, {"memories": 2**53}])
+def test_invalid_ready_count_is_bad_request_and_can_be_corrected(key, counts):
+    key.unlock(); key.send("PULL")
+    assert key.send("STATUS", state="ready", **counts)[0]["code"] == "BAD_REQUEST"
+    assert key.device.status is None
+    assert key.send("STATUS", state="ready", memories=0)[0]["type"] == "ACK"
+
+
 def test_rejected_status_does_not_keep_session_alive(key):
     key.unlock()
     key.now = 2

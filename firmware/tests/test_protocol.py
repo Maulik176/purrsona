@@ -177,3 +177,31 @@ def test_firmware_storage_failure_never_sends_ack(link):
     transport.control("!fail-storage")
     with pytest.raises(ProtocolError):
         key.append({"type": "forgot", "at": 123, "rule_id": "pa1"}, "failed")
+
+
+@pytest.mark.parametrize("counts", [{}, {"memories": None}, {"memories": True}, {"memories": -1},
+                                    {"memories": 1.5}, {"memories": "0"}, {"memories": 2**53}])
+def test_firmware_invalid_ready_count_is_bad_request_and_can_be_corrected(link, counts):
+    key, transport, trust = link
+    key.hello(); key.unlock(trust); key.pull()
+    request = {"v": 1, "type": "STATUS", "id": "bad-count", "session": key.session,
+               "state": "ready", **counts}
+    transport.write(encode(request))
+    reply = json.loads(transport.read(4096))
+    assert reply["type"] == "ERROR" and reply["code"] == "BAD_REQUEST"
+    assert reply["reply_to"] == request["id"] and reply["session"] == key.session
+    assert transport.inspect()["screen"] == "loading"
+    # Keep the session on the device: a well-formed retry can still finish loading.
+    key.ack("STATUS", state="ready", memories=0)
+    assert transport.inspect()["screen"] == "ready"
+
+
+def test_firmware_ready_requires_current_durable_count(link):
+    key, transport, trust = link
+    key.hello(); key.unlock(trust); key.pull()
+    key.append({"type": "forgot", "at": 123, "rule_id": "pa1"}, "saved")
+    transport.write(encode({"v": 1, "type": "STATUS", "id": "stale-count", "session": key.session,
+                            "state": "ready", "memories": 0}))
+    assert json.loads(transport.read(4096))["code"] == "INVALID_STATE"
+    key.ack("STATUS", state="ready", memories=1)
+    assert transport.inspect()["screen"] == "ready"

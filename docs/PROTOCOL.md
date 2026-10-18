@@ -1,13 +1,17 @@
-# Memory key protocol — hackathon draft
+# Memory key protocol — version 1
 
-**Status: proposed for [issue #1](https://github.com/Maulik176/purrsona/issues/1).**
+**Status: implemented v1 contract for [issue #1](https://github.com/Maulik176/purrsona/issues/1).**
 The Python reference implementation, persistent simulator, T-Display-S3 firmware
-and FastAPI USB bridge are implemented. Compilation and interoperability tests
-pass. Physical pairing, display, signed unlock, save/restore after USB reconnect,
-and laptop graph deletion have also passed with mocked AI. Remaining manual
-checks are listed in [hardware setup](../firmware/README.md).
-The document reached `main` in PR #13. Maulik still needs to agree to the message
-names before issue #1 is complete.
+and FastAPI USB bridge use the message names and semantics below. The original
+contract reached `main` in PR #13; this document records the implemented behavior,
+including optional screen counts. Keep these names and required fields stable
+for v1; incompatible wire changes require a new protocol version.
+
+Compilation and interoperability tests pass. Physical pairing, display, signed
+unlock, save/restore after USB reconnect, and laptop graph deletion have passed
+with mocked AI. USB and virtual copies of the same board snapshot/event log also
+produce identical drafting context and deterministic mock drafts. Remaining
+hardware checks are listed in [hardware setup](../firmware/README.md).
 
 ## Run the protocol now (no board required)
 
@@ -87,6 +91,10 @@ USB serial carries UTF-8 JSON objects, one per line, terminated by LF (`\n`).
 Send compact JSON, with newlines inside strings escaped. Do not print boot logs,
 debug text, or private memory contents on this protocol channel.
 
+Opening native USB can reset the ESP32. The bridge drains boot output for two
+seconds before its first request, then enforces JSON framing for the rest of
+that connection; later debug output is a protocol error.
+
 | Setting | v1 contract |
 |---|---|
 | Serial configuration | Native USB CDC; bridge opens at 115200, 8-N-1, no flow control |
@@ -99,6 +107,7 @@ debug text, or private memory contents on this protocol channel.
 | Pair/unlock consent | Device waits 120 seconds; bridge allows 130 seconds for the response |
 | Other requests | 10 seconds for a complete response; `PULL` has a 30-second total deadline |
 | Partial frame | 10 seconds from its first byte to LF; discard and close on timeout |
+| Idle heartbeat | Bridge sends `STATUS` every 500 ms when no request is in flight; device locks after 3 seconds without a completed exchange |
 
 Receivers enforce the byte limit while reading, before parsing JSON. Malformed
 JSON, an oversized line, or an unsupported version ends the connection after a
@@ -258,16 +267,20 @@ effect without a 3D rendering engine.
 
 | Screen state | What causes it |
 |---|---|
-| “Plug me in” / “Waiting for bridge” | No unlocked session |
-| “Press B to unlock” | A pending challenge; show the laptop label |
-| Brain animation + “Loading memories” | Unlock succeeds and the bridge is loading the graph |
-| “Memory connected” → graph | Real graph load succeeds and a valid graph view arrives |
-| “Disconnected” | Clear personal display data and lock when the session ends |
+| “Plug in. Make it yours.” / “Waiting for your laptop” | No unlocked session |
+| “Unlock your memory?” / “Press B within 2 minutes” | A pending challenge; show the laptop label |
+| Brain animation + “Loading your memories” | Unlock succeeds and the bridge is loading the graph |
+| “Memory connected” + rule count → graph | Real graph load succeeds and a valid graph view arrives |
+| “DRAFTING” / “SAVING” + rule count | An active draft or learning/save operation on the bridge |
+| Return to “Waiting for your laptop” | Clear personal display data and lock when the session ends |
 
 `STATUS` is a protected bridge request with `state` equal to `loading`, `ready`,
 `drafting`, `learning`, or `error`. `ready` also carries `memories`, the durable
 event count, and requires a completed `PULL` in this session and the current
-stored count. The board replies `ACK`. Display errors use a short `message`
+stored count. A missing or non-integer count produces `BAD_REQUEST`; an integer
+outside the allowed range does too. A valid integer that differs from the stored
+count, or a `ready` request before `PULL`, produces `INVALID_STATE`. Neither
+rejection changes the screen. The board replies `ACK` on success. Display errors use a short `message`
 (maximum 160 UTF-8 bytes); do not send stack traces or secrets.
 
 The bridge also sends optional `rules`: the active rule count in the complete
@@ -285,7 +298,7 @@ Each edge has `source`, `target`, and `type`; both endpoints must exist in nodes
 Use stable semantic IDs such as `Person:priya-nair`, not FalkorDB internal IDs.
 
 Limit the demo view to 64 nodes and 128 edges, within the overall line limit.
-If more exist, select a useful subset and set `truncated: true`; show “Demo view”
+If more exist, select a useful subset and set `truncated: true`; show “DEMO”
 on screen so it does not imply the whole graph is visible. Accept only complete,
 valid views, replace the previous view atomically, and reply `ACK` with
 `revision`. Reject older or repeated revisions with `STALE_VIEW`. Revisions
@@ -308,10 +321,13 @@ button initialization. Keep labels readable in the 320 × 170 landscape view.
 
 ## 6. Disconnect, timeouts, and errors
 
-`BYE` is a protected request in either direction with `id`, `session`, and
-`reason`: `eject` or `shutdown`. The receiver returns `ACK` if the link still
-works. Both sides end the session without waiting for an ACK to begin cleanup.
-There is no flash erase operation: disconnect preserves the key's memories.
+`BYE` is a protected bridge-to-key request with `id`, `session`, and `reason`:
+`eject` or `shutdown`. The key replies `ACK` and ends its session. For a UI eject,
+the bridge allows one second for that ACK, then disconnects and deletes the
+laptop graph even if no reply arrives. Closing the bridge or losing USB also
+ends the session without requiring `BYE`. There is no flash erase operation:
+disconnect preserves the key's memories. Device-initiated `BYE` and a hardware
+eject button are not part of the current v1 implementation.
 
 The bridge polls USB availability every 500 ms and also handles serial I/O
 errors. On disconnect, immediately disable personalization, clear the active
@@ -320,9 +336,9 @@ Target completion within one second of detected cable loss. If deletion fails,
 keep personalization disabled and report/retry cleanup rather than showing
 “Forgotten”. In-flight drafts or learning must never reactivate an old session.
 
-While unlocked and otherwise idle, the bridge sends the current `STATUS` once
-per second as a heartbeat and waits for its `ACK`. Three seconds without a
-completed heartbeat ends an idle session. While a request or partial frame is
+While unlocked and otherwise idle, the bridge sends the current `STATUS` every
+500 ms as a heartbeat and waits for its `ACK`. Three seconds without a
+completed exchange ends an idle session. While a request or partial frame is
 in flight, use its bounded deadline from section 2 instead. Both sides lock or
 disconnect when that deadline expires. A reconnect always needs fresh consent.
 
@@ -343,21 +359,26 @@ or unlocked session. Defined codes are `BAD_REQUEST`, `UNSUPPORTED_VERSION`,
 `EVENT_CONFLICT`, `STORAGE_ERROR`, and `STALE_VIEW`. Errors never imply success
 or change durable data; an interrupted APPEND still needs the retry rules above.
 
-## 7. Build order and demo checks
+## 7. Verification and demo checks
 
-1. **Agree on this document (#1).** Review the names, 64 KiB limit, signed bytes,
-   and consent flow with Maulik; merge the agreed contract into `main`.
-2. **Bring up the board (#2–#3).** Show text, read both buttons, exchange `HELLO`,
-   and implement the framing/parser with locked-state rejection.
-3. **Unlock and restore (#4, #5, #7).** Provision the committed seed, pair, verify
-   signed consent, pull snapshot/events, and build the existing FalkorDB graph.
-4. **Complete the physical demo (#5–#8).** Save with a durable ACK, show the brain
-   animation and graph, navigate with both buttons, and clear the laptop graph
-   when unplugged. Feed actual key state into the browser for #12.
-5. **Verify the whole path.** Plug → approve → graph → draft/edit → saved ACK →
-   unplug → reconnect → approve → learned memory restored. Also check denied
-   consent, replayed signatures, duplicate APPEND, oversized lines, power loss
-   during saving, and a battery-powered board after USB disconnection.
+1. **Run the complete checks:** `bun run allcheck --force`. This compiles the
+   ESP32 firmware and tests the Python and native C++ implementations against an
+   isolated FalkorDB. Coverage includes framing, signed consent, invalid input,
+   interrupted saves, retry IDs, graph deletion, screen states and browser events.
+2. **Try the screen without hardware:** `bun run simulator`, then open
+   `http://127.0.0.1:8876/sim/`. Connect, press B, navigate with A/B, draft, save,
+   and simulate disconnect/restart. AI and physical I/O are mocked.
+3. **Check the physical transport:** stop other bridge processes, run
+   `bun run check-usb-parity`, and approve B. This compares four drafting cases
+   using the real board's snapshot and saved events, including complete model
+   requests. AI responses are deterministic mocks; board memories are not changed.
+4. **Run the physical demo:** `bun run hardware-demo`. Plug → approve → graph →
+   draft/edit → saved ACK → unplug → reconnect → approve → learned memory restored.
+   The browser must clear personal data on disconnect; the board must show the
+   current rule count and clear its display data when locked.
+5. **Keep hardware-only evidence separate:** power interruption during a flash
+   write and battery-powered behavior after USB disconnection still require
+   physical checks. Simulator tests do not establish either result.
 
 The 1,000-user load test (#11) is separate from getting this one-board demo
 working. The required final acceptance evidence is a real unplug/replug demo;
