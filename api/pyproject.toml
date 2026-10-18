@@ -9,6 +9,8 @@ dependencies = [
     "uvicorn>=0.30",
     "anthropic>=1.11",
     "python-dotenv>=1.0",
+    "cryptography>=46",
+    "pyserial>=3.5",
 ]
 
 [dependency-groups]
