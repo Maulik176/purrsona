@@ -241,7 +241,8 @@ void KeyDevice::receive(const std::string &line, uint32_t now) {
     } else if (kind == "STATUS") {
         std::string next = text(request["state"]);
         if (next != "loading" && next != "ready" && next != "drafting" && next != "learning" && next != "error") { fail("BAD_REQUEST"); return; }
-        if (next == "ready" && (!number(request["memories"]) || !pulled || request["memories"].as<size_t>() != store.events().size())) { fail("INVALID_STATE"); return; }
+        if (next == "ready" && !number(request["memories"])) { fail("BAD_REQUEST"); return; }
+        if (next == "ready" && (!pulled || request["memories"].as<uint64_t>() != store.events().size())) { fail("INVALID_STATE"); return; }
         if ((request.containsKey("message") && !request["message"].is<const char *>()) || text(request["message"]).size() > 160) { fail("BAD_REQUEST"); return; }
         if (request.containsKey("rules") && !number(request["rules"])) { fail("BAD_REQUEST"); return; }
         if (request.containsKey("rules")) { ruleCount = request["rules"].as<uint64_t>(); rulesKnown = true; }
