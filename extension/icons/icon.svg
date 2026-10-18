@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Purrsona's cat face (the same cat as on the page), on an amber tile so it reads on light and dark toolbars -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#ff9f43"/>
+  <polygon points="26,58 32,14 58,40" fill="#3b4050"/>
+  <polygon points="70,40 96,14 102,58" fill="#3b4050"/>
+  <polygon points="33,46 36,26 49,39" fill="#f4a3b4"/>
+  <polygon points="79,39 92,26 95,46" fill="#f4a3b4"/>
+  <circle cx="64" cy="70" r="42" fill="#3b4050"/>
+  <ellipse cx="48" cy="66" rx="8.5" ry="10.5" fill="#ffc44d"/>
+  <ellipse cx="80" cy="66" rx="8.5" ry="10.5" fill="#ffc44d"/>
+  <ellipse cx="50" cy="67.5" rx="3.3" ry="7" fill="#1b1d24"/>
+  <ellipse cx="82" cy="67.5" rx="3.3" ry="7" fill="#1b1d24"/>
+  <polygon points="59,83 69,83 64,89" fill="#f4a3b4"/>
+  <path d="M64 89 q-6 6 -12 3 M64 89 q6 6 12 3" stroke="#c9ccd6" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+</svg>

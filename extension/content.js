@@ -686,8 +686,12 @@
       ${lastLesson ? `<div class="lesson">🐾 ${esc(lastLesson.summary)} <button class="link" data-lesson>show</button></div>` : ""}
       <div class="log"></div><div class="chips">${chips}</div>
       <form><input maxlength="300" placeholder="${has ? "Change it… e.g. mention the go-live" : "Tell me what to say…"}"></form>
-      <div class="hint">Enter to send · Esc to close · tap Option twice to open me · <button class="link" data-sound>${cat.sound() ? "meow on" : "meow off"}</button></div>`);
+      <div class="hint">Enter to send · Esc to close · tap Option twice to open me · <button class="link" data-sound>${cat.sound() ? "meow on" : "meow off"}</button> · <button class="link" data-dash>dashboard ↗</button></div>`);
     cat.badge(null);
+    p.querySelector("[data-dash]").onclick = () => {  // your graph, rules and memories, in a new tab
+      if (IN_EXTENSION) chrome.runtime.sendMessage({ type: "dashboard" }).catch(() => {});
+      else window.open("/dashboard/", "_blank");
+    };
     p.querySelector("[data-sound]").onclick = (e) => { cat.setSound(!cat.sound()); e.target.textContent = cat.sound() ? "meow on" : "meow off"; };
     const input = p.querySelector("input"), log = p.querySelector(".log");
     const line = (cls, html) => {

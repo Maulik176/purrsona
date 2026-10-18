@@ -6,7 +6,14 @@ async function bridgeUrl() {
   return bridgeUrl || DEFAULT_BRIDGE;
 }
 
+// Your dashboard lives on the bridge. The toolbar icon opens it, and so does "dashboard ↗" in the cat's chat.
+async function openDashboard() {
+  chrome.tabs.create({ url: (await bridgeUrl()) + "/dashboard/" });
+}
+chrome.action.onClicked.addListener(openDashboard);
+
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+  if (msg.type === "dashboard") { openDashboard(); return; }
   if (msg.type !== "bridge") return;
   (async () => {
     try {

@@ -200,7 +200,7 @@ uv run uvicorn purrsona.app:app --port 8765 --reload
 Then open:
 1. **http://localhost:8765/practice/**: a made-up feed with the cat already running. Click a reply box, press Option+M (Alt+M on Windows and Linux), click the cat for "shorter" or "why?", edit and press Reply, then unplug the key from the header and try again.
 2. **http://localhost:8765/dashboard/**: your live voice graph, your writing rules (forget any of them), what the key has learned, and the agents' handoffs.
-3. **The Chrome extension**: `chrome://extensions` → Developer mode → Load unpacked → the `extension/` folder. Open LinkedIn or X, click a comment box, press Option+M.
+3. **The Chrome extension**: `chrome://extensions` → Developer mode → Load unpacked → the `extension/` folder. Open LinkedIn or X, click a comment box, press Option+M. The cat icon in Chrome's toolbar (or "dashboard ↗" in the cat's chat) opens your dashboard.
 4. **http://localhost:3001**: FalkorDB Browser, with the graph `voice:demo-maulik` while the key is plugged in.
 
 ### Use the LilyGO T-Display-S3
