@@ -223,6 +223,7 @@ RETURN p</pre>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="/key-events.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -233,6 +234,7 @@ const COLORS = { User: "#ffc078", Person: "#ff9f43", Circle: "#2dd4bf", Platform
 const NAMES = { User: "You", Person: "People", Circle: "Circles", Platform: "Platforms", Topic: "Topics", StyleRule: "Rules", Relationship: "Your words", Draft: "Drafts sent" };
 const PLATFORM = { linkedin: "LinkedIn", x: "X", reddit: "Reddit", slack: "Slack", teams: "Teams", email: "Email" };
 let D = null;
+let keyState = null, loadVersion = 0;
 
 async function api(path, body) {
   const res = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -251,15 +253,23 @@ function show(page) {
 window.addEventListener("hashchange", () => show(location.hash.slice(1) || "home"));
 
 async function load() {
-  try { D = await api("/dashboard/data"); } catch (e) { D = { plugged: false, error: e.message }; }
+  const version = ++loadVersion, generation = keyState?.generation;
+  let result;
+  try { result = await api("/dashboard/data"); } catch (e) { result = { plugged: false, error: e.message }; }
+  if (version !== loadVersion || generation !== keyState?.generation || !keyState?.plugged) return;
+  D = result;
+  render();
+}
+
+function render() {
   $("keyDot").classList.toggle("on", !!D.plugged);
-  $("keyText").textContent = D.plugged ? `Key plugged in · ${D.key_id}` : D.error ? "Bridge not running" : "Key unplugged";
+  $("keyText").textContent = D.error ? "Bridge not running" : PurrsonaKey.label(keyState || { phase: "waiting" });
   renderHome(); renderRules(); renderMemories(); renderAgents(); renderKey();
   show(location.hash.slice(1) || "home");
 }
 
 const plugWall = (msg) => `<div class="card plugwall"><svg width="70" height="70" viewBox="0 0 64 64"><ellipse cx="31" cy="45" rx="16" ry="12.5" fill="#3b4050"/><polygon points="18,19 21,5 28,14" fill="#3b4050"/><polygon points="34,14 41,5 44,19" fill="#3b4050"/><circle cx="31" cy="24" r="13" fill="#3b4050"/><path d="M23 24h6M33 24h6" stroke="#ffc44d" stroke-width="2" stroke-linecap="round"/></svg>
-  <h2>${msg}</h2><p class="muted">The voice graph only exists while your key is plugged in.</p><button class="btn primary" onclick="plug()">Plug in the key</button></div>`;
+  <h2>${esc(keyState ? PurrsonaKey.label(keyState) : msg)}</h2><p class="muted">The voice graph only exists while your key is plugged in.</p>${keyState?.usb ? '<p class="muted">Connect USB and approve with B on the key.</p>' : '<button class="btn primary" onclick="plug()">Plug in the key</button>'}</div>`;
 
 // ---- Home -------------------------------------------------------------------------------------
 function renderHome() {
@@ -383,10 +393,10 @@ function renderAgents() {
 function renderKey() {
   $("keyBody").innerHTML = D.plugged ? `<div class="bigkey"><span class="dot on" style="width:12px;height:12px"></span><div><b>${esc(D.key_id)}</b>
       <div class="faint">${D.nodes} nodes · ${D.edges} links in FalkorDB · ${D.counts.memories} memories on the key</div></div></div>
-      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn danger" onclick="unplug()">Unplug: forget everything on this laptop</button>
-      <button class="btn" onclick="resetKey()">Reset what the key learned</button></div>`
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn danger" onclick="unplug()">${keyState?.usb ? "Eject key" : "Unplug"}: forget everything on this laptop</button>
+      ${keyState?.usb ? "" : '<button class="btn" onclick="resetKey()">Reset what the key learned</button>'}</div>`
     : `<div class="bigkey"><span class="dot" style="width:12px;height:12px"></span><div><b>No key plugged in</b><div class="faint">The laptop holds none of your voice right now.</div></div></div>
-      <div style="margin-top:16px"><button class="btn primary" onclick="plug()">Plug in the key</button></div>`;
+      <div style="margin-top:16px">${keyState?.usb ? '<p class="muted">Connect USB and press B on the key.</p>' : '<button class="btn primary" onclick="plug()">Plug in the key</button>'}</div>`;
 }
 async function plug() { try { await api("/key/plug", { key_id: "demo-maulik" }); await load(); } catch (e) { alert(e.message); } }
 async function unplug() { await api("/key/unplug", {}); graphCache = null; await load(); }
@@ -400,7 +410,13 @@ let graphCache = null, hidden = new Set(["Relationship", "Draft"]), bySignature 
 async function drawGraph() {
   const canvas = $("map");
   if (!D.plugged) { $("chips").innerHTML = ""; canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height); $("detail").classList.add("on"); $("detailBody").innerHTML = "Plug in the key to see your voice graph."; return; }
-  if (!graphCache) graphCache = await api("/dashboard/graph");
+  if (!graphCache) {
+    const generation = keyState?.generation, revision = keyState?.revision;
+    let result;
+    try { result = await api("/dashboard/graph"); } catch (error) { return; }
+    if (!D.plugged || generation !== keyState?.generation || revision !== keyState?.revision) return;
+    graphCache = result;
+  }
   const G = graphCache;
   const counts = {}; G.nodes.forEach((n) => counts[n.label] = (counts[n.label] || 0) + 1);
   $("chips").innerHTML = Object.keys(NAMES).filter((l) => counts[l]).map((l) => `<span class="chip ${hidden.has(l) ? "off" : ""}" data-l="${l}"><i style="background:${COLORS[l]}"></i>${NAMES[l]} <b>${counts[l]}</b></span>`).join("")
@@ -553,11 +569,24 @@ async function drawGraph() {
 let resizeTimer = null;  // redraw the map when the window changes size
 window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if ($("page-graph").classList.contains("on")) drawGraph(); }, 250); });
 
-load();
-setInterval(async () => {  // notice plug / unplug from the practice page or the console
-  const st = await api("/key").catch(() => ({ plugged: false }));
-  if (!!st.plugged !== !!D?.plugged) { graphCache = null; load(); }
-}, 5000);
+$("keyText").setAttribute("role", "status");
+PurrsonaKey.subscribe((st) => {
+  const previous = keyState;
+  keyState = st;
+  $("keyText").textContent = PurrsonaKey.label(st);
+  $("keyDot").classList.toggle("on", !!st.plugged);
+  if (!st.plugged || previous?.generation !== st.generation) {
+    ++loadVersion; D = { plugged: false }; graphCache = null;
+    if (sim) { sim.stop(); sim = null; }
+    const canvas = $("map"); canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    $("detailBody").textContent = "Connect your key to see your voice graph.";
+    $("detail").classList.remove("on"); $("chips").textContent = "";
+    render();
+  }
+  if (st.plugged && (!previous?.plugged || previous.generation !== st.generation || previous.revision !== st.revision)) {
+    graphCache = null; load();
+  }
+});
 </script>
 </body>
 </html>

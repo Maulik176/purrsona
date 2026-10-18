@@ -131,6 +131,7 @@ def test_monitor_detects_cable_loss_and_cleans_graph(bridge, monkeypatch):
         assert bridge.state["key_id"] is None
         assert graph_name("demo-maulik") not in bridge.db.list_graphs()
         assert time.monotonic() - started < 1.5
+        assert bridge.live.current["phase"] == "forgotten"
         monkeypatch.setattr(app_module, "memory", bridge)
         monkeypatch.setattr(app_module, "state", bridge.state)
         monkeypatch.setattr(app_module, "claude", lambda: None)

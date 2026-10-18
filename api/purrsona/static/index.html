@@ -204,13 +204,14 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 5
 </main>
 <div class="toast" id="toast"></div>
 
+<script src="/key-events.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const KIND = { tone: "🎭 tone", greeting: "👋 greeting", signoff: "✍️ sign-off", emoji: "😀 emoji", length: "📏 length",
                format: "📐 format", phrase_use: "💬 uses", phrase_avoid: "🚫 avoids" };
 const LANES = [["Person", 1], ["Circle", 2], ["Topic", 3], ["Platform", 4], ["User", 5]];
 const S = { plugged: false, people: [], circles: ["Friends", "Work", "Clients"], person: null, platform: "linkedin",
-            step: 1, lastVoice: null, lastKey: null };
+            step: 1, lastVoice: null, lastKey: null, connection: null };
 
 async function api(path, body) {
   const res = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -225,8 +226,10 @@ function screen(cls, big, small) { const el = $("screen"); el.className = "scree
 
 function renderKey(info) {
   $("keyPill").className = "pill " + (S.plugged ? "on" : "off");
-  $("keyPill").textContent = S.plugged ? `Key plugged in · ${info?.key_id || "demo-maulik"}` : "Key unplugged";
-  $("plugBtn").textContent = S.plugged ? "Unplug key" : "Plug in key";
+  $("keyPill").textContent = info ? PurrsonaKey.label(info) : "Key unplugged";
+  $("plugBtn").textContent = S.plugged ? (info?.usb ? "Eject key" : "Unplug key") : (info?.usb ? "Connect USB key" : "Plug in key");
+  $("plugBtn").disabled = (!S.plugged && !!info?.usb) || ["offline", "loading", "forgetting"].includes(info?.phase);
+  $("resetKey").hidden = !!info?.usb;
   $("plugBtn").className = "btn " + (S.plugged ? "danger" : "primary");
 }
 
@@ -234,27 +237,17 @@ async function plugToggle() {
   $("plugBtn").disabled = true;
   try {
     if (!S.plugged) {
-      screen("thinking", "Press to unlock", "building your voice graph…");
       const info = await api("/key/plug", { key_id: "demo-maulik" });
-      S.plugged = true;
-      const status = await api("/key");
-      S.people = await api("/people");
-      S.circles = status.circles || S.circles;
-      screen("on", "AI is reading your voice", `${status.rules} rules · ${status.memories} learned`);
       $("plugStats").textContent = `Graph built in ${info.load_ms} ms: ${info.nodes} nodes, ${info.edges} links`
         + (info.memories ? `, plus ${info.memories} lesson${info.memories === 1 ? "" : "s"} replayed from the key` : "");
-      renderKey(info); renderPeople();
       if (S.taught && info.memories) { setStep(8); toast(`The key remembered ${info.memories} lesson${info.memories === 1 ? "" : "s"}`); }
       else setStep(S.person ? 3 : 2);
     } else {
       await api("/key/unplug", {});
-      S.plugged = false;
-      screen("forgot", "Forgotten", "graph deleted from this laptop");
-      $("plugStats").textContent = "GRAPH.DELETE ran: your voice is gone from this laptop";
-      renderKey(); if (S.taught) setStep(7); toast("Unplugged. The graph is deleted.");
+      if (S.taught) setStep(7); toast("Unplugged. The graph is deleted.");
     }
   } catch (e) { toast("Error: " + e.message); }
-  $("plugBtn").disabled = false;
+  renderKey(S.connection);
   $("draftBtn").disabled = !S.person;
 }
 
@@ -293,10 +286,12 @@ async function draft() {
   const body = { person_id: S.person.id, person_name: S.person.name, platform: S.platform, post_text: $("postText").value };
   if (!S.person.circle) body.circle_hint = $("newCircle")?.value || "Work";
   const key = `${body.person_id}|${body.platform}|${body.post_text}`;
+  const generation = S.connection?.generation;
   $("draftBtn").disabled = true; $("draftBtn").textContent = "Drafting…";
   if (S.plugged) screen("thinking", "AI is looking at your graph", `finding ${esc(S.person.name.split(" ")[0])}'s rules…`);
   try {
     const r = await api("/draft", body);
+    if (r.mode === "voice" && (!S.plugged || generation !== S.connection?.generation)) return;
     if (r.mode === "voice") {
       S.lastVoice = r; S.lastKey = key;
       $("voiceBox").className = "draft voice";
@@ -321,7 +316,7 @@ async function draft() {
       toast("Generic draft: nothing from your graph");
     }
   } catch (e) { toast("Error: " + e.message); }
-  $("draftBtn").disabled = false; $("draftBtn").textContent = "Draft my reply";
+  $("draftBtn").disabled = !S.person; $("draftBtn").textContent = "Draft my reply";
 }
 
 function renderWhy(r) {
@@ -357,6 +352,7 @@ function renderTrail(steps, ran = []) {
 
 async function teach() {
   const r = S.lastVoice;
+  const generation = S.connection?.generation;
   if (!r || !S.plugged) return toast("Plug in and draft in your voice first");
   const body = { draft_id: r.draft_id, draft_text: r.draft, sent_text: $("sentText").value, person_id: S.person.id,
                  person_name: S.person.name, platform: S.platform, circle: S.person.circle || $("newCircle")?.value || null };
@@ -364,7 +360,10 @@ async function teach() {
   screen("thinking", "AI is learning your voice", `from your edit to ${esc(S.person.name.split(" ")[0])}…`);
   try {
     const out = await api("/learn", body);
-    api(`/trail/${r.draft_id}`).then((t) => renderTrail(t.steps, r.queries || [])).catch(() => {});
+    if (!S.plugged || generation !== S.connection?.generation) return;
+    api(`/trail/${r.draft_id}`).then((t) => {
+      if (S.plugged && generation === S.connection?.generation) renderTrail(t.steps, r.queries || []);
+    }).catch(() => {});
     if (!out.learned.length) {
       $("learned").innerHTML = `<div class="empty">${esc(out.note || "Nothing new to learn from this one.")}</div>`;
     } else {
@@ -373,10 +372,13 @@ async function teach() {
         + out.learned.map((x) => `<div class="rule"><div class="k">🐾 learned · ${KIND[x.kind] || x.kind}</div>${esc(x.text)}
             ${x.overrides.length ? `<span class="beats">outranks rule ${esc(x.overrides.join(", "))} for ${esc(S.person.name.split(" ")[0])}</span>` : ""}</div>`).join("")
         + `<div class="meta" style="margin-top:6px;font-size:12px;color:var(--muted)">Saved to the key · ${out.memories} lesson${out.memories === 1 ? "" : "s"} on it now · ${out.ms} ms</div>`;
-      S.people = await api("/people"); renderPeople(); pickPerson(S.person.id);
+      const people = await api("/people");
+      if (!S.plugged || generation !== S.connection?.generation) return;
+      S.people = people; renderPeople(); pickPerson(S.person.id);
       setStep(6); toast("Learned and saved to the key. Now unplug it.");
     }
     const st = await api("/key");
+    if (!S.plugged || generation !== S.connection?.generation) return;
     screen("on", "AI is reading your voice", `${st.rules} rules · ${st.memories} learned`);
   } catch (e) { toast("Error: " + e.message); }
   $("teachBtn").disabled = false; $("teachBtn").textContent = "Send & teach Purrsona";
@@ -385,8 +387,6 @@ async function teach() {
 async function resetKey(ev) {
   ev.preventDefault();
   try { await api("/key/reset", { key_id: "demo-maulik" }); S.taught = false; toast("The key forgot everything it learned");
-    if (S.plugged) { S.people = await api("/people"); renderPeople(); const st = await api("/key");
-      screen("on", "AI is reading your voice", `${st.rules} rules · ${st.memories} learned`); }
   } catch (e) { toast("Error: " + e.message); }
 }
 
@@ -402,14 +402,38 @@ document.querySelectorAll("[data-post]").forEach((b) => b.addEventListener("clic
 window.addEventListener("keydown", (e) => { if (e.altKey && e.code === "KeyM") { e.preventDefault(); draft(); } });
 window.addEventListener("purrsona:trigger", () => draft());  // Option+M via the extension's Chrome shortcut
 
-(async () => {
-  try {
-    const st = await api("/key");
-    if (st.plugged) { S.plugged = true; S.people = await api("/people"); S.circles = st.circles || S.circles;
-      screen("on", "AI is reading your voice", `${st.rules} rules · ${S.people.length} people`); renderKey(st); renderPeople(); setStep(2); }
-    else { renderKey(); setStep(1); }
-  } catch (e) { toast("Can't reach the Purrsona bridge"); }
-})();
+$("screen").setAttribute("role", "status");
+PurrsonaKey.subscribe(async (st) => {
+  const previous = S.connection;
+  S.connection = st; S.plugged = !!st.plugged; renderKey(st);
+  const label = PurrsonaKey.label(st);
+  screen(st.plugged ? (st.phase === "connected" ? "on" : "thinking") : st.phase === "forgotten" ? "forgot" : "",
+    label, st.plugged ? `${st.rules} rules · ${st.memories} learned` : st.phase === "forgotten" ? "graph deleted from this laptop" : "");
+  if (!st.plugged || previous?.generation !== st.generation) {
+    S.people = []; S.lastVoice = null; S.lastKey = null;
+    // Keep the current message's addressee for a generic comparison, not graph metadata.
+    if (S.person) {
+      S.person = { id: S.person.id, name: S.person.name, circle: null };
+      $("postWho").textContent = `Replying to ${S.person.name} · on ${S.platform === "x" ? "X" : "LinkedIn"}`;
+    }
+    $("voiceBox").className = "draft voice placeholder";
+    $("voiceBox").textContent = "Connect your key to draft in your voice.";
+    $("teachBox").style.display = "none"; $("teachHint").style.display = "block";
+    for (const id of ["lanes", "trail", "timing", "learned", "plugStats"]) $(id).textContent = "";
+    $("sentText").value = ""; $("whyPath").textContent = "Connect your key to see your writing rules.";
+    renderPeople();
+    $("draftBtn").disabled = !S.person; $("draftBtn").textContent = "Draft my reply";
+    $("teachBtn").disabled = false; $("teachBtn").textContent = "Send & teach Purrsona";
+  }
+  if (st.plugged && (!previous?.plugged || previous.generation !== st.generation || previous.revision !== st.revision)) {
+    try {
+      const [people, status] = await Promise.all([api("/people"), api("/key")]);
+      if (!S.plugged || S.connection.generation !== st.generation) return;
+      S.people = people; S.circles = status.circles || S.circles; renderPeople();
+      if (!previous?.plugged || previous.generation !== st.generation) setStep(2);
+    } catch (error) { if (S.plugged) toast(error.message); }
+  }
+});
 </script>
 </body>
 </html>

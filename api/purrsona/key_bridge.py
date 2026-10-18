@@ -10,9 +10,10 @@ from copy import deepcopy
 
 from . import keys
 from .db import graph_name
+from .key_events import KeyEvents
 from .key_protocol import ProtocolError, require, validate_graph
 from .learning import apply_event
-from .queries import graph_view
+from .queries import graph_summary, graph_view
 from .snapshot import build_graph
 from .usb_key import TrustStore, UsbKey, usb_ports
 
@@ -88,6 +89,26 @@ class MemoryBridge:
         self.blocked = {}
         self.stop_event = threading.Event()
         self.threads = []
+        self.rule_count = self.memory_count = self.content_revision = 0
+        self.live = KeyEvents()
+        self._publish()
+
+    def _publish(self):
+        with self.lock:
+            key_id = self.state["key_id"]
+            phase = self.screen if key_id and self.screen in ("drafting", "learning") else (
+                "connected" if key_id else "forgetting" if self.cleanup_keys else
+                "forgotten" if self.usb_status in ("ejected", "disconnected", "shutdown", "save_interrupted") else
+                self.usb_status)
+            self.live.publish({"plugged": key_id is not None, "key_id": key_id, "phase": phase,
+                "usb": self.usb_status if self.usb_enabled else None, "generation": self.token,
+                "revision": self.content_revision, "rules": self.rule_count, "memories": self.memory_count})
+
+    def changed(self, graph):
+        with self.lock:
+            self.ensure_current(graph)
+            self.content_revision += 1
+            self._publish()
 
     def graph(self, key_id=None) -> SessionGraph:
         with self.lock:
@@ -112,6 +133,7 @@ class MemoryBridge:
             self.ensure_current(graph)
             self.activities[state] = self.activities.get(state, 0) + 1
             self.screen = "learning" if self.activities.get("learning") else state
+            self._publish()
         try:
             yield
             with self.lock:
@@ -122,6 +144,7 @@ class MemoryBridge:
                     self.activities[state] -= 1
                     self.screen = "learning" if self.activities.get("learning") else (
                         "drafting" if self.activities.get("drafting") else "ready")
+                    self._publish()
 
     def save_event(self, graph: SessionGraph, event: dict) -> int:
         # Keep board ACKs, the event cache and graph updates in the same order.
@@ -144,6 +167,9 @@ class MemoryBridge:
                         require(count == len(self.records), "Memory count changed unexpectedly", "STORAGE_ERROR")
                     apply_event(graph, event)
                     self.dirty = True
+                    self.memory_count = count
+                    self.rule_count = graph_summary(graph)["rules"]
+                    self.changed(graph)
                 return count
         except Exception as exc:
             if client:
@@ -157,8 +183,14 @@ class MemoryBridge:
             if self.state["key_id"]:
                 self.unplug()
             self.token += 1
+            self.usb_status = "loading"
+            self._publish()
             info = keys.plug(self.db, key_id)
             self.state["key_id"] = key_id
+            self.usb_status, self.screen = "connected", "ready"
+            self.rule_count = graph_summary(self.graph())["rules"]
+            self.memory_count = info["memories"]
+            self._publish()
             return info
 
     def reset_virtual(self, key_id):
@@ -201,6 +233,8 @@ class MemoryBridge:
             self.dirty = False
             self.screen = "loading"
             self.usb_status = reason
+            self.rule_count = self.memory_count = self.content_revision = 0
+            self._publish()
         if client:
             client.close()
         log.info("memory_key_disconnected reason=%s", reason)
@@ -213,6 +247,7 @@ class MemoryBridge:
                     self.cleanup_keys.remove(key_id)
                 except Exception:
                     log.warning("memory_key_cleanup_pending")
+            self._publish()
             return not self.cleanup_keys
 
     def attach(self, port):
@@ -220,6 +255,7 @@ class MemoryBridge:
         with self.lock:
             self.client = client
             self.usb_status = "connecting"
+            self._publish()
         try:
             key_id = client.hello()
             if self.trust.load(key_id) is None:
@@ -227,6 +263,7 @@ class MemoryBridge:
                 self.disconnect("needs_pairing")
                 return
             self.usb_status = "awaiting_button"
+            self._publish()
             client.unlock(self.trust)
             with self.lock:
                 require(self.client is client, "Connection was interrupted", "LOCKED")
@@ -235,6 +272,7 @@ class MemoryBridge:
                 graph = SessionGraph(self, key_id, self.token, loading=True)
                 self.screen = "loading"
                 self.usb_status = "loading"
+                self._publish()
             snapshot, records = client.pull()
             with self.lock:
                 self.ensure_current(graph)
@@ -254,6 +292,9 @@ class MemoryBridge:
                 self.screen = "ready"
                 self.usb_status = "connected"
                 self.dirty = False
+                self.rule_count = graph_summary(self.graph())["rules"]
+                self.memory_count = len(records)
+                self._publish()
             log.info("memory_key_connected memories=%s", len(records))
         except Exception:
             self.blocked[port] = None
@@ -287,6 +328,7 @@ class MemoryBridge:
                         self.attach(port)
                 elif len(available) > 1 and self.client is None:
                     self.usb_status = "choose_port"
+                    self._publish()
             except Exception:
                 log.warning("memory_key_connect_failed")
             self.stop_event.wait(0.5)

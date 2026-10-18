@@ -118,6 +118,7 @@ a { color: var(--accent-dark); }
 </main>
 <footer>Everyone on this page is made up. Purrsona only reads a post when you press the shortcut or click the cat, and never posts for you.</footer>
 
+<script src="/key-events.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 async function call(path, body) {
@@ -126,20 +127,17 @@ async function call(path, body) {
   return res.json();
 }
 let plugged = false;
-async function refreshKey() {
-  const st = await call("/key").catch(() => ({ plugged: false }));
+function refreshKey(st) {
   plugged = !!st.plugged;
   $("dot").classList.toggle("on", plugged);
-  $("keyText").textContent = plugged ? `Key plugged in · ${st.rules} rules · ${st.memories} learned` : "Key unplugged";
-  if (!plugged && st.usb) $("keyText").textContent = st.usb === "awaiting_button" ? "Press B on your key" : st.usb === "loading" ? "Loading memories…" : st.usb === "needs_pairing" ? "Pair your key first" : "Connect USB, then press B";
+  $("keyText").textContent = plugged ? `${PurrsonaKey.label(st)} · ${st.rules} rules · ${st.memories} learned` : PurrsonaKey.label(st);
   $("keyBtn").textContent = plugged ? (st.usb ? "Eject" : "Unplug") : (st.usb ? "USB key" : "Plug in");
-  $("keyBtn").disabled = !!st.usb && !plugged;
+  $("keyBtn").disabled = (!plugged && !!st.usb) || ["offline", "loading", "forgetting"].includes(st.phase);
   $("keyBtn").classList.toggle("on", plugged);
 }
 $("keyBtn").addEventListener("click", async () => {
   try {
     await call(plugged ? "/key/unplug" : "/key/plug", plugged ? {} : { key_id: "demo-maulik" });
-    await refreshKey();
   } catch (error) { $("keyText").textContent = error.message; }
 });
 // "Posting" a reply on this practice page just shows it under the post.
@@ -150,7 +148,6 @@ document.querySelectorAll("[data-send]").forEach((btn) => btn.addEventListener("
   div.className = "mine"; div.innerHTML = "<b>You</b>"; div.append(document.createTextNode(box.value));
   card.querySelector(".replies").append(div);
   box.value = "";
-  setTimeout(refreshKey, 4500);
 }));
 // The made-up chats: Send (or Enter) posts your message, like a chat app.
 document.querySelectorAll("[data-chat]").forEach((chat) => {
@@ -161,7 +158,6 @@ document.querySelectorAll("[data-chat]").forEach((chat) => {
     div.className = "msg mine"; div.innerHTML = "<b>You</b>"; div.append(document.createTextNode(box.value));
     chat.querySelector(".msgs").append(div);
     box.value = "";
-    setTimeout(refreshKey, 4500);
   };
   chat.querySelector("[data-chat-send]").addEventListener("click", send);
   box.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.altKey) { e.preventDefault(); send(); } });
@@ -170,8 +166,8 @@ document.querySelectorAll("[data-chat]").forEach((chat) => {
 document.querySelectorAll("textarea").forEach((box) => box.addEventListener("input", () => {
   box.style.height = "auto"; box.style.height = `${box.scrollHeight + 2}px`;
 }));
-refreshKey();
-setInterval(refreshKey, 5000);
+$("keyText").setAttribute("role", "status");
+PurrsonaKey.subscribe(refreshKey);
 // Run the cat here too, unless the Purrsona extension is already running it on this page.
 setTimeout(() => {
   if (document.documentElement.dataset.purrsonaExt === "1") return;
