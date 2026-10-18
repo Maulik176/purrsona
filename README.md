@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/media/banner.svg" width="100%" alt="Purrsona: World’s First Portable Memory. Carry around your voice and memory. Plug into any device and it writes the way you write to each person, pulling all the memories attached with them. Pull it out, and you get control of your memory back.">
+  <img src="docs/media/banner.svg" width="100%" alt="Purrsona: your writing voice, portable. Plug the key into any laptop and it writes the way you write to each person. Pull it out, and that laptop forgets you.">
 </p>
 
 <p align="center">
