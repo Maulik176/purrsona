@@ -377,6 +377,7 @@ We can walk you through any line of it.
 - Replaying memories is done one query at a time, so plug-in slows down as the key learns more. Batching it is next.
 - It learns from replies and messages you send, not yet from your own new posts.
 - PageRank is the only graph algorithm in use so far.
+- In a Chrome Incognito window the extension is switched off by Chrome, and its Option+M shortcut is too. There, tap Option twice and choose "write a reply", or allow Purrsona in Incognito (chrome://extensions → Details).
 
 ## What's next
 

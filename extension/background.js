@@ -42,6 +42,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
 
 // Option+M as a Chrome shortcut: Chrome takes the key before the page sees it (so macOS never types its
 // "˛" mark) and tells the page's cat, or the demo console, to draft. Set in chrome://extensions/shortcuts.
+// Found Oct 18: Chrome takes Option+M on every page, so on a page that runs its own cat instead of ours
+// (the live demo's practice page and console), the key vanished. There, hand it to the page's cat.
 chrome.commands.onCommand.addListener((command, tab) => {
-  if (command === "draft-reply" && tab?.id) chrome.tabs.sendMessage(tab.id, { type: "trigger" });
+  if (command !== "draft-reply" || !tab?.id) return;
+  chrome.tabs.sendMessage(tab.id, { type: "trigger" }).catch(() =>
+    chrome.scripting.executeScript({ target: { tabId: tab.id }, world: "MAIN",
+      func: () => window.dispatchEvent(new CustomEvent("purrsona:trigger")) }).catch(() => {}));
 });

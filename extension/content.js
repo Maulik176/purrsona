@@ -483,6 +483,8 @@
     if (isSendFor(btn)) captureSend(last.box, pressed?.box === last.box ? pressed.text : "");
   }, true);
   if (IN_EXTENSION) chrome.runtime.onMessage.addListener((m) => { if (m.type === "trigger") draft(current); });
+  // A page that loads its own cat (the live demo): the installed extension's Option+M shortcut arrives here.
+  else window.addEventListener("purrsona:trigger", () => draft(current));
 
   // Your-words mode can't see the conversation. If the box's label names one person you know, that's
   // who it's for; otherwise you say (a chat can have several people), with the last person for this
