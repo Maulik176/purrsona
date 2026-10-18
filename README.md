@@ -11,8 +11,7 @@
 </p>
 
 <p align="center">
-  <!-- TODO(Sunday): real links -->
-  <a href="https://purrsona-production.up.railway.app"><b>Live demo</b></a> · <b>Demo video</b> (link on submission day) · <a href="#try-it">Run it locally</a> · <a href="https://dev.to/maulik176/why-would-i-tell-a-chatbot-how-i-talk-to-250-people-i-built-a-cat-that-learns-it-2l2n"><b>Blog</b></a>
+  <a href="https://purrsona-production.up.railway.app"><b>Live demo</b></a> · <a href="https://youtu.be/vAuoZrO7bQQ"><b>Demo video</b></a> · <a href="#try-it">Run it locally</a> · <a href="https://dev.to/maulik176/why-would-i-tell-a-chatbot-how-i-talk-to-250-people-i-built-a-cat-that-learns-it-2l2n"><b>Blog</b></a>
 </p>
 
 <p align="center">
