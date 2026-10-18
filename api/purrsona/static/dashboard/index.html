@@ -152,7 +152,9 @@ table.modes { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 table.modes th, table.modes td { text-align: left; padding: 10px 8px; border-top: 1px solid var(--line); vertical-align: top; }
 table.modes th { color: var(--muted); font-weight: 500; border-top: 0; }
 .plugwall { text-align: center; padding: 80px 20px; }
-.plugwall h2 { font: 600 26px Fraunces, Georgia, serif; margin: 14px 0 6px; }
+.plugwall h2 { font: 600 26px Fraunces, Georgia, serif; margin: 14px 0 6px; justify-content: center; }
+.plugwall .open { display: none; }
+.plugwall.waking .open { display: inline; } .plugwall.waking .shut { display: none; }
 @media (max-width: 1000px) { .crew { grid-template-columns: 1fr; } .hop { margin-top: 0; } .hop i { transform: rotate(90deg); } .g2, .g2b, .g2p { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(3, 1fr); } .side { display: none; } main { padding: 22px 16px; } }
 </style>
 </head>
@@ -346,7 +348,7 @@ function render() {
   show(location.hash.slice(1) || "home");
 }
 
-const plugWall = (msg) => `<div class="card plugwall"><svg width="70" height="70" viewBox="0 0 64 64"><ellipse cx="31" cy="45" rx="16" ry="12.5" fill="#3b4050"/><polygon points="18,19 21,5 28,14" fill="#3b4050"/><polygon points="34,14 41,5 44,19" fill="#3b4050"/><circle cx="31" cy="24" r="13" fill="#3b4050"/><path d="M23 24h6M33 24h6" stroke="#ffc44d" stroke-width="2" stroke-linecap="round"/></svg>
+const plugWall = (msg) => `<div class="card plugwall"><svg width="70" height="70" viewBox="0 0 64 64"><ellipse cx="31" cy="45" rx="16" ry="12.5" fill="#3b4050"/><polygon points="18,19 21,5 28,14" fill="#3b4050"/><polygon points="34,14 41,5 44,19" fill="#3b4050"/><circle cx="31" cy="24" r="13" fill="#3b4050"/><path class="shut" d="M23 24h6M33 24h6" stroke="#ffc44d" stroke-width="2" stroke-linecap="round"/><g class="open"><circle cx="26" cy="24" r="2.6" fill="#ffc44d"/><circle cx="36" cy="24" r="2.6" fill="#ffc44d"/></g></svg>
   <h2>${esc(keyState ? PurrsonaKey.label(keyState) : msg)}</h2><p class="muted">The voice graph only exists while your key is plugged in.</p>${keyState?.usb ? '<p class="muted">Connect USB and approve with B on the key.</p>' : `<div class="plugchoice"><button class="btn primary" onclick="plug('fresh')">Start your own key</button><button class="btn" onclick="plug()">Try the demo key</button></div><p class="faint" style="margin-top:8px">Your own key starts empty and learns how you write as you send. The demo key comes with Maulik's voice and made-up people, so you can see everything at once.</p>`}</div>`;
 
 // ---- Home -------------------------------------------------------------------------------------
@@ -478,6 +480,7 @@ function renderKey() {
 }
 // "fresh": a new, empty key that learns your voice (online it's yours alone); otherwise the demo key.
 async function plug(seed) {
+  document.querySelectorAll(".plugwall").forEach((w) => w.classList.add("waking"));  // the cat opens its eyes
   try { await api("/key/plug", seed === "fresh" ? { key_id: "my-voice", seed } : { key_id: "demo-maulik" }); graphCache = null; await load(); }
   catch (e) { toast(e.message); }
 }
