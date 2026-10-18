@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "scripts": {
+    "allcheck": "uv run --project api --with falkordblite==0.10.0 python scripts/check.py",
+    "simulator": "uv run --project api --with falkordblite==0.10.0 python scripts/run_simulator.py",
+    "hardware-demo": "uv run --project api --with falkordblite==0.10.0 python scripts/run_hardware_demo.py"
+  }
+}

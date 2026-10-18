@@ -103,7 +103,7 @@ A writing style is personal data. Purrsona keeps it on something you hold.
 | Learn | `APPEND` | one new memory on the key; it replies with the new count |
 | Unplug | `BYE`, or the cable is pulled | `GRAPH.DELETE voice:<key_id>`; the laptop forgets |
 
-**Status, honestly:** the hardware key is in progress. Every flow above runs today on the **virtual key**, which makes exactly the same calls (`keys.py`), so the demo, the tests and anyone without hardware use it. <!-- TODO(Sunday): photo of the T-Display-S3 + hardware status -->
+**Status, honestly:** physical pairing, graph display, saving a memory, deleting the laptop graph on unplug, and restoring the memory after reconnecting have passed on the T-Display-S3 with **mocked AI**. The virtual key remains available for demos without hardware. See [physical key setup and remaining checks](firmware/README.md). <!-- TODO(Sunday): photo of the T-Display-S3 -->
 
 ## One database, many voices
 
@@ -185,6 +185,31 @@ Then open:
 2. **http://localhost:8765/dashboard/**: your live voice graph, your writing rules (forget any of them), what the key has learned, and the agents' handoffs.
 3. **The Chrome extension**: `chrome://extensions` → Developer mode → Load unpacked → the `extension/` folder. Open LinkedIn or X, click a comment box, press Option+M.
 4. **http://localhost:3001**: FalkorDB Browser, with the graph `voice:demo-maulik` while the key is plugged in.
+
+### Use the LilyGO T-Display-S3
+
+The firmware and USB bridge are implemented. Follow the
+[physical key setup](firmware/README.md) to flash the board, pair its fingerprint,
+and start the API with `PURRSONA_USB=1`. The display includes an ASCII brain
+animation and a graph navigated with its two buttons. Physical pairing, graph
+display, saving a memory, laptop cleanup on unplug, and restoring that memory
+after reconnecting have passed on the T-Display-S3 with mocked AI.
+
+After flashing and pairing, `bun run hardware-demo` runs the physical key with
+a temporary real FalkorDB and fixed mock AI replies, without Docker or an AI key.
+Press B to unlock, then open **http://127.0.0.1:8765/practice/**. Run only one bridge
+process at a time. The USB-enabled API setup in the firmware guide uses real AI replies.
+
+To try the complete flow without a board or AI key, run `bun run simulator` and
+open **http://127.0.0.1:8876/sim/**. Connect, approve with B, browse the graph,
+and use the practice page to save a memory. The simulator runs the C++ firmware
+with mock hardware and AI, plus an isolated real FalkorDB. See the
+[simulator walkthrough](firmware/README.md#try-the-complete-demo-without-hardware).
+
+Run `bun run allcheck --force` from the repo root to compile firmware and run all
+tests against a temporary, isolated FalkorDB. The
+[protocol contract](docs/PROTOCOL.md) describes the messages shared by the board,
+USB client and simulator.
 
 ## Under the hood
 

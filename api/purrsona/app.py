@@ -4,6 +4,7 @@ Run from the api/ folder:  uv run uvicorn purrsona.app:app --port 8765
 """
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import anthropic
@@ -11,23 +12,41 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-from . import critic, keys, learning, relationships  # noqa: E402
-from .db import connect, graph_name, rows  # noqa: E402
+from . import critic, learning, relationships  # noqa: E402
+from .db import connect, rows  # noqa: E402
+from .key_bridge import MemoryBridge  # noqa: E402
+from .key_protocol import ProtocolError  # noqa: E402
 from .drafter import refine_draft, write_draft  # noqa: E402
 from .queries import (ALL_RULES, COUNTS, DRAFT_HISTORY, DRAFT_RULES, PEOPLE_STATS, RECENT_TRAILS,  # noqa: E402
                       Traced, graph_summary, graph_view, people, person_context, record_draft, rules_for_context,
                       save_trail, signature_style, topics_in, trail_steps, why_this_draft)
 
-app = FastAPI(title="Purrsona bridge")
+@asynccontextmanager
+async def lifespan(app):
+    memory.start()
+    try:
+        yield
+    finally:
+        memory.stop()
+
+
+app = FastAPI(title="Purrsona bridge", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 db = connect()
-state: dict = {"key_id": None}
+memory = MemoryBridge(db)
+state = memory.state
 _client: anthropic.Anthropic | None = None
+
+
+@app.exception_handler(ProtocolError)
+async def key_error(request, exc):
+    return JSONResponse(status_code=409, content={"detail": str(exc), "code": exc.code})
 
 
 def claude() -> anthropic.Anthropic:
@@ -93,9 +112,10 @@ def addressee(name: str, relationship: str | None) -> str:
 @app.get("/key")
 def key_status():
     if state["key_id"] is None:
-        return {"plugged": False, "key_id": None}
-    graph = db.select_graph(graph_name(state["key_id"]))
-    return {"plugged": True, "key_id": state["key_id"], "memories": len(keys.load_events(state["key_id"])),
+        return {"plugged": False, "key_id": None, **({"usb": memory.usb_status} if memory.usb_enabled else {})}
+    graph = memory.graph()
+    return {"plugged": True, "key_id": graph.key_id, "memories": len(memory.events(graph.key_id)),
+            **({"usb": memory.usb_status} if memory.usb_enabled else {}),
             **graph_summary(graph)}
 
 
@@ -103,7 +123,7 @@ def key_status():
 def list_people():
     if state["key_id"] is None:
         raise HTTPException(409, "Plug in a key first")
-    return people(db.select_graph(graph_name(state["key_id"])))
+    return people(memory.graph())
 
 
 @app.get("/person")
@@ -111,27 +131,22 @@ def get_person(id: str):
     """Does the plugged-in graph know this person? (The cat asks for a circle when it doesn't.)"""
     if state["key_id"] is None:
         return {"plugged": False, "known": False}
-    graph = db.select_graph(graph_name(state["key_id"]))
+    graph = memory.graph()
     return {"plugged": True, **person_context(graph, id), "circles": graph_summary(graph)["circles"]}
 
 
 @app.post("/key/plug")
 def plug(req: PlugRequest):
     try:
-        info = keys.plug(db, req.key_id)
+        info = memory.plug_virtual(req.key_id)
     except FileNotFoundError:
         raise HTTPException(404, f"No virtual key named {req.key_id}")
-    state["key_id"] = req.key_id
     return info
 
 
 @app.post("/key/unplug")
 def unplug():
-    if state["key_id"] is None:
-        return {"forgotten": True, "note": "no key was plugged in"}
-    info = keys.unplug(db, state["key_id"])
-    state["key_id"] = None
-    return info
+    return memory.unplug()
 
 
 @app.post("/draft")
@@ -148,7 +163,7 @@ def draft(req: DraftRequest):
         return {"mode": "generic", "draft": text, "rules": [], "person": None,
                 "ms": round((time.perf_counter() - started) * 1000)}
 
-    graph = Traced(db.select_graph(graph_name(key_id)))  # notes each query: name, ms, rows
+    graph = Traced(memory.graph(key_id))  # trace queries while keeping the unplug guard
     # A new post has nobody to reply to: only the topic, platform and your own rules apply.
     person = person_context(graph, req.person_id)
     circle = person["circle"] or req.circle_hint  # the hint only matters for someone new
@@ -168,15 +183,17 @@ def draft(req: DraftRequest):
                       "ms": round((time.perf_counter() - since) * 1000) if since else 0})
 
     t = time.perf_counter()
-    text = write_draft(claude(), req.post_text, to, req.platform, rules, note=req.user_note, mode=req.mode)
+    with memory.activity(graph, "drafting"):
+        text = write_draft(claude(), req.post_text, to, req.platform, rules, note=req.user_note, mode=req.mode)
     step("Drafter", "wrote", f"from {len(rules)} rules in your graph", t, queries=looked_up)
     first = critic.review(text, rules, req.person_name, note=req.user_note)
     last = first
     if first["problems"]:
         step("Critic", "redo", critic.describe(first["problems"]), flagged=[p["id"] for p in first["problems"]])
         t = time.perf_counter()
-        text = refine_draft(claude(), text, critic.fix_request(first["problems"]), req.post_text, to,
-                            req.platform, rules, mode=req.mode)
+        with memory.activity(graph, "drafting"):
+            text = refine_draft(claude(), text, critic.fix_request(first["problems"]), req.post_text, to,
+                                req.platform, rules, mode=req.mode)
         step("Drafter", "rewrote", "fixed what the Critic flagged", t)
         last = critic.review(text, rules, req.person_name, note=req.user_note)
     if last["problems"] and first["problems"]:  # at most one redo: deliver it, and say what's still off
@@ -189,6 +206,7 @@ def draft(req: DraftRequest):
     record_draft(graph, draft_id, text, int(time.time() * 1000), req.person_id, req.platform,
                  topics, [r["id"] for r in rules])
     save_trail(graph, draft_id, steps)
+    memory.ensure_current(graph)
     return {"mode": "voice", "draft": text, "draft_id": draft_id, "rules": rules,
             "person": {**person, "circle": circle}, "topics": topics, "trail": steps,
             "critic": {"checked": last["checked"], "still": last["problems"],
@@ -201,7 +219,7 @@ def trail(draft_id: str):
     """The handoff trail behind a draft: which agent did what, and which rules each step flagged or taught."""
     if state["key_id"] is None:
         raise HTTPException(409, "Plug in a key first")
-    steps = trail_steps(db.select_graph(graph_name(state["key_id"])), draft_id)
+    steps = trail_steps(memory.graph(), draft_id)
     if not steps:
         raise HTTPException(404, "No trail for that draft in the plugged-in graph")
     return {"draft_id": draft_id, "steps": steps}
@@ -212,7 +230,7 @@ def why(draft_id: str):
     """Q6: the graph path behind a draft (for the dashboard and the judges)."""
     if state["key_id"] is None:
         raise HTTPException(409, "Plug in a key first")
-    rules = why_this_draft(db.select_graph(graph_name(state["key_id"])), draft_id)
+    rules = why_this_draft(memory.graph(), draft_id)
     if not rules:
         raise HTTPException(404, "No draft with that id in the plugged-in graph")
     return {"draft_id": draft_id, "rules": rules}
@@ -223,8 +241,9 @@ def relationship(req: RelationshipRequest):
     """Someone new, in your own words ("my manager"): which circle is that? The graph answers first."""
     if state["key_id"] is None:
         return {"name": relationships.normalize(req.text), "circle": None, "source": "none"}
-    graph = db.select_graph(graph_name(state["key_id"]))
-    return relationships.resolve(graph, claude(), req.text, graph_summary(graph)["circles"])
+    graph = memory.graph()
+    with memory.activity(graph, "drafting"):
+        return relationships.resolve(graph, claude(), req.text, graph_summary(graph)["circles"])
 
 
 @app.post("/refine")
@@ -232,16 +251,22 @@ def refine(req: RefineRequest):
     """The cat's chat: change the draft the way you ask, still in your voice (the graph's rules come along)."""
     started = time.perf_counter()
     rules, to = None, req.person_name
+    graph = None
     if state["key_id"] is not None:
-        graph = db.select_graph(graph_name(state["key_id"]))
+        graph = memory.graph()
         person = person_context(graph, req.person_id)
         circle = person["circle"] or req.circle_hint
         to = addressee(req.person_name, person["relationship"] or req.relationship)
         topics = topics_in(graph, req.post_text or req.current_text)
         rules = rules_for_context(graph, req.person_id, req.platform, topics, circle_hint=circle,
                                   mode="post" if req.mode == "post" else "reply")
-    text = refine_draft(claude(), req.current_text, req.instruction, req.post_text, to,
-                        req.platform, rules, mode=req.mode)
+    if graph:
+        with memory.activity(graph, "drafting"):
+            text = refine_draft(claude(), req.current_text, req.instruction, req.post_text, to,
+                                req.platform, rules, mode=req.mode)
+    else:
+        text = refine_draft(claude(), req.current_text, req.instruction, req.post_text, to,
+                            req.platform, rules, mode=req.mode)
     return {"draft": text, "mode": "voice" if rules else "generic",
             "ms": round((time.perf_counter() - started) * 1000)}
 
@@ -253,7 +278,7 @@ def learn(req: LearnRequest):
     key_id = state["key_id"]
     if key_id is None:
         raise HTTPException(409, "Plug in a key first: there's nowhere to save what Purrsona learns")
-    graph = db.select_graph(graph_name(key_id))
+    graph = memory.graph(key_id)
     person = person_context(graph, req.person_id)
     circle = person["circle"] or req.circle
     first = req.person_name.split(" ")[0]
@@ -268,8 +293,7 @@ def learn(req: LearnRequest):
                                           req.platform, req.draft_id, req.draft_text, rule_ids)
         event["person"]["relationship"] = rel
         event["trail"] = learner_step(graph, req.draft_id, "sent as-is", "the draft was right as it was")
-        learning.apply_event(graph, event)
-        memories = keys.append_event(key_id, event)
+        memories = memory.save_event(graph, event)
         return {"learned": [], "saved": True, "person_added": event["person"]["new"], "memories": memories,
                 "note": f"Sent as-is, so the draft was right. {joined or f'Noted that you wrote to {first}'}."}
 
@@ -277,16 +301,16 @@ def learn(req: LearnRequest):
                                 circle_hint=circle)
 
     started = time.perf_counter()
-    proposals = learning.learn_rules(claude(), req.draft_text, req.sent_text, req.person_name,
-                                     req.platform, current, note=req.note_text, asks=req.asks)
+    with memory.activity(graph, "learning"):
+        proposals = learning.learn_rules(claude(), req.draft_text, req.sent_text, req.person_name,
+                                         req.platform, current, note=req.note_text, asks=req.asks)
     event = learning.build_event(req.person_id, req.person_name, circle, not person["known"], req.platform,
                                  req.draft_id, req.draft_text, req.sent_text, proposals, current, rule_ids=rule_ids)
     event["person"]["relationship"] = rel
     event["trail"] = learner_step(graph, req.draft_id, "learned" if event["rules"] else "nothing new",
                                   "; ".join(r["text"] for r in event["rules"]), [r["id"] for r in event["rules"]],
                                   round((time.perf_counter() - started) * 1000))
-    learning.apply_event(graph, event)        # the laptop's graph learns now...
-    memories = keys.append_event(key_id, event)  # ...and the key remembers, in the same step
+    memories = memory.save_event(graph, event)
     return {"learned": event["rules"], "saved": True, "person_added": event["person"]["new"],
             "edit_id": event["edit"]["id"], "memories": memories, "note": joined,
             "ms": round((time.perf_counter() - started) * 1000)}
@@ -317,8 +341,8 @@ def dashboard_data():
     key_id = state["key_id"]
     if key_id is None:
         return {"plugged": False}
-    graph = db.select_graph(graph_name(key_id))
-    events = keys.load_events(key_id)
+    graph = memory.graph(key_id)
+    events = memory.events(key_id)
     rules = rows(graph.ro_query(ALL_RULES))
     history = rows(graph.ro_query(DRAFT_HISTORY))
     live = [h for h in history if not h["seeded"]]
@@ -339,7 +363,7 @@ def dashboard_graph():
     """The voice graph for the map, with PageRank scores for the rules (your signature style)."""
     if state["key_id"] is None:
         raise HTTPException(409, "Plug in a key first")
-    graph = db.select_graph(graph_name(state["key_id"]))
+    graph = memory.graph()
     return {**graph_view(graph), "pagerank": {r["id"]: r["score"] for r in signature_style(graph, 200)}}
 
 
@@ -349,21 +373,18 @@ def forget_rule(req: ForgetRequest):
     key_id = state["key_id"]
     if key_id is None:
         raise HTTPException(409, "Plug in a key first")
-    graph = db.select_graph(graph_name(key_id))
+    graph = memory.graph(key_id)
     found = rows(graph.ro_query("MATCH (r:StyleRule {id: $id}) RETURN r.text AS text", {"id": req.rule_id}))
     if not found:
         raise HTTPException(404, "No rule with that id")
     event = {"type": "forgot", "at": int(time.time() * 1000), "rule_id": req.rule_id, "rule_text": found[0]["text"]}
-    learning.apply_event(graph, event)
-    return {"forgot": found[0]["text"], "memories": keys.append_event(key_id, event)}
+    return {"forgot": found[0]["text"], "memories": memory.save_event(graph, event)}
 
 
 @app.post("/key/reset")
 def reset_key(req: PlugRequest):
     """Demo helper: wipe what the virtual key learned (back to the seed), then re-plug if plugged."""
-    keys.reset_memories(req.key_id)
-    if state["key_id"] == req.key_id:
-        keys.plug(db, req.key_id)
+    memory.reset_virtual(req.key_id)
     return {"key_id": req.key_id, "memories": 0}
 
 

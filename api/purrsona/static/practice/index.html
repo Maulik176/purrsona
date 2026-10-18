@@ -122,6 +122,7 @@ a { color: var(--accent-dark); }
 const $ = (id) => document.getElementById(id);
 async function call(path, body) {
   const res = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
   return res.json();
 }
 let plugged = false;
@@ -130,12 +131,16 @@ async function refreshKey() {
   plugged = !!st.plugged;
   $("dot").classList.toggle("on", plugged);
   $("keyText").textContent = plugged ? `Key plugged in · ${st.rules} rules · ${st.memories} learned` : "Key unplugged";
-  $("keyBtn").textContent = plugged ? "Unplug" : "Plug in";
+  if (!plugged && st.usb) $("keyText").textContent = st.usb === "awaiting_button" ? "Press B on your key" : st.usb === "loading" ? "Loading memories…" : st.usb === "needs_pairing" ? "Pair your key first" : "Connect USB, then press B";
+  $("keyBtn").textContent = plugged ? (st.usb ? "Eject" : "Unplug") : (st.usb ? "USB key" : "Plug in");
+  $("keyBtn").disabled = !!st.usb && !plugged;
   $("keyBtn").classList.toggle("on", plugged);
 }
 $("keyBtn").addEventListener("click", async () => {
-  await call(plugged ? "/key/unplug" : "/key/plug", plugged ? {} : { key_id: "demo-maulik" });
-  refreshKey();
+  try {
+    await call(plugged ? "/key/unplug" : "/key/plug", plugged ? {} : { key_id: "demo-maulik" });
+    await refreshKey();
+  } catch (error) { $("keyText").textContent = error.message; }
 });
 // "Posting" a reply on this practice page just shows it under the post.
 document.querySelectorAll("[data-send]").forEach((btn) => btn.addEventListener("click", () => {
