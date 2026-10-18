@@ -289,7 +289,7 @@ CREATE (r)-[:OVERRIDES]->(old)
 # A person's old rule replaced by a newer one for the same person stays as history.
 SUPERSEDE = "MATCH (old:StyleRule) WHERE old.id IN $old_ids SET old.superseded_at = $at"
 
-# You moved someone to another circle (Kunal from Work to Community): the old circle's rules stop
+# You moved someone to another circle (Kabir from Work to Community): the old circle's rules stop
 # applying and the new one's apply from the next draft. Their own rules and relationship stay with them.
 MOVE_TO_CIRCLE = """
 MATCH (p:Person {id: $person_id}), (c:Circle {name: $circle})

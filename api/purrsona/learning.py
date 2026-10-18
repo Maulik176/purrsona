@@ -85,7 +85,7 @@ def learn_rules(client: anthropic.Anthropic, draft: str, sent: str, person_name:
 
 # A habit about how the message opens is a greeting, whatever kind the model picked: otherwise the circle's
 # greeting ("Hi <first name>") still applies and the Critic sends the new habit back (found Oct 17 with
-# "Addresses Kunal by his X handle instead of his first name", saved as phrase_use).
+# "Addresses Kabir by his X handle instead of his first name", saved as phrase_use).
 OPENING = re.compile(r"^(opens|starts) with\b|^(addresses|greets)\b.*\binstead of\b", re.IGNORECASE)
 
 
