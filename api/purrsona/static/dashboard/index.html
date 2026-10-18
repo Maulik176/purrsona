@@ -370,7 +370,7 @@ function renderHome() {
         <div class="faint" style="margin-top:8px">The rules your drafts lean on most, ranked by FalkorDB's PageRank.</div></div>
     </div>
     <div class="grid g2p" style="margin-top:18px">
-      <div class="card"><h2>Latest drafts <span>with the agents' handoffs</span></h2>${D.trails.length ? D.trails.slice(0, 5).map(trailRow).join("") : '<div class="empty">No drafts with handoffs yet: press ⌥M on the practice page.</div>'}</div>
+      <div class="card"><h2>Latest drafts <span>with the agents' handoffs</span></h2>${D.trails.length ? D.trails.slice(0, 5).map(trailRow).join("") : '<div class="empty">No drafts with handoffs yet: press right ⌥ Option + M on the practice page.</div>'}</div>
       <div class="card"><h2>People you write to</h2>${D.people.slice(0, 7).map(personRow).join("")}</div>
     </div>`;
 }
@@ -466,7 +466,7 @@ function renderAgents() {
     graph ran: ${s.queries.map((q) => `<code style="color:#8fd3ff">${esc(q.split(" · ")[0])}</code> ${esc(q.split(" · ").slice(1).join(", "))}`).join(" → ")}</div>`).join("");
   $("agentsBody").innerHTML = D.trails.length ? D.trails.map((t) => trailRow(t) + (t.steps.filter((s) => s.action === "redo" || s.action === "still breaks")
     .map((s) => `<div class="faint" style="margin:4px 0 0">↺ ${esc(s.detail)}</div>`).join("")) + ran(t)).join("")
-    : '<div class="empty">Draft something with the cat (⌥M) and its handoffs appear here.</div>';
+    : '<div class="empty">Draft something with the cat (right ⌥ Option + M) and its handoffs appear here.</div>';
 }
 
 // ---- Key --------------------------------------------------------------------------------------

@@ -28,7 +28,7 @@ Purrsona keeps your voice in a graph: who you write to, which circle they're in,
 ## Purrsona in 30 seconds
 
 1. **Plug in your key and press its button.** That press is your consent. The key hands the laptop your voice, and the laptop builds your graph in FalkorDB.
-2. **Press Option+M in any reply box.** A small cat sits on the box. The graph picks the rules for this person, this platform and this topic, and Claude writes the words.
+2. **Press the right Option key + M in any reply box** (the Option key next to M; Alt+M on Windows). A small cat sits on the box. The graph picks the rules for this person, this platform and this topic, and Claude writes the words.
 3. **Edit it and send.** The Learner compares what it wrote with what you sent and saves the difference as a rule, on the graph and on the key.
 4. **Pull the key out.** The laptop deletes your graph (`GRAPH.DELETE`). The next draft is generic. Plug the key into another laptop, and your voice is back, with everything it learned.
 
@@ -212,7 +212,7 @@ LinkedIn and X direct messages are left out on purpose: the cat doesn't appear t
 
 ## Try it
 
-**Live demo: https://purrsona-production.up.railway.app**. You get your own key and your own graph, and nobody else can see them. Start an empty key that learns how you write, or try the demo key (Maulik's voice with made-up people) to see everything at once. Draft on the practice page with nothing to install, or point the extension at it: right-click the toolbar cat → **Options** → **The online demo**. Each visitor has an hourly limit on drafts, and a key nobody uses for 3 hours is forgotten. The hardware key is in the video.
+**Live demo: https://purrsona-production.up.railway.app**. You get your own key and your own graph, and nobody else can see them. Start an empty key that learns how you write, or try the demo key (Maulik's voice with made-up people) to see everything at once. Draft on the practice page with nothing to install (click a reply box, press **right Option + M**), or point the extension at it: right-click the toolbar cat → **Options** → **The online demo**. Each visitor has an hourly limit on drafts, and a key nobody uses for 3 hours is forgotten. The hardware key is in the video.
 
 **Run it locally** (about 10 minutes). You need Docker Desktop, [uv](https://docs.astral.sh/uv/getting-started/installation/), Chrome, and your own Anthropic API key (a draft costs about 1–2 cents).
 
@@ -226,9 +226,9 @@ uv run uvicorn purrsona.app:app --port 8765 --reload
 ```
 
 Then open:
-1. **http://localhost:8765/practice/**: a made-up feed with the cat already running. Click a reply box, press Option+M (Alt+M on Windows and Linux), click the cat for "shorter" or "why?", edit and press Reply, then unplug the key from the header and try again.
+1. **http://localhost:8765/practice/**: a made-up feed with the cat already running. Click a reply box, press **right Option + M** (the Option key right of the space bar, next to M; Alt+M on Windows and Linux), click the cat for "shorter" or "why?", edit and press Reply, then unplug the key from the header and try again.
 2. **http://localhost:8765/dashboard/**: your live voice graph, your writing rules (forget any of them), what the key has learned, and the agents' handoffs.
-3. **The Chrome extension**: `chrome://extensions` → Developer mode → Load unpacked → the `extension/` folder (or unzip [the release](https://github.com/Maulik176/purrsona/releases/latest) and pick that folder). Open LinkedIn or X, click a comment box, press Option+M. The cat icon in Chrome's toolbar (or "dashboard ↗" in the cat's chat) opens your dashboard.
+3. **The Chrome extension**: `chrome://extensions` → Developer mode → Load unpacked → the `extension/` folder (or unzip [the release](https://github.com/Maulik176/purrsona/releases/latest) and pick that folder). Open LinkedIn or X, click a comment box, press **right Option + M**. The cat icon in Chrome's toolbar (or "dashboard ↗" in the cat's chat) opens your dashboard.
 4. **http://localhost:3001**: FalkorDB Browser, with the graph `voice:demo-maulik` while the key is plugged in.
 
 ### Use the LilyGO T-Display-S3

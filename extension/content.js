@@ -568,7 +568,7 @@
       return;
     }
     if (ctx.mode === "note" && !note) {
-      cat.say("Type a rough message first, then press ⌥M<div class=\"muted\">here I only use your own words, never the conversation</div>", { ms: 5000 });
+      cat.say("Type a rough message first, then press right ⌥ Option + M<div class=\"muted\">here I only use your own words, never the conversation</div>", { ms: 5000 });
       linger(5000);
       undoStray(box, noteSnapshot);
       return;
