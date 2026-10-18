@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Purrsona",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "description": "Your writing voice on a key you own. Option+M drafts replies to public posts (LinkedIn, X, Reddit) and rewrites your own words in private apps (Slack, Teams, Gmail), where it never reads the conversation.",
   "icons": {
     "16": "icons/icon16.png",
