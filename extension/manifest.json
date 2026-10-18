@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Purrsona",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Your writing voice on a key you own. Option+M drafts replies to public posts (LinkedIn, X, Reddit) and rewrites your own words in private apps (Slack, Teams, Gmail), where it never reads the conversation.",
   "icons": {
     "16": "icons/icon16.png",
@@ -14,7 +14,8 @@
   ],
   "host_permissions": [
     "http://127.0.0.1:8765/*",
-    "http://localhost:8765/*"
+    "http://localhost:8765/*",
+    "https://purrsona-production.up.railway.app/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -43,7 +44,9 @@
     {
       "matches": [
         "http://localhost:8765/",
-        "http://127.0.0.1:8765/"
+        "http://127.0.0.1:8765/",
+        "http://localhost:8765/console/*",
+        "http://127.0.0.1:8765/console/*"
       ],
       "js": [
         "console-trigger.js"
@@ -87,5 +90,9 @@
         "http://127.0.0.1:8765/*"
       ]
     }
-  ]
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
 }

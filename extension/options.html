@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purrsona settings</title>
+<style>
+  :root { --bg: #121318; --card: #1d1f27; --line: #2c303b; --text: #eceef3; --muted: #9196a5; --amber: #ff9f43; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 560px; margin: 48px auto; padding: 0 16px; }
+  h1 { font: 600 28px/1.2 Georgia, serif; margin: 0 0 6px; display: flex; align-items: center; gap: 12px; }
+  h1 img { width: 40px; height: 40px; border-radius: 10px; }
+  p { color: var(--muted); }
+  label { display: flex; gap: 12px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin: 12px 0; cursor: pointer; }
+  label:has(input:checked) { border-color: var(--amber); }
+  label b { display: block; }
+  label span { color: var(--muted); font-size: 13px; }
+  input { accent-color: var(--amber); margin: 4px 0 0; }
+  #saved { color: var(--amber); min-height: 1.5em; }
+</style>
+</head>
+<body>
+<main>
+  <h1><img src="icons/icon128.png" alt="">Where does the cat think?</h1>
+  <p>The cat needs a Purrsona bridge: the part that holds your voice graph and talks to Claude.</p>
+  <label><input type="radio" name="bridge" value="http://127.0.0.1:8765">
+    <div><b>On this laptop</b><span>127.0.0.1:8765, running from the repo (see "Try it" in the README). Your voice never leaves your machine.</span></div></label>
+  <label><input type="radio" name="bridge" value="https://purrsona-production.up.railway.app">
+    <div><b>The online demo</b><span>No setup. You get your own key and graph that nobody else can see; it's forgotten after 3 hours unused.</span></div></label>
+  <p id="saved"></p>
+</main>
+<script src="options.js"></script>
+</body>
+</html>

@@ -12,7 +12,7 @@
 
 <p align="center">
   <!-- TODO(Sunday): real links -->
-  <b>Demo video</b> (link on submission day) · <a href="#try-it">Run it locally</a> · <b>Blog</b> (link on submission day)
+  <a href="https://purrsona-production.up.railway.app"><b>Live demo</b></a> · <b>Demo video</b> (link on submission day) · <a href="#try-it">Run it locally</a> · <b>Blog</b> (link on submission day)
 </p>
 
 <p align="center">
@@ -182,6 +182,8 @@ LinkedIn and X direct messages are left out on purpose: the cat doesn't appear t
 | Teams | not tested yet |
 
 ## Try it
+
+**Live demo: https://purrsona-production.up.railway.app**. You get your own key and your own graph, and nobody else can see them. Start an empty key that learns how you write, or try the demo key (Maulik's voice with made-up people) to see everything at once. Draft on the practice page with nothing to install, or point the extension at it: right-click the toolbar cat → **Options** → **The online demo**. Each visitor has an hourly limit on drafts, and a key nobody uses for 3 hours is forgotten. The hardware key is in the video.
 
 **Run it locally** (about 10 minutes). You need Docker Desktop, [uv](https://docs.astral.sh/uv/getting-started/installation/), Chrome, and your own Anthropic API key (a draft costs about 1–2 cents).
 
@@ -430,7 +432,6 @@ We can walk you through any line of it.
 - The hardware key: a hash chain over its memory log, flash encryption, and an eject button that shows "Forgotten" on its screen before you pull it out.
 - Batched replay, so plug-in stays fast however much the key has learned.
 - Community detection, so the graph also picks example replies from people you write to the same way.
-- A hosted bridge where every visitor gets their own key and graph.
 
 ## Credits
 

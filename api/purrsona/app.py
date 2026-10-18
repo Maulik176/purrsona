@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
@@ -472,6 +472,19 @@ def reset_key(req: PlugRequest):
 
 
 # The extension's scripts, served so the practice page can run the cat without installing anything.
+@app.get("/", include_in_schema=False)
+def home():
+    """Online, a judge lands on the dashboard (it offers their own key); locally "/" stays the demo console."""
+    if visitors.HOSTED:
+        return RedirectResponse("/dashboard/")
+    return FileResponse(Path(__file__).parent / "static" / "index.html")
+
+
+@app.get("/console/", include_in_schema=False)
+def console():
+    return FileResponse(Path(__file__).parent / "static" / "index.html")
+
+
 app.mount("/ext", StaticFiles(directory=Path(__file__).resolve().parents[2] / "extension"), name="extension")
 
 # The demo console and the practice page (served last so the API routes above take precedence).
