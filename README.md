@@ -435,6 +435,10 @@ We can walk you through any line of it.
 - Community detection, so the graph also picks example replies from people you write to the same way.
 - A hosted bridge where every visitor gets their own key and graph.
 
+## Credits
+
+The cat's meow is "Cat Meow 8" by sound_garage on Pixabay, used under the Pixabay Content License.
+
 ## License
 
 [MIT](LICENSE)
