@@ -103,7 +103,7 @@ A writing style is personal data. Purrsona keeps it on something you hold.
 | Learn | `APPEND` | one new memory on the key; it replies with the new count |
 | Unplug | `BYE`, or the cable is pulled | `GRAPH.DELETE voice:<key_id>`; the laptop forgets |
 
-**Status, honestly:** physical pairing, graph display, saving a memory, deleting the laptop graph on unplug, and restoring the memory after reconnecting have passed on the T-Display-S3 with **mocked AI**. The virtual key remains available for demos without hardware. See [physical key setup and remaining checks](firmware/README.md). <!-- TODO(Sunday): photo of the T-Display-S3 -->
+**Status, honestly:** physical pairing, graph display, saving a memory, deleting the laptop graph on unplug, and restoring the memory after reconnecting have passed on the T-Display-S3 with **mocked AI**. The virtual key remains available for demos without hardware. See [physical key setup and remaining checks](firmware/README.md) and [key video evidence](video/README.md). <!-- TODO(Sunday): photo of the T-Display-S3 -->
 
 ## One database, many voices
 
