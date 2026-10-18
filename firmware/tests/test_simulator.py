@@ -101,6 +101,49 @@ def test_ready_graph_still_opens_if_drafting_starts_during_animation(board, trus
     assert "Waiting for your laptop" not in words(board)
 
 
+def test_total_rule_count_follows_status_and_survives_navigation(board, trust):
+    key = unlock(board, trust)
+    # The view contains one node; its capped size must never become the rule count.
+    key.ack("GRAPH_VIEW", revision=1, nodes=[{"id": "u", "kind": "User", "label": "Demo"}], edges=[], truncated=True)
+    key.ack("STATUS", state="ready", memories=0, rules=123)
+    board.command("!tick 80")
+    assert "123 rules. Opening your graph..." in words(board)
+    advance(board, key, 1900)  # Old bridges can omit the optional count.
+    assert "123 rules" in words(board) and "DEMO" in words(board)
+    board.command("!button-b"); board.command("!button-b")
+    key.ack("STATUS", state="drafting", rules=123)
+    board.command("!tick 80")
+    assert "DRAFTING" in words(board) and "123 rules" in words(board)
+    assert "A More   B Graph   Hold A Back" in words(board)
+    key.ack("STATUS", state="learning", rules=124)
+    board.command("!tick 80")
+    assert "SAVING" in words(board) and "124 rules" in words(board)
+    key.ack("STATUS", state="ready", memories=0, rules=2**53 - 1)
+    board.command("!tick 80")
+    assert all(0 <= t["x"] <= 320 - t["width"] and 0 <= t["y"] <= 170 - t["height"] for t in board.frame()["texts"])
+    board.disconnect(); board.command("!tick 80")
+    assert "Waiting for your laptop" in words(board)
+    assert not any("rules" in word for word in words(board))
+    assert board.frame()["nodes"] == 0
+    key = unlock(board, trust)
+    key.ack("GRAPH_VIEW", revision=1, nodes=[], edges=[], truncated=False)
+    advance(board, key, 80); advance(board, key, 1900)
+    assert "Your graph is empty" in words(board)
+    assert not any("rules" in word for word in words(board))
+    key.ack("STATUS", state="ready", memories=0, rules=0)
+    board.command("!tick 80")
+    assert "0 rules" in words(board)
+
+
+@pytest.mark.parametrize("invalid", [-1, True, 1.5, "33", None, 2**53])
+def test_cpp_status_rejects_invalid_rule_count_atomically(board, trust, invalid):
+    key = unlock(board, trust)
+    key.ack("STATUS", state="ready", memories=0, rules=33)
+    with pytest.raises(ProtocolError):
+        key.ack("STATUS", state="drafting", rules=invalid)
+    assert board.frame()["screen"] == "ready"
+
+
 def test_lcd_text_stays_in_bounds_for_long_valid_laptop_name(board):
     board.connect()
     board.send(b'{"v":1,"type":"PAIR_BEGIN","id":"p","laptop_id":"' + b'W' * 64 + b'"}\n')
@@ -146,6 +189,7 @@ def test_full_app_draft_learn_and_power_cycle_with_cpp_board(demo):
     assert client.get("/sim/").status_code == 200
     assert client.get("/practice/").status_code == 200
     connect_demo(client)
+    wait_until(lambda: "33 rules" in words(board))
     draft = client.post("/draft", json={"person_id": "priya-nair", "person_name": "Priya Nair", "platform": "linkedin", "post_text": "We launched"})
     assert draft.status_code == 200 and draft.json()["mode"] == "voice"
     assert any(query["query"] == "RULES_FOR_CONTEXT" and query["rows"] > 0 for query in draft.json()["queries"])
@@ -156,6 +200,7 @@ def test_full_app_draft_learn_and_power_cycle_with_cpp_board(demo):
     assert saved.status_code == 200 and saved.json()["saved"]
     assert saved.json()["learned"][0]["text"] == "Keeps replies to Priya short."
     assert board.frame()["events"] == 1
+    wait_until(lambda: "34 rules" in words(board))
     client.post("/sim/command", json={"command": "restart"}).raise_for_status()
     assert not client.get("/key").json()["plugged"]
     assert not bridge.db.list_graphs()
@@ -163,8 +208,35 @@ def test_full_app_draft_learn_and_power_cycle_with_cpp_board(demo):
     data = client.get("/dashboard/data").json()
     assert data["counts"]["memories"] == 1 and data["counts"]["learned"] == 1
     assert data["memories"][0]["rules"] == ["Keeps replies to Priya short."]
+    wait_until(lambda: "34 rules" in words(board))
     restored_trail = client.get(f"/trail/{draft.json()['draft_id']}").json()["steps"]
     assert restored_trail[0]["queries"] == traced_queries
+
+
+def test_draft_screen_tracks_actual_request_until_it_finishes(demo, monkeypatch):
+    from purrsona import app as api
+    client, board, bridge = demo
+    connect_demo(client)
+    wait_until(lambda: "33 rules" in words(board))
+    writing, finish = threading.Event(), threading.Event()
+
+    def slow_draft(*args, **kwargs):
+        writing.set()
+        assert finish.wait(timeout=5)
+        return "Congratulations."
+
+    monkeypatch.setattr(api, "write_draft", slow_draft)
+    with ThreadPoolExecutor() as pool:
+        pending = pool.submit(client.post, "/draft", json={"person_id": "priya-nair", "person_name": "Priya", "platform": "linkedin", "post_text": "We launched"})
+        try:
+            assert writing.wait(timeout=3)
+            wait_until(lambda: "DRAFTING" in words(board))
+            assert "33 rules" in words(board)
+        finally:
+            finish.set()
+        assert pending.result(timeout=3).status_code == 200
+    wait_until(lambda: "MEMORY CONNECTED" in words(board))
+    assert "33 rules" in words(board)
 
 
 def test_lost_save_ack_returns_failure_but_reconnect_recovers_one_event(demo):

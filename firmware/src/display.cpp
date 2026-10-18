@@ -55,6 +55,7 @@ void MemoryDisplay::graph(KeyDevice &device) {
     auto nodes = device.graph["nodes"].as<JsonArrayConst>();
     title(device.screen == "drafting" ? "DRAFTING" : device.screen == "learning" ? "SAVING" : "MEMORY CONNECTED");
     if (device.graph["truncated"].as<bool>()) text("DEMO", 85, 8, MUTED);
+    if (device.rulesKnown) text(std::to_string(device.ruleCount) + " rules", 212, 154, TEAL);
     if (nodes.size() == 0) { text("Your graph is empty", 75, 78, MUTED, 2); return; }
     if (navigation.details) {
         JsonVariantConst node = nodes[navigation.center];
@@ -128,7 +129,9 @@ void MemoryDisplay::render(KeyDevice *device, uint32_t now, bool needsFormat) {
         } else if (device->screen == "loading" || ready) {
             title("MEMORY KEY"); brain(now);
             text(ready ? "Memory connected" : "Loading your memories", 78, 120, TEXT, 2);
-            text(ready ? "Opening your graph..." : "Keep the cable connected", 78, 148, MUTED);
+            text(ready ? (device->rulesKnown ? std::to_string(device->ruleCount) + " rules. Opening your graph..."
+                                            : "Opening your graph...")
+                       : "Keep the cable connected", 78, 148, MUTED);
         } else if (device->screen == "initialized") {
             title("SETUP COMPLETE"); text("Memory initialized", 20, 62, TEAL, 2);
             text("Release both buttons to restart", 20, 106, MUTED);

@@ -270,8 +270,11 @@ class VirtualKey:
                 if request["state"] == "ready":
                     require(self.pulled and request["memories"] == len(self.storage.records),
                             "Ready needs a completed pull and current memory count", "INVALID_STATE")
-                self.status = {name: deepcopy(request[name]) for name in ("state", "memories", "message")
-                               if name in request}
+                status = {name: deepcopy(request[name]) for name in ("state", "memories", "message", "rules")
+                          if name in request}
+                if "rules" not in status and self.status and "rules" in self.status:
+                    status["rules"] = self.status["rules"]
+                self.status = status
                 self.last_activity = now
                 return [self.reply(request, "ACK")]
             if kind == "GRAPH_VIEW":
