@@ -12,7 +12,7 @@
 
 <p align="center">
   <!-- TODO(Sunday): real links -->
-  <b>Demo video</b> (link on submission day) · <b>Live demo</b> (link on submission day) · <a href="#try-it">Run it locally</a> · <b>Blog</b> (link on submission day)
+  <b>Demo video</b> (link on submission day) · <a href="#try-it">Run it locally</a> · <b>Blog</b> (link on submission day)
 </p>
 
 <p align="center">
@@ -178,13 +178,10 @@ LinkedIn and X direct messages are left out on purpose: the cat doesn't appear t
 | LinkedIn: comments, replies, new posts, company pages | tested on the real site |
 | X: replies and new posts | tested on the real site |
 | Gmail, Slack | tested on the real site |
-| Reddit | built from Reddit's page structure; real-site test in progress |
+| Reddit: comments and replies | tested on the real site |
 | Teams | not tested yet |
 
 ## Try it
-
-<!-- TODO(Sunday): hosted demo link -->
-**Live demo:** coming with the submission. Each visitor gets their own virtual key and graph.
 
 **Run it locally** (about 10 minutes). You need Docker Desktop, [uv](https://docs.astral.sh/uv/getting-started/installation/), Chrome, and your own Anthropic API key (a draft costs about 1–2 cents).
 
