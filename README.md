@@ -52,6 +52,35 @@ Take FalkorDB out and Purrsona is a chatbot with a cat. Every part of it is a gr
 | What's my signature style? | PageRank over the links from drafts to the rules they used |
 | Forget me | each key has its own graph; delete it, and the memory is gone from this laptop |
 
+### The voice graph
+
+```mermaid
+flowchart LR
+  U((User)) -->|KNOWS| P((Person))
+  P -->|IN_CIRCLE| C((Circle))
+  P -->|IS| R((Relationship))
+  R -->|PART_OF| C
+  P -->|HAS_RULE| S[StyleRule]
+  C -->|HAS_RULE| S
+  T((Topic)) -->|HAS_RULE| S
+  PL((Platform)) -->|HAS_RULE| S
+  U -->|HAS_RULE| S
+  S -->|LEARNED_FROM| E[Edit or Post]
+  S -->|OVERRIDES| S0[older StyleRule]
+  D[Draft] -->|USED| S
+  D -->|TO| P
+  D -->|ON| PL
+  D -->|ABOUT| T
+  E -->|OF| D
+  D -->|HAS_STEP| ST[Step]
+  ST -->|NEXT| ST2[Step]
+  ST -->|FLAGGED or TAUGHT| S
+```
+
+When two rules of the same kind compete, the narrowest scope wins: Person → Circle → Topic → Platform → You. Phrase rules stack instead. A retired rule keeps its history but is never applied. Every label and property: [`docs/GRAPH-MODEL.md`](docs/GRAPH-MODEL.md).
+
+The agents read it only through fixed, parameterised Cypher (`ro_query` for reads): the main queries are under [The Cypher it depends on](#under-the-hood), and the one behind every "why?" is in [Every draft explains itself](#every-draft-explains-itself).
+
 <table>
   <tr>
     <td width="50%"><img src="docs/media/cat-new-person.png" alt="The cat asks: Kabir is new to me. Who is Kabir to you?"><br><sub><b>Someone new.</b> Kabir isn't in the graph, so the cat says so and asks once. A circle, or your own words like "my new manager", decides which rules he inherits.</sub></td>
@@ -256,35 +285,6 @@ flowchart LR
 ```
 
 The extension only reads the box you're in and the post you're replying to, and only the service worker talks to the bridge. The bridge is the only part that talks to the key, to FalkorDB and to Claude.
-</details>
-
-<details>
-<summary><b>The graph model</b></summary>
-
-```mermaid
-flowchart LR
-  U((User)) -->|KNOWS| P((Person))
-  P -->|IN_CIRCLE| C((Circle))
-  P -->|IS| R((Relationship))
-  R -->|PART_OF| C
-  P -->|HAS_RULE| S[StyleRule]
-  C -->|HAS_RULE| S
-  T((Topic)) -->|HAS_RULE| S
-  PL((Platform)) -->|HAS_RULE| S
-  U -->|HAS_RULE| S
-  S -->|LEARNED_FROM| E[Edit or Post]
-  S -->|OVERRIDES| S0[older StyleRule]
-  D[Draft] -->|USED| S
-  D -->|TO| P
-  D -->|ON| PL
-  D -->|ABOUT| T
-  E -->|OF| D
-  D -->|HAS_STEP| ST[Step]
-  ST -->|NEXT| ST2[Step]
-  ST -->|FLAGGED or TAUGHT| S
-```
-
-When two rules of the same kind compete, the narrowest scope wins: Person → Circle → Topic → Platform → You. Phrase rules stack instead. A retired rule keeps its history but is never applied. Every label and property: [`docs/GRAPH-MODEL.md`](docs/GRAPH-MODEL.md).
 </details>
 
 <details>
