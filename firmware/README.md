@@ -108,6 +108,30 @@ process per state directory.
    `http://localhost:8765/practice/`, draft a message, edit it, and press Reply.
    Unplug, reconnect, approve again, and confirm that the learned memory returns.
 
+## Compare USB and virtual drafts
+
+Stop the hardware demo/API so it releases the serial port. From the repo root,
+run `bun run check-usb-parity` and press **B** at the unlock prompt. If needed,
+select a board with `bun run check-usb-parity --port /dev/cu.usbmodem1101`.
+
+This reads the board's actual snapshot and saved events, builds a temporary
+virtual copy, and compares four cases: a work reply, a private message, a new
+recipient, and your own post. It exercises the real prompt builder and Critic,
+then compares the complete model requests, chosen rules, person/topic context,
+and drafts. Only the model response is mocked, with output derived from the
+prompt so different inputs cannot silently return the same canned reply.
+
+Expect a JSON `"result": "PASS"`. No AI key or Docker is needed. The check uses
+an isolated FalkorDB, removes the temporary copy afterwards, and never appends
+or resets board memories. The normal signed-unlock counter advances. This is a
+transport/context parity check, not a test of live-model quality or deterministic
+Claude output. Restart `bun run hardware-demo` and approve B to resume the demo.
+
+Firmware updates preserve the board's existing seed. If the repo seed has changed,
+compare against the snapshot read from the board, not the newer file in Git.
+`bun run allcheck --force` also runs this comparison against the C++ firmware,
+including learned, sent, and forgotten events replayed after restart.
+
 ## Two-button controls
 
 | Screen | A / GPIO 0 | B / GPIO 14 |
