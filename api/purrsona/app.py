@@ -2,6 +2,7 @@
 
 Run from the api/ folder:  uv run uvicorn purrsona.app:app --port 8765
 """
+import re
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -17,7 +18,7 @@ from pydantic import BaseModel
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
-from . import critic, learning, relationships  # noqa: E402
+from . import critic, learning, relationships, visitors  # noqa: E402
 from .db import connect, rows  # noqa: E402
 from .key_bridge import MemoryBridge  # noqa: E402
 from .key_protocol import ProtocolError  # noqa: E402
@@ -39,8 +40,45 @@ app = FastAPI(title="Purrsona bridge", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 db = connect()
-memory = MemoryBridge(db)
-state = memory.state
+if visitors.HOSTED:  # online: every visitor gets their own virtual key and graph (visitors.py)
+    hub = visitors.Visitors(lambda: MemoryBridge(db, usb_enabled=False))
+    memory, state = visitors.CurrentBridge(hub), visitors.CurrentState()
+else:  # on your laptop: one key, yours
+    memory = MemoryBridge(db)
+    state = memory.state
+SEEDS = {"demo-maulik", "fresh"}  # the snapshots a new virtual key can start from
+KEY_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
+API = ("/key", "/people", "/person", "/draft", "/refine", "/learn", "/relationship", "/why/", "/trail/",
+       "/dashboard/data", "/dashboard/graph", "/rules/")
+
+
+@app.middleware("http")
+async def visitor_key(request, call_next):
+    """Online only: find (or give) this browser its own key, and keep its Claude calls within limits."""
+    if not visitors.HOSTED:
+        return await call_next(request)
+    asked = request.headers.get("x-purrsona-key") or request.query_params.get("key") or request.cookies.get(visitors.COOKIE)
+    visitor = asked if asked and visitors.VALID.match(asked) else visitors.new_id()
+    path = request.url.path
+    if path.startswith(API) and path not in ("/dashboard/", "/dashboard", "/key-events.js"):
+        try:
+            bridge = hub.bridge_for(visitor)
+            if request.method == "POST" and path in visitors.CLAUDE_PATHS:
+                hub.spend(visitor)
+        except visitors.Full as exc:
+            return JSONResponse(status_code=429, content={"detail": str(exc)})
+        tokens = visitors.current_bridge.set(bridge), visitors.current_id.set(visitor)
+        try:
+            response = await call_next(request)
+        finally:
+            visitors.current_bridge.reset(tokens[0])
+            visitors.current_id.reset(tokens[1])
+    else:
+        response = await call_next(request)
+    if request.cookies.get(visitors.COOKIE) != visitor:
+        response.set_cookie(visitors.COOKIE, visitor, max_age=7 * 24 * 3600, httponly=True, samesite="lax",
+                            secure=request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
+    return response
 _client: anthropic.Anthropic | None = None
 
 
@@ -58,6 +96,7 @@ def claude() -> anthropic.Anthropic:
 
 class PlugRequest(BaseModel):
     key_id: str = "demo-maulik"
+    seed: str | None = None  # "fresh" starts an empty key that learns your voice; "demo-maulik" the demo voice
 
 
 class LearnRequest(BaseModel):
@@ -148,8 +187,16 @@ def get_person(id: str):
 
 @app.post("/key/plug")
 def plug(req: PlugRequest):
+    if req.seed is not None and req.seed not in SEEDS:
+        raise HTTPException(400, f"Start from one of: {', '.join(sorted(SEEDS))}")
+    if visitors.HOSTED:  # online your key is always your own; the request only picks how it starts
+        key_id, seed = visitors.current_id.get(), req.seed or "demo-maulik"
+    else:
+        if not KEY_NAME.match(req.key_id):
+            raise HTTPException(400, "A key name is lowercase letters, digits and dashes")
+        key_id, seed = req.key_id, req.seed
     try:
-        info = memory.plug_virtual(req.key_id)
+        info = memory.plug_virtual(key_id, seed)
     except FileNotFoundError:
         raise HTTPException(404, f"No virtual key named {req.key_id}")
     return info
@@ -360,7 +407,8 @@ def dashboard_data():
     rules = rows(graph.ro_query(ALL_RULES))
     history = rows(graph.ro_query(DRAFT_HISTORY))
     live = [h for h in history if not h["seeded"]]
-    return {"plugged": True, "key_id": key_id, **rows(graph.ro_query(COUNTS))[0],
+    return {"plugged": True, "key_id": key_id, "user": rows(graph.ro_query("MATCH (u:User) RETURN u.name AS name"))[0]["name"],
+            **rows(graph.ro_query(COUNTS))[0],
             "counts": {"people": len(rows(graph.ro_query(PEOPLE_STATS))),
                        "rules": sum(not r["retired"] for r in rules),
                        "learned": sum(r["learned"] and not r["retired"] for r in rules),
@@ -418,8 +466,9 @@ def move_person(req: MoveRequest):
 @app.post("/key/reset")
 def reset_key(req: PlugRequest):
     """Demo helper: wipe what the virtual key learned (back to the seed), then re-plug if plugged."""
-    memory.reset_virtual(req.key_id)
-    return {"key_id": req.key_id, "memories": 0}
+    key_id = visitors.current_id.get() if visitors.HOSTED else req.key_id
+    memory.reset_virtual(key_id)
+    return {"key_id": key_id, "memories": 0}
 
 
 # The extension's scripts, served so the practice page can run the cat without installing anything.

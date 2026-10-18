@@ -1,0 +1,13 @@
+.git
+.env
+.claude
+private
+**/.venv
+**/.venv.nosync
+**/.venv-icloud-old
+**/__pycache__*
+**/.pytest_cache
+firmware
+docs
+node_modules
+**/.DS_Store

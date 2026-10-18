@@ -1,0 +1,75 @@
+{
+  "key_id": "fresh",
+  "user": {
+    "id": "you",
+    "name": "You"
+  },
+  "user_topics": [],
+  "circles": [
+    "Friends",
+    "Work",
+    "Clients",
+    "Community"
+  ],
+  "platforms": [
+    "linkedin",
+    "x",
+    "reddit",
+    "slack",
+    "teams",
+    "email"
+  ],
+  "topics": [],
+  "people": [],
+  "phrases": [],
+  "posts": [],
+  "edits": [],
+  "rules": [],
+  "topic_keywords": {},
+  "relationship_words": {
+    "Work": [
+      "manager",
+      "boss",
+      "skip-level",
+      "teammate",
+      "colleague",
+      "coworker",
+      "mentor",
+      "lead",
+      "intern",
+      "recruiter"
+    ],
+    "Clients": [
+      "client",
+      "customer",
+      "vendor",
+      "partner",
+      "stakeholder",
+      "prospect"
+    ],
+    "Friends": [
+      "friend",
+      "best friend",
+      "college friend",
+      "school friend",
+      "cousin",
+      "brother",
+      "sister",
+      "family",
+      "roommate",
+      "neighbour"
+    ],
+    "Community": [
+      "founder",
+      "creator",
+      "organiser",
+      "organizer",
+      "community",
+      "follower",
+      "influencer",
+      "speaker",
+      "hackathon organiser",
+      "someone i follow"
+    ]
+  }
+}

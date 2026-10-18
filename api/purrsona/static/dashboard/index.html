@@ -108,6 +108,8 @@ code, .cy { font: 12px/1.5 "SF Mono", Menlo, Consolas, monospace; }
 .cypher.on { display: block; }
 .cypher pre { margin: 8px 0; padding: 10px 12px; background: #0f1015; border: 1px solid var(--line); border-radius: 10px; white-space: pre-wrap; color: #ffc078; }
 .cypher a { color: var(--amber2); }
+.plugchoice { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.bigkey + div .plugchoice { justify-content: flex-start; }
 .move { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
 .move select { margin-left: 8px; background: var(--card2); color: var(--text); border: 1px solid var(--amber); border-radius: 8px; padding: 4px 8px; font: inherit; cursor: pointer; }
 .move select:hover, .move select:focus { background: #2b2f3a; outline: none; box-shadow: 0 0 0 3px rgba(255,159,67,.18); }
@@ -181,7 +183,7 @@ table.modes th { color: var(--muted); font-weight: 500; border-top: 0; }
 <main>
   <!-- Home -->
   <section class="page" id="page-home">
-    <h1>Hello, <span id="hello">Maulik</span>.</h1>
+    <h1 id="hello">Hello.</h1>
     <p class="sub">Your voice at a glance: who you write to, what Purrsona has learned, and how the agents work together.</p>
     <div id="homeBody"></div>
   </section>
@@ -338,13 +340,14 @@ async function load() {
 
 function render() {
   $("keyDot").classList.toggle("on", !!D.plugged);
+  $("hello").textContent = D.user && D.user !== "You" ? `Hello, ${D.user}.` : "Hello.";
   $("keyText").textContent = D.error ? "Bridge not running" : PurrsonaKey.label(keyState || { phase: "waiting" });
   renderHome(); renderRules(); renderMemories(); renderAgents(); renderKey();
   show(location.hash.slice(1) || "home");
 }
 
 const plugWall = (msg) => `<div class="card plugwall"><svg width="70" height="70" viewBox="0 0 64 64"><ellipse cx="31" cy="45" rx="16" ry="12.5" fill="#3b4050"/><polygon points="18,19 21,5 28,14" fill="#3b4050"/><polygon points="34,14 41,5 44,19" fill="#3b4050"/><circle cx="31" cy="24" r="13" fill="#3b4050"/><path d="M23 24h6M33 24h6" stroke="#ffc44d" stroke-width="2" stroke-linecap="round"/></svg>
-  <h2>${esc(keyState ? PurrsonaKey.label(keyState) : msg)}</h2><p class="muted">The voice graph only exists while your key is plugged in.</p>${keyState?.usb ? '<p class="muted">Connect USB and approve with B on the key.</p>' : '<button class="btn primary" onclick="plug()">Plug in the key</button>'}</div>`;
+  <h2>${esc(keyState ? PurrsonaKey.label(keyState) : msg)}</h2><p class="muted">The voice graph only exists while your key is plugged in.</p>${keyState?.usb ? '<p class="muted">Connect USB and approve with B on the key.</p>' : `<div class="plugchoice"><button class="btn primary" onclick="plug('fresh')">Start your own key</button><button class="btn" onclick="plug()">Try the demo key</button></div><p class="faint" style="margin-top:8px">Your own key starts empty and learns how you write as you send. The demo key comes with Maulik's voice and made-up people, so you can see everything at once.</p>`}</div>`;
 
 // ---- Home -------------------------------------------------------------------------------------
 function renderHome() {
@@ -471,9 +474,13 @@ function renderKey() {
       <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn danger" onclick="unplug()">${keyState?.usb ? "Eject key" : "Unplug"}: forget everything on this laptop</button>
       ${keyState?.usb ? "" : '<button class="btn" onclick="resetKey()">Reset what the key learned</button>'}</div>`
     : `<div class="bigkey"><span class="dot" style="width:12px;height:12px"></span><div><b>No key plugged in</b><div class="faint">The laptop holds none of your voice right now.</div></div></div>
-      <div style="margin-top:16px">${keyState?.usb ? '<p class="muted">Connect USB and press B on the key.</p>' : '<button class="btn primary" onclick="plug()">Plug in the key</button>'}</div>`;
+      <div style="margin-top:16px">${keyState?.usb ? '<p class="muted">Connect USB and press B on the key.</p>' : `<div class="plugchoice"><button class="btn primary" onclick="plug('fresh')">Start your own key</button><button class="btn" onclick="plug()">Try the demo key</button></div><p class="faint" style="margin-top:8px">Your own key starts empty and learns how you write as you send. The demo key comes with Maulik's voice and made-up people, so you can see everything at once.</p>`}</div>`;
 }
-async function plug() { try { await api("/key/plug", { key_id: "demo-maulik" }); await load(); } catch (e) { toast(e.message); } }
+// "fresh": a new, empty key that learns your voice (online it's yours alone); otherwise the demo key.
+async function plug(seed) {
+  try { await api("/key/plug", seed === "fresh" ? { key_id: "my-voice", seed } : { key_id: "demo-maulik" }); graphCache = null; await load(); }
+  catch (e) { toast(e.message); }
+}
 async function unplug() { await api("/key/unplug", {}); graphCache = null; await load(); }
 async function resetKey() {
   if (!await ask("Reset the key?", "Forget everything the key learned and go back to its starting voice. This can't be undone.", "Reset")) return;

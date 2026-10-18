@@ -177,7 +177,7 @@ class MemoryBridge:
                 raise ProtocolError("STORAGE_ERROR", "Save interrupted; reconnect to check saved memories") from exc
             raise
 
-    def plug_virtual(self, key_id):
+    def plug_virtual(self, key_id, seed=None):
         require(not self.usb_enabled, "USB mode: connect the cable and approve on the display", "INVALID_STATE")
         with self.lock:
             if self.state["key_id"]:
@@ -185,7 +185,8 @@ class MemoryBridge:
             self.token += 1
             self.usb_status = "loading"
             self._publish()
-            info = keys.plug(self.db, key_id)
+            self.seed = seed  # the snapshot this key started from (None: the file named after the key)
+            info = keys.plug(self.db, key_id, seed)
             self.state["key_id"] = key_id
             self.usb_status, self.screen = "connected", "ready"
             self.rule_count = graph_summary(self.graph())["rules"]
@@ -198,7 +199,7 @@ class MemoryBridge:
         with self.lock:
             keys.reset_memories(key_id)
             if self.state["key_id"] == key_id:
-                self.plug_virtual(key_id)
+                self.plug_virtual(key_id, getattr(self, "seed", None))
 
     def unplug(self):
         with self.lock:

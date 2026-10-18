@@ -4,7 +4,17 @@ import os
 from falkordb import FalkorDB
 
 
+_embedded = None  # the hosted demo's own FalkorDB, started inside the container
+
+
 def connect() -> FalkorDB:
+    path = os.getenv("PURRSONA_EMBEDDED_DB")  # hosted demo: run FalkorDB in this process's container
+    if path:
+        global _embedded
+        from redislite.falkordb_client import FalkorDB as Embedded
+        port = int(os.getenv("FALKORDB_PORT", "6390"))
+        _embedded = _embedded or Embedded(path, serverconfig={"port": str(port), "bind": "127.0.0.1"})
+        return FalkorDB(host="127.0.0.1", port=port)
     return FalkorDB(
         host=os.getenv("FALKORDB_HOST", "localhost"),
         port=int(os.getenv("FALKORDB_PORT", "6380")),
