@@ -17,6 +17,7 @@ __pycache__/
 __pycache__.icloud-old/
 *.pyc
 .pytest_cache/
+.pio/
 
 # Node / extension builds
 node_modules/
