@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Purrsona · Board simulator</title>
+<style>
+:root{color-scheme:dark;--bg:#121318;--text:#eceef3;--muted:#a0a8b7;--line:#344056;--amber:#ff9f43;--teal:#2dd4bf}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:780px;margin:40px auto;padding:0 24px 32px}h1{font-size:28px;letter-spacing:-.7px;margin:0 0 8px}p{margin:8px 0;color:var(--muted)}a{color:var(--teal)}
+.board{margin:28px 0 16px;background:#20232b;border:1px solid #454c5d;border-radius:22px;padding:20px;box-shadow:0 12px 40px #0004}
+img{display:block;width:100%;height:auto;aspect-ratio:320/170;background:#121318;image-rendering:pixelated;border-radius:4px}
+.buttons{display:flex;justify-content:space-between;margin-top:16px}.buttons button{min-width:70px;background:#353b49;color:var(--text);box-shadow:0 3px 0 #101217;touch-action:none}
+button{font:inherit;font-weight:600;border:1px solid var(--line);border-radius:10px;padding:11px 18px;background:transparent;color:var(--text);cursor:pointer;min-height:44px}
+button.primary{background:var(--amber);color:#1a1205;border-color:var(--amber)}button:hover{filter:brightness(1.15)}button:focus-visible,a:focus-visible{outline:3px solid var(--teal);outline-offset:4px}button:disabled{opacity:.5;cursor:wait}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}.hint{font-size:14px}.status{color:var(--text);min-height:25px}.status strong{color:var(--teal)}
+details{border-top:1px solid var(--line);padding-top:18px;margin-top:26px}summary{cursor:pointer}label{display:flex;align-items:center;gap:10px;margin:15px 0}input{width:18px;height:18px;accent-color:var(--amber)}
+#error{color:#ffb4a8;min-height:24px}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+@media(max-width:480px){main{margin-top:24px;padding:0 16px 24px}.board{padding:12px;border-radius:16px}h1{font-size:25px}}
+</style>
+<main>
+  <h1>Your memory key, on your laptop</h1>
+  <p>Connect the cable, press B to approve, and explore your graph.</p>
+  <p class="hint">Simulator · Actual firmware layout and fonts. USB, flash, buttons and AI are mocked. Uses synthetic memories and a public test identity.</p>
+  <div class="board">
+    <img id="screen" alt="T-Display screen loading" width="320" height="170">
+    <div class="buttons">
+      <button id="a" aria-label="Button A: next or cancel; hold to go back">A</button>
+      <button id="b" aria-label="Button B: approve or open">B</button>
+    </div>
+  </div>
+  <p class="hint">A: next or cancel · B: approve or open · Hold A: back<br>Keyboard: A, B, or Shift+A to go back.</p>
+  <p id="status" class="status" aria-live="polite">Reading the board…</p>
+  <div class="controls">
+    <button id="cable" class="primary">Connect cable</button>
+    <a href="/practice/" target="_blank" rel="noopener">Open practice page</a>
+    <a href="/dashboard/" target="_blank" rel="noopener">View full graph</a>
+  </div>
+  <p class="hint">Practice replies use fixed mock AI responses. Editing and sending one saves a real protocol event to the simulated board.</p>
+  <details>
+    <summary>Test a failure</summary>
+    <label><input id="lose" type="checkbox">Disconnect after the next save, before its acknowledgement</label>
+    <div class="controls">
+      <button id="restart">Power off and restart board</button>
+      <button id="fail">Make storage fail</button>
+    </div>
+    <p class="hint">Restart preserves saved memories. After a failure, restart and connect again to check what was saved.</p>
+  </details>
+  <p id="error" role="alert"></p>
+</main>
+<script>
+const $=id=>document.getElementById(id); let connected=false, busy=false, pressed=0, offline=false;
+async function command(command){
+  try{
+    $('error').textContent='';
+    const response=await fetch('/sim/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command})});
+    if(!response.ok)throw Error('That action failed. Restart the simulator and try again.');
+  }catch(error){$('error').textContent=error.message}
+}
+const labels={waiting:'Connect the cable to begin.',connecting:'Connecting…',awaiting_button:'Press B to unlock your memory.',loading:'Loading memories…',connected:'Memory connected.',disconnected:'Cable disconnected. Memories remain on the board.',ejected:'Ejected. Disconnect and reconnect the cable.',connection_failed:'Connection failed. Restart the board, then connect again.',save_interrupted:'Save interrupted. Reconnect to check what was saved.',needs_pairing:'The simulated identity is not trusted.'};
+async function refresh(){
+  if(busy)return;busy=true;
+  try{
+    const response=await fetch('/sim/state',{cache:'no-store'});if(!response.ok)throw Error('Cannot read the board.');
+    const state=await response.json();connected=state.connected;
+    if(offline){$('error').textContent='';offline=false}
+    $('screen').src='data:image/png;base64,'+state.image;
+    $('screen').alt=state.texts.filter(t=>!/^\s*[.\-:=+*#%@ ]+$/.test(t)).join('. ');
+    $('cable').textContent=connected?'Disconnect cable':'Connect cable';
+    const message=(labels[state.usb]||state.usb)+' '+state.memories+' saved '+(state.memories===1?'memory.':'memories.');
+    if($('status').textContent!==message)$('status').textContent=message;
+    $('lose').checked=state.lose_ack;
+  }catch(error){offline=true;$('error').textContent='Simulator stopped. Run bun run simulator to resume.'}
+  finally{busy=false;setTimeout(refresh,150)}
+}
+$('cable').onclick=()=>command(connected?'disconnect':'connect');
+$('b').onclick=()=>command('b');
+$('a').onpointerdown=e=>{pressed=performance.now();e.currentTarget.setPointerCapture(e.pointerId)};
+$('a').onpointerup=e=>{e.preventDefault();command(performance.now()-pressed>=700?'back':'a');pressed=0};
+$('a').onpointercancel=()=>{pressed=0};
+$('a').onclick=e=>{if(e.detail===0)command('a')};
+$('restart').onclick=()=>command('restart');$('fail').onclick=()=>command('fail_storage');$('lose').onchange=()=>command('lose_ack');
+document.addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||['INPUT','TEXTAREA'].includes(e.target.tagName))return;if(e.key.toLowerCase()==='a'||e.key.toLowerCase()==='b'){e.preventDefault();command(e.key.toLowerCase()==='a'?(e.shiftKey?'back':'a'):'b')}});
+refresh();
+</script>
+</html>
