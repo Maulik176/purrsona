@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/media/banner.svg" width="100%" alt="Purrsona: World’s First Portable Memory. Carry around your voice and memory. Plug into any device and it writes the way you write to each person, pulling all the memories attached with them. Pull it out, and you get control of your memory back.">
+  <img src="docs/media/banner.svg" width="100%" alt="Purrsona: portable memory for your writing voice. Carry around your voice and memory. Plug into any device and it writes the way you write to each person, pulling all the memories attached with them. Pull it out, and you get control of your memory back.">
 </p>
 
 <p align="center">
@@ -21,9 +21,9 @@
 
 ## The problem
 
-You don't write to your manager the way you write to your college friend, and neither of them gets what a client gets. AI writing tools give everyone one voice. It never tells you why a draft sounds the way it does. And whatever it learns about you lives on someone else's server.
+You don't write to your manager the way you write to your college friend, and neither of them gets what a client gets. AI writing tools give everyone one voice. They never tell you why a draft sounds the way it does. And whatever it learns about you lives on someone else's server.
 
-Purrsona is your personal portable memory engine that makes an AI’s reply customised to you. It keeps your voice in a graph: who you write to, what you're talking about and which platform you're on. It also keeps tracks of the rules that make each reply sound like you, each one linked with evidence in the graph. The graph itself lives on a portable memory engine that you can carry and connect with any device to access your memory. Once its plugged in, Purrsona writes like you. Pull it out and you have dettached your memory with it, making **Purrsona the first portable memory.**
+Purrsona is your personal portable memory engine that makes an AI’s reply customised to you. It keeps your voice in a graph: who you write to, what you're talking about and which platform you're on. It also keeps track of the rules that make each reply sound like you, each one linked with evidence in the graph. The graph itself lives on a portable memory engine that you can carry and connect with any device to access your memory. Once it's plugged in, Purrsona writes like you. Pull it out, and your memory leaves with you: **your voice, portable.**
 
 <p align="center">
   <img src="docs/media/memory-engine.jpg" width="760" alt="Purrsona's LilyGO T-Display-S3 memory engine held in front of a laptop, showing the brain graphic and Waiting for your laptop status">
@@ -88,11 +88,11 @@ Purrsona has three agents, and they never call each other. The bridge hands each
 
 Purrsona saves your writing style and realtionships in a memory engine.
 
-**The memory engine** is a LilyGO T-Display-S3: an ESP32-S3 with a 1.9-inch screen. Mustafa built its firmware. Its voice memory is a snapshot of your voice graph and an append-only log of everything it has learned since. The device handles graph queries and AI requests; the memory engine holds the memory, asks for consent and shows what's happening.
+**The memory engine** is a LilyGO T-Display-S3: an ESP32-S3 with a 1.9-inch screen. Mustafa built its firmware. Its voice memory is a snapshot of your voice graph and an append-only log of everything it has learned since. The laptop handles the graph queries and the AI requests; the memory engine holds the memory, asks for consent and shows what's happening.
 
 - **Memory travels with you.** Plug the memory engine into any device running the bridge: it sends the snapshot and the memory log, and the bridge rebuilds your graph and replays every memory in order.
 - **Every send is written back** to the memory engine as one more line in its log, the moment you send.
-- **Forgetting is physical.** Pull the memory engine out and the bridge deletes your graph from that device. Press its eject button first, and the screen confirms "Forgotten" before you unplug.
+- **Forgetting is physical.** Pull the memory engine out and the bridge deletes your graph from that device. Or press **Eject** on the dashboard first: the laptop deletes your graph and confirms "Forgotten" before you unplug.
 
 | Moment | device to key | What happens |
 |---|---|---|
@@ -189,6 +189,8 @@ LinkedIn and X direct messages are left out on purpose: the cat doesn't appear t
 ## Try it
 
 **Live demo: https://purrsona-production.up.railway.app**. You get your own key and your own graph, and nobody else can see them. Start an empty key that learns how you write, or try the demo key (Maulik's voice with made-up people) to see everything at once. Draft on the practice page with nothing to install (click a reply box, press **right Option + M**), or point the extension at it: right-click the toolbar cat → **Options** → **The online demo**. Each visitor has an hourly limit on drafts, and a key nobody uses for 3 hours is forgotten. The hardware key is in the video.
+
+> **Using the extension with the live demo?** It starts set to **On this laptop** (a bridge running on your machine at 127.0.0.1:8765). If you aren't running Purrsona locally, the cat says "Purrsona's bridge isn't running" and the toolbar cat opens a localhost page. Switch it once: right-click the toolbar cat → **Options** → **The online demo**. Then click the toolbar cat to open your dashboard, press **Start your own key**, and go to any LinkedIn, X or Gmail box. (In a Chrome Incognito window the extension is off; use a normal window.)
 
 **Run it locally** (about 10 minutes). You need Docker Desktop, [uv](https://docs.astral.sh/uv/getting-started/installation/), Chrome, and your own Anthropic API key (a draft costs about 1–2 cents).
 
