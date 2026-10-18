@@ -88,7 +88,7 @@ Purrsona has three agents, and they never call each other. The bridge hands each
 
 Purrsona saves your writing style and realtionships in a memory engine.
 
-**The memory engine** is a LilyGO T-Display-S3: an ESP32-S3 with a 1.9-inch screen. Mustafa built its firmware. Its voice memory is a snapshot of your voice graph and an append-only log of everything it has learned since. The laptop handles the graph queries and the AI requests; the memory engine holds the memory, asks for consent and shows what's happening.
+**The memory engine** is a LilyGO T-Display-S3: an ESP32-S3 with a 1.9-inch screen. (In the app, the dashboard and the cat's messages it's simply your **key**; the **virtual key** is the same thing in software, for anyone without the board.) Mustafa built its firmware. Its voice memory is a snapshot of your voice graph and an append-only log of everything it has learned since. The laptop handles the graph queries and the AI requests; the memory engine holds the memory, asks for consent and shows what's happening.
 
 - **Memory travels with you.** Plug the memory engine into any device running the bridge: it sends the snapshot and the memory log, and the bridge rebuilds your graph and replays every memory in order.
 - **Every send is written back** to the memory engine as one more line in its log, the moment you send.
