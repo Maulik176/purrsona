@@ -352,7 +352,9 @@ class MemoryBridge:
                         client.lock.release()
             except Exception:
                 self.blocked[client.port] = None
-                self.disconnect("connection_failed", expected_client=client)
+                # USB I/O can fail before port enumeration notices the cable is gone.
+                # The session is lost either way; cleanup decides when it is forgotten.
+                self.disconnect("disconnected", expected_client=client)
                 self.cleanup()
 
     def start(self):

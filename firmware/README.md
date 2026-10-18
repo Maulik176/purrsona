@@ -1,11 +1,13 @@
 # LilyGO T-Display-S3 memory key
 
 Firmware and the laptop USB bridge are implemented and exercised on a physical
-T-Display-S3 on macOS (2026-10-17). Its owner confirmed the animated brain and
+T-Display-S3 on macOS (2026-10-17–18). Its owner confirmed the animated brain and
 graph. Fingerprint pairing, 90 USB greetings, ten messages over 60 KB, and rejection
-of unapproved memory reads passed. A demo memory saved through the API returned
-exactly once after USB unplug/reconnect and a new signed unlock; the laptop's
-FalkorDB graph was deleted while disconnected. AI replies were mocked in this run.
+of unapproved memory reads passed. The October 18 **real-Claude** practice draft,
+edited send, physical unplug and reconnect passed: the laptop graph was deleted,
+the saved memory returned once, and the owner confirmed the restored graph with
+35 rules. The key holds 6 events across 4 circles, including two tested circle
+moves. See the [recording and acceptance results](../video/README.md).
 Button navigation on every view, interruption during a write, and battery-powered
 disconnect behavior remain manual acceptance checks below.
 
