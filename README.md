@@ -191,6 +191,8 @@ LinkedIn and X direct messages are left out on purpose: the cat doesn't appear t
 
 > **Using the extension with the live demo?** It starts set to **On this laptop** (a bridge running on your machine at 127.0.0.1:8765). If you aren't running Purrsona locally, the cat says "Purrsona's bridge isn't running" and the toolbar cat opens a localhost page. Switch it once: right-click the toolbar cat → **Options** → **The online demo**. Then click the toolbar cat to open your dashboard, press **Start your own key**, and go to any LinkedIn, X or Gmail box. (In a Chrome Incognito window the extension is off; use a normal window.)
 
+> **Option + M does nothing?** Refresh the tab first: Chrome only adds an extension to pages opened after you install it. If it still does nothing, click the cat on the box → **write a reply**, which works without any shortcut (tapping Option twice also opens the cat). Another app or browser can own Option + M: we tested in Chrome, and in other Chromium browsers such as Dia, use the cat. You can change Chrome's shortcut at `chrome://extensions/shortcuts`.
+
 **Run it locally** (about 10 minutes). You need Docker Desktop, [uv](https://docs.astral.sh/uv/getting-started/installation/), Chrome, and your own Anthropic API key (a draft costs about 1–2 cents).
 
 ```bash
