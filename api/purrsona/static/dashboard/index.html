@@ -13,7 +13,7 @@
   --good: #3ddc97; --bad: #ff6b6b; --radius: 16px;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; } body { min-height: 100vh; }
 body { background: var(--bg); color: var(--text); font: 14px/1.5 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; cursor: pointer; }
@@ -35,9 +35,10 @@ main { flex: 1; min-width: 0; padding: 34px 42px 60px; }
 .page.on { display: block; }
 h1 { font: 600 34px/1.15 Fraunces, Georgia, serif; margin: 0 0 4px; }
 .sub { color: var(--muted); margin: 0 0 26px; }
-.grid { display: grid; gap: 18px; }
-.g2 { grid-template-columns: 1.6fr 1fr; }
-.g2b { grid-template-columns: 1fr 1fr; }
+.grid { display: grid; gap: 18px; } .grid > * { min-width: 0; }
+.g2 { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+.g2p { grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
+.g2b { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
 .card h2 { margin: 0 0 14px; font-size: 12px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--amber); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 .card h2 span { color: var(--faint); letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 12px; }
@@ -50,6 +51,7 @@ h1 { font: 600 34px/1.15 Fraunces, Georgia, serif; margin: 0 0 4px; }
 .row:first-of-type { border-top: 0; }
 .muted { color: var(--muted); }
 .faint { color: var(--faint); font-size: 12px; }
+.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; background: var(--card2); border: 1px solid var(--line); font-size: 12px; color: #c9ccd6; white-space: nowrap; }
 .av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; font-size: 12px; color: #1a1205; flex: none; }
 .bar { height: 6px; border-radius: 6px; background: var(--card2); overflow: hidden; }
@@ -124,7 +126,7 @@ table.modes th, table.modes td { text-align: left; padding: 10px 8px; border-top
 table.modes th { color: var(--muted); font-weight: 500; border-top: 0; }
 .plugwall { text-align: center; padding: 80px 20px; }
 .plugwall h2 { font: 600 26px Fraunces, Georgia, serif; margin: 14px 0 6px; }
-@media (max-width: 1000px) { .g2, .g2b { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(3, 1fr); } .side { display: none; } main { padding: 22px 16px; } }
+@media (max-width: 1000px) { .g2, .g2b, .g2p { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(3, 1fr); } .side { display: none; } main { padding: 22px 16px; } }
 </style>
 </head>
 <body>
@@ -290,7 +292,7 @@ function renderHome() {
           : '<div class="empty">Draft a few replies and your signature rules appear here.</div>'}
         <div class="faint" style="margin-top:8px">The rules your drafts lean on most, ranked by FalkorDB's PageRank.</div></div>
     </div>
-    <div class="grid g2" style="margin-top:18px">
+    <div class="grid g2p" style="margin-top:18px">
       <div class="card"><h2>Latest drafts <span>with the agents' handoffs</span></h2>${D.trails.length ? D.trails.slice(0, 5).map(trailRow).join("") : '<div class="empty">No drafts with handoffs yet: press ⌥M on the practice page.</div>'}</div>
       <div class="card"><h2>People you write to</h2>${D.people.slice(0, 7).map(personRow).join("")}</div>
     </div>`;
@@ -329,7 +331,7 @@ const STEP = { redo: "redo", "still breaks": "still", pass: "pass", learned: "le
 const steps = (list) => `<div class="steps">${list.map((s) => `<span class="st ${STEP[s.action] || ""}" title="${esc(s.detail || "")}">${esc(s.agent)} ${esc(s.action)}</span>`).join('<span class="arrow">→</span>')}</div>`;
 const trailRow = (t) => `<div class="row" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px">
   <b>${esc(t.person || "your own post")}</b><span class="faint">${ago(t.at)}${t.sent_at ? " · sent" : ""}</span></div>
-  <div class="muted" style="font-size:13px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.text)}</div>${steps(t.steps)}</div>`;
+  <div class="muted clamp" style="font-size:13px;margin-top:2px">${esc(t.text)}</div>${steps(t.steps)}</div>`;
 const AVCOL = ["#ff9f43", "#2dd4bf", "#a78bfa", "#60a5fa", "#f472b6", "#fde68a"];
 const personRow = (p, i) => `<div class="row"><div class="av" style="background:${AVCOL[i % AVCOL.length]}">${esc(first(p.name)[0] || "?")}</div>
   <div style="flex:1;min-width:0"><b>${esc(p.name)}</b><div class="faint">${[p.relationship && `your ${p.relationship}`, p.circle || (p.kind === "company" ? "company page" : "no circle"), p.own_rules ? `${p.own_rules} own rule${p.own_rules > 1 ? "s" : ""}` : ""].filter(Boolean).map(esc).join(" · ")}</div></div>
