@@ -101,7 +101,12 @@
   // Draft.js (doubled text, then a box that ignored Backspace). Slack is the exception (checked Oct 17):
   // it clears the box on a script's paste and drops the text, but takes typed text cleanly.
   const TYPE_FIRST = /(^|\.)slack\.com$/;
+  let inserting = 0;  // our own inserts empty the box for a moment: that's not you clearing the draft
   async function insertText(box, text) {
+    inserting++;
+    try { return await insertNow(box, text); } finally { setTimeout(() => inserting--, 400); }
+  }
+  async function insertNow(box, text) {
     if (composing) box.blur();  // finish a half-typed accent first (macOS Option keys start one)
     box.focus();
     if (box.tagName === "TEXTAREA") {
@@ -263,7 +268,7 @@
         const user = above.querySelector('[data-testid="User-Name"]')?.innerText || "";
         const handle = (user.match(/@(\w+)/) || [])[1];
         if (!handle) return null;
-        return { mode: "reply", person_id: handle.toLowerCase(), person_name: user.split("\n")[0] || handle, platform: "x",
+        return { mode: "reply", person_id: handle.toLowerCase(), person_name: user.split("\n")[0].split(/\s+[|·•]\s+/)[0].trim() || handle, platform: "x",
                  post_text: above.querySelector('[data-testid="tweetText"]')?.innerText || "" };
       },
       isSend: (btn) => btn.matches('[data-testid="tweetButtonInline"], [data-testid="tweetButton"]'),
@@ -491,6 +496,7 @@
     const named = labelName(box);
     const known = named && matchPerson(people, named);
     if (known && !askAnyway) return Object.assign(ctx, { person_id: known.id, person_name: known.name, guessed: true });
+    people = [...people].sort((a, b) => (b.last_sent || 0) - (a.last_sent || 0));  // recent first
     if (lastPick?.person_id) people = [{ id: lastPick.person_id, name: lastPick.person_name }, ...people.filter((p) => p.id !== lastPick.person_id)];
     const pick = await new Promise((resolve) => {
       const b = cat.say(`Who's this message for?
@@ -757,6 +763,13 @@
   // You pressed send: every send leaves a memory. Who you wrote to (and their circle, if they're new),
   // plus either the lessons from your edits and chat requests, or "the draft was right as it was".
   // Quiet: a 🐾 on the cat; the details wait in its chat. (Replies only for now.)
+  // You cleared the draft out of the box (QA, Oct 18: a hand-typed Slack message was learned as an edit
+  // of a draft deleted earlier). Whatever you send next is your own message, so there's nothing to learn.
+  document.addEventListener("input", (e) => {
+    if (!last || inserting || busy || !(e.composedPath?.() || []).includes(last.box)) return;
+    if (!readBox(last.box).trim()) last = null;
+  }, true);
+
   async function captureSend(box, pressedText = "") {
     pressed = null;
     if (!last || last.box !== box || last.r.mode !== "voice") return;
@@ -780,7 +793,10 @@
         summary: n ? `your last send taught me ${n} new ${n === 1 ? "thing" : "things"}` : "your last send is saved to your key" };
       cat.mood("happy");
       cat.badge("🐾");
-      if (!usable(box)) {  // the site removed the box after sending: say it now, where the cat is
+      const focused = deepActive();
+      // The site removed the box, or sending moved you away from it (Gmail's full-page compose, a Comment
+      // button): the cat is about to hide, so say it now, where the cat is. In chat apps you stay in the box.
+      if (!usable(box) || !(focused === box || box.contains(focused))) {
         const b = cat.say(`🐾 ${esc(lastLesson.summary)}<div class="muted">click me to see it</div>`, { ms: 12000 });
         b.onclick = () => { b.onclick = null; showLesson(); };
         linger(12000);

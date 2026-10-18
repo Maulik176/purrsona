@@ -200,7 +200,8 @@ def trail_steps(graph, draft_id: str) -> list[dict]:
 # The people and circles in the plugged-in voice graph (for the demo console's picker).
 PEOPLE = """
 MATCH (:User)-[:KNOWS]->(p:Person)-[:IN_CIRCLE]->(c:Circle)
-RETURN p.id AS id, p.name AS name, p.headline AS headline, c.name AS circle
+OPTIONAL MATCH (d:Draft)-[:TO]->(p) WHERE d.sent_at IS NOT NULL
+RETURN p.id AS id, p.name AS name, p.headline AS headline, c.name AS circle, max(d.sent_at) AS last_sent
 ORDER BY circle, name
 """
 
