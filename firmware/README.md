@@ -88,9 +88,15 @@ process per state directory.
    It uses your physical board and normal pairing trust store. Saved memories
    stay on the board after the command stops. Use one bridge process at a time.
 
-   For real AI replies, keep the existing Docker/Chrome setup from the
-   [project README](../README.md#try-it). From the repo
-   root, run `docker compose up -d`. Then, from `api/`:
+   For real Claude replies, set `ANTHROPIC_API_KEY` in the repo's local `.env`,
+   then run `bun run hardware-demo --real-ai`. This uses the same isolated
+   FalkorDB and physical key, with the normal Drafter, Critic and Learner. It
+   stops immediately if the key is missing and never falls back to mocked AI.
+   The runner always uses local USB mode, even if `.env` enables hosted mode.
+
+   To use your existing Docker database instead, follow the
+   [project README](../README.md#try-it): run `docker compose up -d` from the repo
+   root, then run this from `api/`:
 
    ```sh
    PURRSONA_USB=1 uv run uvicorn purrsona.app:app --port 8765
@@ -130,7 +136,14 @@ Claude output. Restart `bun run hardware-demo` and approve B to resume the demo.
 Firmware updates preserve the board's existing seed. If the repo seed has changed,
 compare against the snapshot read from the board, not the newer file in Git.
 `bun run allcheck --force` also runs this comparison against the C++ firmware,
-including learned, sent, and forgotten events replayed after restart.
+including learned, sent, forgotten, and circle-move events.
+
+For an existing board, updating `data/seed/demo-maulik.json` and flashing the
+application does **not** replace its stored snapshot. Refresh that snapshot only
+after backing up flash: preserve `events.jsonl` byte for byte and leave the NVS
+partition (identity and unlock counter) untouched. Do not use a blank filesystem
+image or reset pairing to update the seed. See [demo evidence](../video/README.md)
+for the current board's refresh and recording status.
 
 ## Two-button controls
 
