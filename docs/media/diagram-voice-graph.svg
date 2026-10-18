@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" role="img" aria-label="Purrsona's voice graph: You, Person, Relationship, Circle, Topic and Platform each have style rules; drafts use rules, edits teach them, steps record the agents' handoffs">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7d8497"/></marker><marker id="amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ff9f43"/></marker><radialGradient id="glow" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#ff9f43" stop-opacity="0.07"/><stop offset="1" stop-color="#14151b" stop-opacity="0"/></radialGradient></defs>
+<rect width="1200" height="720" rx="28" fill="#14151b"/><rect width="1200" height="720" rx="28" fill="url(#glow)"/>
+<text x="40" y="54" font-family="Fraunces, Georgia, 'Times New Roman', serif" font-size="26" font-weight="600" fill="#eceef3" text-anchor="start" >The voice graph</text>
+<text x="40" y="80" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#9196a5" text-anchor="start" >One graph per key, voice:&lt;key_id&gt;. People, circles, platforms and topics carry the rules; drafts, edits and steps say where each came from.</text>
+<g transform="translate(0,44)">
+<line x1="172" y1="210" x2="314" y2="210" stroke="#4a4f5f" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="216.4" y="189" width="53.2" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="243" y="204" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#ffc078" text-anchor="middle" >KNOWS</text>
+<line x1="406" y1="210" x2="718" y2="210" stroke="#4a4f5f" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="520.5" y="211" width="83.0" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="562" y="226" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#ffc078" text-anchor="middle" >IN_CIRCLE</text>
+<line x1="392" y1="182" x2="520" y2="136" stroke="#4a4f5f" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="436.6" y="139" width="30.9" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="452" y="154" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#ffc078" text-anchor="middle" >IS</text>
+<line x1="602" y1="136" x2="728" y2="184" stroke="#4a4f5f" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="638.0" y="139" width="68.1" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="672" y="154" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#ffc078" text-anchor="middle" >PART_OF</text>
+<line x1="140" y1="252" x2="528" y2="358" stroke="#5a3550" stroke-width="1.8" marker-end="url(#arrow)"/>
+<line x1="368" y1="256" x2="566" y2="358" stroke="#5a3550" stroke-width="1.8" marker-end="url(#arrow)"/>
+<line x1="756" y1="252" x2="634" y2="358" stroke="#5a3550" stroke-width="1.8" marker-end="url(#arrow)"/>
+<line x1="956" y1="248" x2="664" y2="358" stroke="#5a3550" stroke-width="1.8" marker-end="url(#arrow)"/>
+<line x1="1108" y1="248" x2="694" y2="358" stroke="#5a3550" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="499.0" y="311" width="202.0" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="600" y="326" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#f472b6" text-anchor="middle" >HAS_RULE  (from 5 scopes)</text>
+<circle cx="130" cy="210" r="50" fill="#ffc078" opacity="0.07"/>
+<circle cx="130" cy="210" r="40" fill="#ffc078" fill-opacity="0.16" stroke="#ffc078" stroke-width="2"/>
+<text x="130" y="215" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#eceef3" text-anchor="middle" >You</text>
+<text x="130" y="272" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9196a5" text-anchor="middle" >your everywhere habits</text>
+<circle cx="360" cy="210" r="56" fill="#ff9f43" opacity="0.07"/>
+<circle cx="360" cy="210" r="46" fill="#ff9f43" fill-opacity="0.16" stroke="#ff9f43" stroke-width="2"/>
+<text x="360" y="215" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#eceef3" text-anchor="middle" >Person</text>
+<text x="360" y="278" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9196a5" text-anchor="middle" >Priya, Kabir, Neha…</text>
+<circle cx="562" cy="118" r="52" fill="#94a3b8" opacity="0.07"/>
+<circle cx="562" cy="118" r="42" fill="#94a3b8" fill-opacity="0.16" stroke="#94a3b8" stroke-width="2"/>
+<text x="562" y="123" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#eceef3" text-anchor="middle" >Your words</text>
+<text x="614" y="104" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9196a5" text-anchor="start" >"my manager", "client"</text>
+<circle cx="760" cy="210" r="52" fill="#2dd4bf" opacity="0.07"/>
+<circle cx="760" cy="210" r="42" fill="#2dd4bf" fill-opacity="0.16" stroke="#2dd4bf" stroke-width="2"/>
+<text x="760" y="215" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#eceef3" text-anchor="middle" >Circle</text>
+<text x="760" y="274" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9196a5" text-anchor="middle" >Friends · Work · Clients · Community</text>
+<circle cx="960" cy="210" r="48" fill="#a78bfa" opacity="0.07"/>
+<circle cx="960" cy="210" r="38" fill="#a78bfa" fill-opacity="0.16" stroke="#a78bfa" stroke-width="2"/>
+<text x="960" y="215" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#eceef3" text-anchor="middle" >Topic</text>
+<text x="960" y="270" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9196a5" text-anchor="middle" >ServiceNow, cricket…</text>
+<circle cx="1110" cy="210" r="48" fill="#60a5fa" opacity="0.07"/>
+<circle cx="1110" cy="210" r="38" fill="#60a5fa" fill-opacity="0.16" stroke="#60a5fa" stroke-width="2"/>
+<text x="1110" y="215" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#eceef3" text-anchor="middle" >Platform</text>
+<text x="1110" y="270" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9196a5" text-anchor="middle" >LinkedIn, X, Gmail…</text>
+<rect x="476" y="362" width="248" height="60" rx="14" fill="#f472b6" fill-opacity="0.16" stroke="#f472b6" stroke-width="2"/>
+<text x="600.0" y="392.0" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#eceef3" text-anchor="middle" >StyleRule</text>
+<text x="600.0" y="410.0" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9196a5" text-anchor="middle" >"No emojis", "Opens with Hi &lt;name&gt;"</text>
+<rect x="880" y="364" width="200" height="56" rx="14" fill="#f472b6" fill-opacity="0.08" stroke="#f472b6" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="980.0" y="392.0" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#9196a5" text-anchor="middle" >older StyleRule</text>
+<text x="980.0" y="410.0" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9196a5" text-anchor="middle" >kept as history</text>
+<line x1="726" y1="392" x2="876" y2="392" stroke="#4a4f5f" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="758.5" y="369" width="83.0" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="800" y="384" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#ffc078" text-anchor="middle" >OVERRIDES</text>
+<rect x="520" y="526" width="160" height="54" rx="14" fill="#e2e8f0" fill-opacity="0.16" stroke="#e2e8f0" stroke-width="2"/>
+<text x="600.0" y="553.0" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#eceef3" text-anchor="middle" >Edit or Post</text>
+<text x="600.0" y="571.0" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9196a5" text-anchor="middle" >what you changed</text>
+<line x1="600" y1="424" x2="600" y2="522" stroke="#4a4f5f" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="547.4" y="463" width="105.3" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="600" y="478" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#ffc078" text-anchor="middle" >LEARNED_FROM</text>
+<rect x="250" y="526" width="150" height="54" rx="14" fill="#fde68a" fill-opacity="0.16" stroke="#fde68a" stroke-width="2"/>
+<text x="325.0" y="553.0" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#eceef3" text-anchor="middle" >Draft</text>
+<text x="325.0" y="571.0" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" fill="#9196a5" text-anchor="middle" >what the cat wrote</text>
+<line x1="518" y1="553" x2="404" y2="553" stroke="#4a4f5f" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="445.6" y="530" width="30.9" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="461" y="545" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#ffc078" text-anchor="middle" >OF</text>
+<line x1="356" y1="524" x2="516" y2="424" stroke="#4a4f5f" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="395.1" y="465" width="45.8" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="418" y="480" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#ffc078" text-anchor="middle" >USED</text>
+<text x="325" y="604" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#9196a5" text-anchor="middle" >TO → Person · ON → Platform · ABOUT → Topic</text>
+<rect x="40" y="530" width="130" height="46" rx="14" fill="#c9ccd6" fill-opacity="0.16" stroke="#c9ccd6" stroke-width="2"/>
+<text x="105.0" y="558.0" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#eceef3" text-anchor="middle" >Step</text>
+<rect x="40" y="610" width="130" height="46" rx="14" fill="#c9ccd6" fill-opacity="0.16" stroke="#c9ccd6" stroke-width="2"/>
+<text x="105.0" y="638.0" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#eceef3" text-anchor="middle" >Step</text>
+<line x1="248" y1="553" x2="174" y2="553" stroke="#4a4f5f" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="172.2" y="530" width="75.5" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="210" y="545" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#ffc078" text-anchor="middle" >HAS_STEP</text>
+<line x1="105" y1="578" x2="105" y2="606" stroke="#4a4f5f" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="117.1" y="581" width="45.8" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="140" y="596" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#ffc078" text-anchor="middle" >NEXT</text>
+<path d="M110,528 C110,450 340,402 472,394" fill="none" stroke="#5a3550" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="178.8" y="441" width="142.5" height="22" rx="11" fill="#1d1f27" stroke="#2c303b"/><text x="250" y="456" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" font-weight="400" fill="#f472b6" text-anchor="middle" >FLAGGED or TAUGHT</text>
+<text x="1160" y="650" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#646a79" text-anchor="end" >When two rules of the same kind compete, the narrowest wins: Person › Circle › Topic › Platform › You.</text>
+</g></svg>
