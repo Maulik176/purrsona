@@ -494,7 +494,15 @@ async function resetKey() {
 let graphCache = null, hidden = new Set(["Relationship", "Draft"]), bySignature = true, sim = null;
 async function drawGraph() {
   const canvas = $("map");
-  if (!D.plugged) { $("chips").innerHTML = ""; canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height); $("detail").classList.add("on"); $("detailBody").innerHTML = "Plug in the key to see your voice graph."; return; }
+  if (!D.plugged) {
+    // Unplugged = forgotten: stop the old map's animation and handlers, or they keep repainting it (found Oct 18).
+    if (sim) { sim.stop(); sim = null; }
+    d3.select(canvas).on(".zoom", null).on(".drag", null).on("mousemove", null).on("click", null);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    $("chips").innerHTML = ""; $("detail").classList.add("on"); $("detailBody").innerHTML = "Plug in the key to see your voice graph."; return;
+  }
   if (!graphCache) {
     const generation = keyState?.generation, revision = keyState?.revision;
     let result;
