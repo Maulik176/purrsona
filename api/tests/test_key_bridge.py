@@ -159,3 +159,36 @@ def test_unpaired_key_is_not_automatically_trusted(bridge, usb_fixture, tmp_path
     assert bridge.usb_status == "needs_pairing"
     assert bridge.client is None and bridge.state["key_id"] is None
     assert bridge.trust.load("demo-maulik") is None
+
+
+@pytest.mark.parametrize("cleanup_delayed", [False, True])
+def test_usb_io_failure_before_port_disappears_reports_forgetting_then_forgotten(bridge, monkeypatch, cleanup_delayed):
+    from purrsona import keys
+
+    bridge.attach("test-port")
+    original_unplug = keys.unplug
+    if cleanup_delayed:
+        monkeypatch.setattr(keys, "unplug", lambda *args: {"forgotten": False})
+
+    def cable_lost(*args, **kwargs):
+        raise OSError("USB I/O failed before the port disappeared")
+
+    monkeypatch.setattr(bridge.client, "ack", cable_lost)
+    bridge.start()
+    try:
+        deadline = time.monotonic() + 3
+        expected = "forgetting" if cleanup_delayed else "forgotten"
+        while bridge.live.current["phase"] != expected and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert bridge.ports() == ["test-port"]  # macOS has not removed the port yet.
+        assert bridge.state["key_id"] is None
+        assert bridge.live.current["phase"] == expected
+        if cleanup_delayed:
+            assert graph_name("demo-maulik") in bridge.db.list_graphs()
+            monkeypatch.setattr(keys, "unplug", original_unplug)
+            assert bridge.cleanup()
+        assert graph_name("demo-maulik") not in bridge.db.list_graphs()
+        assert bridge.live.current["phase"] == "forgotten"
+    finally:
+        monkeypatch.setattr(keys, "unplug", original_unplug)
+        bridge.stop()

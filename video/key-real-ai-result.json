@@ -1,0 +1,20 @@
+{
+  "result": "PASS",
+  "real_ai": true,
+  "draft_and_learn_http_status": 200,
+  "before_rules": 34,
+  "after_rules": 35,
+  "before_memories": 5,
+  "after_memories": 6,
+  "circles": 4,
+  "graph_deleted_on_physical_unplug": true,
+  "memory_restored_once": true,
+  "all_memory_summaries_match": true,
+  "all_rules_and_draft_history_match": true,
+  "signed_unlock_counter_advanced": true,
+  "moves_restored": true,
+  "new_learned_rules": 3,
+  "date": "2026-10-18",
+  "model_requested": "claude-opus-5-5",
+  "note": "The initial unplug displayed the reconnect prompt; graph deletion and restoration passed. Disconnect status is verified separately."
+}

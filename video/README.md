@@ -6,16 +6,24 @@ shows the hardware; the longer clip shows the save/unplug/restore sequence.
 
 ## Current evidence
 
-The existing physical-key checks passed with **mocked AI**. They verified pairing,
-graph display, saving a memory, deleting the laptop graph on unplug, and restoring
-saved memories after reconnecting. The latest automated suite also accepts the
-new `moved` event (moving a person to another circle).
+**The physical key passed the real-AI draft → edit/send → unplug → reconnect test.**
+It restored **35 active rules, 6 saved events, and 4 circles**. The owner confirmed
+the graph and 35-rule count on the LCD. Moving a person to Community and back also
+passed, preserving all original memories and the board's identity.
 
-The board now has the latest firmware and seed, with its identity and all three
-saved memories preserved. Replaying that data produces **34 active rules across
-4 circles**. See the [October 18 acceptance record](key-check-2026-10-18.md).
-The physical move check, real-Claude run, and video capture are still pending.
-No recording or real-AI pass is claimed until captured and checked.
+- [Full real-AI screen recording](key-real-ai-screen.mp4) — 4 minutes 14 seconds,
+  including waits. The first unplug shows the original status-message bug;
+  graph deletion and memory restoration both passed.
+- [Corrected unplug/reconnect recording](key-disconnect-restored.mp4) — 4 minutes
+  38 seconds, including waits. Shows **Forgotten**, followed by **35 rules and
+  6 learned** after physical reconnect and B approval.
+- [Acceptance record](key-check-2026-10-18.md) — checks and evidence boundaries.
+- Machine-readable results: [real AI](key-real-ai-result.json) and
+  [corrected disconnect status](key-disconnect-result.json).
+
+These are actual laptop recordings with the physical key connected, not simulator
+footage. A phone clip of the LCD, button press, and cable is still needed for the
+combined hardware video.
 
 ## Record one complete run
 
@@ -26,8 +34,8 @@ No recording or real-AI pass is claimed until captured and checked.
 2. Plug in the LilyGO and press **B (GPIO14)**. Film the brain animation, connected
    state, and rule count. The latest seed includes **Community**, Reddit, Slack,
    Teams, and email; saved edits can change the active rule count.
-3. On Priya's practice post, focus the reply box and press **Option+M**. Wait for
-   the real draft, edit it, and press **Reply**. Show that a memory was saved.
+3. On Priya's practice post, focus the reply box and press the **right Option+M**.
+   Wait for the real draft, edit it, and press **Reply**. Show that a memory was saved.
 4. Pull the cable. Show **Forgotten** on the laptop. Reconnect and press **B**;
    show that the saved memory is restored once, with the same rule count.
 5. Save the phone clip as `key-phone.mp4` and the screen recording as

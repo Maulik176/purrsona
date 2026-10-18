@@ -1,0 +1,12 @@
+{
+  "result": "PASS",
+  "graph_deleted": true,
+  "browser_phase_after_unplug": "forgotten",
+  "memories_restored": 6,
+  "rules_restored": 35,
+  "memory_summaries_and_counts_match": true,
+  "ai_calls_during_status_recheck": 0,
+  "date": "2026-10-18",
+  "visible_forgotten_message_verified": true,
+  "owner_confirmed_lcd_rule_count": 35
+}
