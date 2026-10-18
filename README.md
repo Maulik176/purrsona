@@ -84,7 +84,7 @@ Purrsona has three agents, and they never call each other. The bridge hands each
 
 A writing style is personal data. Purrsona keeps it on something you hold.
 
-**The key** is a LilyGO T-Display-S3: an ESP32-S3 with a 1.9-inch screen and two buttons, on USB-C. Mustafa built its firmware. It stores only two things: a snapshot of your voice graph and an append-only log of everything it has learned since. All the work happens on the laptop; the key holds the memory, asks for consent and shows what's happening.
+**The key** is a LilyGO T-Display-S3: an ESP32-S3 with a 1.9-inch screen and two buttons, on USB-C. Mustafa built its firmware. Its voice memory is a snapshot of your voice graph and an append-only log of everything it has learned since. The laptop handles graph queries and AI requests; the key holds the memory, asks for consent and shows what's happening.
 
 - **Consent is a button press.** Nothing loads until you press it.
 - **Memory travels with you.** Plug the key into any laptop running the bridge: it sends the snapshot and the memory log, and the bridge rebuilds your graph and replays every memory in order.
@@ -98,6 +98,17 @@ A writing style is personal data. Purrsona keeps it on something you hold.
 | Unplug | `BYE`, or the cable is pulled | `GRAPH.DELETE voice:<key_id>`; the laptop forgets |
 
 **Status, honestly:** the T-Display-S3 passed a **real-Claude** practice draft, edited send, physical unplug, and reconnect: the laptop graph was deleted and the saved memory returned exactly once, restoring **35 rules and 6 events**. Physical circle moves also passed. The owner confirmed the restored graph and rule count on the LCD. See [physical key setup and remaining checks](firmware/README.md) and [recorded key evidence](video/README.md). <!-- TODO(Sunday): photo of the T-Display-S3 -->
+
+### Why an ESP32 instead of a USB drive?
+
+An ordinary USB flash drive could carry the same files. We chose the ESP32-S3 because it can run the firmware that controls access to them:
+
+- **A verifiable device identity.** The board signs a fresh challenge with its Ed25519 private key. The bridge checks it against the public key paired earlier and an increasing unlock counter, rejecting reused unlock responses. Copying the voice files alone does not copy that identity.
+- **Consent enforced on the device.** The firmware requires a fresh press of B before it allows memory reads or writes for a new connection. A disconnected or expired session locks again.
+- **Feedback you can see and control.** The LilyGO's screen shows the brain animation, connection state, rule count and graph. Its two buttons let you approve access and browse the graph on the board.
+- **Controlled memory writes.** The firmware validates each event, rejects conflicting event IDs and confirms a new save only after flushing it to flash. Retrying an identical event does not add it twice.
+
+These are implemented in the [USB protocol and firmware](docs/PROTOCOL.md). This hackathon build still uses plaintext USB and flash storage, with secure boot and flash encryption disabled; see [what is stored where](firmware/README.md#what-is-stored-where).
 
 ## One database, many voices
 
